@@ -38,11 +38,12 @@ class Occurrence extends Model
         'synced_at',
     ];
 
-    protected $casts = [
-        'gbif_decimal_latitude' => 'decimal:7',
-        'gbif_decimal_longitude' => 'decimal:7',
-        'synced_at' => 'datetime',
-    ];
+protected $casts = [
+    'gbif_decimal_latitude' => 'decimal:7',
+    'gbif_decimal_longitude' => 'decimal:7',
+    'media' => 'array',
+    'synced_at' => 'datetime',
+];
 
     public function localityGroup(): BelongsTo
     {
@@ -68,4 +69,6 @@ class Occurrence extends Model
     {
         return in_array($this->georef_status, ['ungeoreferenced', 'has_suggestion']);
     }
+
+
 }

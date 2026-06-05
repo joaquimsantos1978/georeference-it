@@ -42,4 +42,8 @@ class LocalityGroup extends Model
 
         return sha1(implode('|', $parts));
     }
+public function comments(): HasMany
+{
+    return $this->hasMany(LocalityGroupComment::class);
+}
 }

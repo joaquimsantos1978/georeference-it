@@ -74,4 +74,13 @@ class GeorefSuggestion extends Model
         $threshold = PlatformSetting::get('validation_threshold', 60);
         return $this->total_points >= $threshold;
     }
+public function exclusions(): HasMany
+{
+    return $this->hasMany(GeorefSuggestionExclusion::class, 'suggestion_id');
+}
+
+public function excludedOccurrences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+{
+    return $this->belongsToMany(Occurrence::class, 'georef_suggestion_exclusions', 'suggestion_id', 'occurrence_id');
+}
 }
