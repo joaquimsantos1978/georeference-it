@@ -24,6 +24,8 @@ class User extends Authenticatable
         'total_validated',
         'avatar',
         'bio',
+'email_notifications',
+'preferred_task',
     ];
 
     protected $hidden = [
@@ -36,6 +38,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'email_notifications' => 'boolean',
         ];
     }
 
@@ -84,4 +87,14 @@ class User extends Authenticatable
             $this->update(['user_level_id' => $level->id]);
         }
     }
+
+public function notifications(): HasMany
+{
+    return $this->hasMany(Notification::class);
+}
+
+public function unreadNotifications(): HasMany
+{
+    return $this->hasMany(Notification::class)->whereNull('read_at');
+}
 }
