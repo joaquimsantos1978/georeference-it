@@ -44,4 +44,23 @@
             </x-primary-button>
         </div>
     </form>
+
+<div class="mt-4">
+    <div class="relative">
+        <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+        </div>
+        <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white dark:bg-gray-900 text-gray-500">{{ __('Or continue with') }}</span>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ route('auth.social.redirect', 'orcid') }}"
+           class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+            <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-4 h-4 mr-2"> 
+            {{ __('Login with ORCID') }}
+        </a>
+    </div>
+</div>
 </x-guest-layout>

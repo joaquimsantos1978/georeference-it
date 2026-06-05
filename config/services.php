@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'orcid' => [
+        'client_id' => env('ORCID_CLIENT_ID'),
+        'client_secret' => env('ORCID_CLIENT_SECRET'),
+        'redirect' => env('ORCID_REDIRECT_URI'),
+        'environment' => env('ORCID_ENVIRONMENT', 'production'),
+        'scopes' => ['/authenticate'],
+    ],
+
 ];
