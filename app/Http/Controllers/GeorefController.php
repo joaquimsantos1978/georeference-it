@@ -28,6 +28,13 @@ class GeorefController extends Controller
         if (in_array($preferredTask, ['validate', 'both'])) {
             $group = LocalityGroup::where('pending_count', '>', 0)
                 ->when($country, fn($q) => $q->where('country_code', $country))
+                ->whereHas('suggestions', function ($q) {
+                    $q->where('status', 'pending')
+                        ->where(function ($q2) {
+                            $q2->whereNull('user_id')
+                                ->orWhere('user_id', '!=', auth()->id());
+                        });
+                })
                 ->inRandomOrder()
                 ->first();
         }
@@ -37,9 +44,9 @@ class GeorefController extends Controller
             $group = LocalityGroup::whereHas('occurrences', function ($q) {
                 $q->whereIn('georef_status', ['ungeoreferenced']);
             })
-            ->when($country, fn($q) => $q->where('country_code', $country))
-            ->inRandomOrder()
-            ->first();
+                ->when($country, fn($q) => $q->where('country_code', $country))
+                ->inRandomOrder()
+                ->first();
         }
 
         if (!$group) {
@@ -47,9 +54,18 @@ class GeorefController extends Controller
         }
 
         $occurrences = Occurrence::where('locality_group_id', $group->id)
-            ->get(['id', 'gbif_occurrence_key', 'catalog_number', 'institution_code',
-                   'collection_code', 'scientific_name', 'georef_status', 'media',
-                   'gbif_decimal_latitude', 'gbif_decimal_longitude']);
+            ->get([
+                'id',
+                'gbif_occurrence_key',
+                'catalog_number',
+                'institution_code',
+                'collection_code',
+                'scientific_name',
+                'georef_status',
+                'media',
+                'gbif_decimal_latitude',
+                'gbif_decimal_longitude'
+            ]);
 
         $suggestions = GeorefSuggestion::where('locality_group_id', $group->id)
             ->where('status', 'pending')
@@ -152,6 +168,10 @@ class GeorefController extends Controller
         // Prevent duplicate votes
         if ($suggestion->validations()->where('user_id', auth()->id())->exists()) {
             return response()->json(['success' => false, 'message' => 'Already voted']);
+        }
+        // Prevent validating own suggestions
+        if ($suggestion->user_id && $suggestion->user_id === auth()->id()) {
+            return response()->json(['success' => false, 'message' => 'Cannot validate your own suggestion']);
         }
 
         $this->applyVote($suggestion, auth()->user(), $validated['vote']);

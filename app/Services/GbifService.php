@@ -13,26 +13,27 @@ class GbifService
     const BASE_URL = 'https://api.gbif.org/v1';
     const PAGE_LIMIT = 300;
 
-    public function fetchByCountry(string $countryCode, int $offset = 0, bool $hasCoordinate = false): array
-    {
-        return $this->fetch([
-            'country' => $countryCode,
-            'hasCoordinate' => $hasCoordinate ? 'true' : 'false',
-            'limit' => self::PAGE_LIMIT,
-            'offset' => $offset,
-        ]);
-    }
+public function fetchByCountry(string $countryCode, int $offset = 0): array
+{
+    return $this->fetch([
+        'country' => $countryCode,
+        'hasCoordinate' => 'false',
+        'basisOfRecord' => 'PRESERVED_SPECIMEN',
+        'limit' => self::PAGE_LIMIT,
+        'offset' => $offset,
+    ]);
+}
 
-    public function fetchByDataset(string $datasetKey, int $offset = 0, bool $hasCoordinate = false): array
-    {
-        return $this->fetch([
-            'datasetKey' => $datasetKey,
-            'hasCoordinate' => $hasCoordinate ? 'true' : 'false',
-            'limit' => self::PAGE_LIMIT,
-            'offset' => $offset,
-        ]);
-    }
-
+public function fetchByDataset(string $datasetKey, int $offset = 0): array
+{
+    return $this->fetch([
+        'datasetKey' => $datasetKey,
+        'hasCoordinate' => 'false',
+        'basisOfRecord' => 'PRESERVED_SPECIMEN',
+        'limit' => self::PAGE_LIMIT,
+        'offset' => $offset,
+    ]);
+}
     public function fetchReferencesForGroup(LocalityGroup $group): array
     {
         $params = ['hasCoordinate' => 'true', 'limit' => 100];
@@ -159,17 +160,17 @@ class GbifService
                 'event_date' => $record['eventDate'] ?? null,
                 'recorded_by' => $record['recordedBy'] ?? null,
                 'field_number' => $record['fieldNumber'] ?? null,
-                'scientific_name' => $record['scientificName'] ?? null,
-                'taxon_rank' => $record['taxonRank'] ?? null,
-                'kingdom' => $record['kingdom'] ?? null,
-                'family' => $record['family'] ?? null,
+'scientific_name' => $record['scientificName'] ?? $record['species'] ?? null,
+'taxon_rank' => $record['taxonRank'] ?? null,
+'kingdom' => $record['kingdom'] ?? null,
+'family' => $record['family'] ?? null,
                 'gbif_decimal_latitude' => $record['decimalLatitude'] ?? null,
                 'gbif_decimal_longitude' => $record['decimalLongitude'] ?? null,
                 'gbif_geodetic_datum' => $record['geodeticDatum'] ?? null,
                 'gbif_coordinate_uncertainty_m' => $record['coordinateUncertaintyInMeters'] ?? null,
                 'locality_group_id' => $localityGroup->id,
                 'georef_status' => $georefStatus,
-                'media' => !empty($media) ? $media : null,
+                'media' => !empty($media) ? json_encode($media) : null,
                 'synced_at' => now(),
             ]
         );
@@ -181,71 +182,9 @@ class GbifService
 
     public function createAutoSuggestions(LocalityGroup $group): void
     {
-        // Skip if group already has suggestions
-        if ($group->suggestions()->exists()) return;
-
-        $response = $this->fetchReferencesForGroup($group);
-        $results = $response['results'] ?? [];
-
-        if (empty($results)) return;
-
-        // Extract points with coordinates and uncertainty
-        $points = [];
-        foreach ($results as $r) {
-            if (isset($r['decimalLatitude'], $r['decimalLongitude'])) {
-                $points[] = [
-                    'lat' => (float) $r['decimalLatitude'],
-                    'lng' => (float) $r['decimalLongitude'],
-                    'uncertainty' => (int) ($r['coordinateUncertaintyInMeters'] ?? 1000),
-                ];
-            }
+   // Skip for now - will implement reference lookup later
+    return;
         }
-
-        if (empty($points)) return;
-
-        // Group points by circle overlap
-        $clusters = $this->clusterByOverlap($points);
-
-        // Create one suggestion per cluster
-        $firstOccurrence = $group->occurrences()->first();
-        if (!$firstOccurrence) return;
-
-        $status = count($clusters) > 1 ? 'pending' : 'pending';
-
-        foreach ($clusters as $cluster) {
-            $centroid = $this->computeCentroid($cluster);
-
-            GeorefSuggestion::create([
-                'occurrence_id' => $firstOccurrence->id,
-                'locality_group_id' => $group->id,
-                'user_id' => null,
-                'anon_name' => 'system',
-                'decimal_latitude' => $centroid['lat'],
-                'decimal_longitude' => $centroid['lng'],
-                'geodetic_datum' => 'epsg:4326',
-                'coordinate_uncertainty_m' => $centroid['uncertainty'],
-                'georeference_protocol' => 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020)',
-                'georeference_sources' => 'GBIF existing georeferenced occurrences',
-                'georeference_remarks' => 'Auto-generated from ' . count($cluster) . ' existing GBIF georeferenced occurrence(s) in this locality group.',
-                'status' => 'pending',
-                'total_points' => 0,
-                'georeferenced_date' => now(),
-            ]);
-        }
-
-        // If multiple clusters, mark group as conflicted
-        if (count($clusters) > 1) {
-            $group->occurrences()
-                ->whereIn('georef_status', ['ungeoreferenced'])
-                ->update(['georef_status' => 'conflicted']);
-        } else {
-            $group->occurrences()
-                ->whereIn('georef_status', ['ungeoreferenced'])
-                ->update(['georef_status' => 'has_suggestion']);
-        }
-
-        $this->updateGroupCounters($group);
-    }
 
     private function clusterByOverlap(array $points): array
     {

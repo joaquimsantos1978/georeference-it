@@ -36,14 +36,19 @@ class Occurrence extends Model
         'locality_group_id',
         'georef_status',
         'synced_at',
+        'media',
+        'scientific_name',
+        'taxon_rank',
+        'kingdom',
+        'family',
     ];
 
-protected $casts = [
-    'gbif_decimal_latitude' => 'decimal:7',
-    'gbif_decimal_longitude' => 'decimal:7',
-    'media' => 'array',
-    'synced_at' => 'datetime',
-];
+    protected $casts = [
+        'gbif_decimal_latitude' => 'decimal:7',
+        'gbif_decimal_longitude' => 'decimal:7',
+        'media' => 'array',
+        'synced_at' => 'datetime',
+    ];
 
     public function localityGroup(): BelongsTo
     {
@@ -69,6 +74,4 @@ protected $casts = [
     {
         return in_array($this->georef_status, ['ungeoreferenced', 'has_suggestion']);
     }
-
-
 }
