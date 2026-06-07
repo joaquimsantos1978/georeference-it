@@ -170,7 +170,7 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
                 'gbif_coordinate_uncertainty_m' => $record['coordinateUncertaintyInMeters'] ?? null,
                 'locality_group_id' => $localityGroup->id,
                 'georef_status' => $georefStatus,
-                'media' => !empty($media) ? json_encode($media) : null,
+                'media' => !empty($media) ? $media : null,
                 'synced_at' => now(),
             ]
         );
