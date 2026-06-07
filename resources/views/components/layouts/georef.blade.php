@@ -11,27 +11,16 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
     <style>
-        html, body, #map { height: 100%; margin: 0; padding: 0; }
-        body { overflow: hidden; }
-        [data-tooltip] { position: relative; }
-[data-tooltip]:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: 0; top: 100%;
-    background: rgba(0,0,0,0.8);
-    color: white;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
-    z-index: 100;
-    pointer-events: none;
-    margin-top: 2px;
-}
+        [x-cloak] { display: none !important; }
+        body { margin: 0; padding: 0; overflow: hidden; }
+        #georef-content { height: calc(100vh - 48px); }
     </style>
 </head>
 <body class="bg-gray-900">
-    {{ $slot }}
+    <x-navbar />
+    <div id="georef-content">
+        {{ $slot }}
+    </div>
     @stack('scripts')
 </body>
 </html>

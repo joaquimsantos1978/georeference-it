@@ -1,11 +1,8 @@
 <x-layouts.georef>
-    <div id="georef-wrap" style="position:relative; height:100vh; width:100vw; display:flex; flex-direction:row;">
+    <div id="georef-wrap" style="position:relative; height:100%; width:100%; display:flex; flex-direction:row;">
 
         {{-- MAP --}}
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
-
-        {{-- Top bar — decorative background only, no content --}}
-        <div id="topbar" style="position:absolute;top:0;left:0;right:380px;z-index:10;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);height:41px;pointer-events:none;"></div>
 
         {{-- Draggable image viewer --}}
         <div id="img-viewer" style="display:none; position:absolute; top:60px; left:12px; z-index:25; width:360px; height:320px; min-width:200px; min-height:150px;"
@@ -37,43 +34,26 @@
         </div>
 
         {{-- SIDE PANEL --}}
-        <div id="side-panel" style="width:380px; flex-shrink:0; z-index:10; display:flex; flex-direction:column; height:100vh; overflow:hidden; position:relative;"
+        <div id="side-panel" style="width:380px; flex-shrink:0; z-index:10; display:flex; flex-direction:column; height:100%; overflow:hidden; position:relative;"
             class="bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700">
             <div id="occ-tooltip" style="display:none; position:absolute; z-index:100; left:8px; right:8px; pointer-events:none;"
                 class="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 shadow-xl"></div>
 
             <div class="flex flex-col flex-1 overflow-hidden">
 
-                {{-- Header: title + country selector + nav links (single source of truth) --}}
-                <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb;">
-                    <div style="height:41px; display:flex; align-items:center; padding:0 12px; gap:8px;">
-                        <a href="{{ route('georef.index') }}" class="text-green-600 dark:text-green-400 font-bold text-sm tracking-tight hover:text-green-700" style="flex:1; white-space:nowrap;">georeference.it</a>
-                        <select id="country-select" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" style="max-width:130px;">
-                            <option value="">{{ __('All countries') }}</option>
-                            <option value="PT">Portugal</option>
-                            <option value="ES">Spain</option>
-                            <option value="GB">United Kingdom</option>
-                            <option value="FR">France</option>
-                            <option value="DE">Germany</option>
-                            <option value="IT">Italy</option>
-                            <option value="BR">Brazil</option>
-                            <option value="US">United States</option>
-                        </select>
-                    </div>
-                    <div style="display:flex; padding:0 12px 6px; gap:10px; flex-wrap:wrap; font-size:11px;">
-                        <a href="{{ route('leaderboard') }}" class="text-gray-500 hover:text-green-600">{{ __('Leaderboard') }}</a>
-                        <a href="{{ route('about') }}" class="text-gray-500 hover:text-green-600">{{ __('About') }}</a>
-                        @auth
-                            <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-green-600">{{ __('Dashboard') }}</a>
-                            <form method="POST" action="{{ route('logout') }}" class="inline">
-                                @csrf
-                                <button type="submit" style="background:none;border:none;padding:0;cursor:pointer;font-size:11px;" class="text-gray-500 hover:text-green-600">{{ __('Logout') }}</button>
-                            </form>
-                        @else
-                            <a href="{{ route('login') }}" class="text-gray-500 hover:text-green-600">{{ __('Login') }}</a>
-                            <a href="{{ route('register') }}" class="text-green-600 font-medium hover:text-green-700">{{ __('Register') }}</a>
-                        @endauth
-                    </div>
+                {{-- Country selector --}}
+                <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
+                    <select id="country-select" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <option value="">{{ __('All countries') }}</option>
+                        <option value="PT">Portugal</option>
+                        <option value="ES">Spain</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="FR">France</option>
+                        <option value="DE">Germany</option>
+                        <option value="IT">Italy</option>
+                        <option value="BR">Brazil</option>
+                        <option value="US">United States</option>
+                    </select>
                 </div>
 
                 {{-- Locality + Nominatim --}}
@@ -474,17 +454,15 @@
 
     // ── Layout ────────────────────────────────────────────────────────────────
     function applyLayout() {
-        var wrap=document.getElementById('georef-wrap'), panel=document.getElementById('side-panel'), mapDiv=document.getElementById('map'), topbar=document.getElementById('topbar');
+        var wrap=document.getElementById('georef-wrap'), panel=document.getElementById('side-panel'), mapDiv=document.getElementById('map');
         var innerPanel=panel.querySelector('.flex.flex-col.flex-1');
         if (window.innerWidth<768) {
-            wrap.style.flexDirection='column'; panel.style.width='100%'; panel.style.height='62vh';
-            mapDiv.style.height='38vh'; mapDiv.style.flex='none';
-            if(topbar)topbar.style.display='none';
+            wrap.style.flexDirection='column'; panel.style.width='100%'; panel.style.height='55%';
+            mapDiv.style.height='45%'; mapDiv.style.flex='none';
             if(innerPanel)innerPanel.style.overflowY='auto';
         } else {
-            wrap.style.flexDirection='row'; panel.style.width='380px'; panel.style.height='100vh';
+            wrap.style.flexDirection='row'; panel.style.width='380px'; panel.style.height='100%';
             mapDiv.style.height=''; mapDiv.style.flex='1';
-            if(topbar)topbar.style.display='block';
             if(innerPanel)innerPanel.style.overflowY='hidden';
         }
         map.invalidateSize();
