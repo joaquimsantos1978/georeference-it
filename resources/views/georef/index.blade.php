@@ -4,6 +4,25 @@
         {{-- MAP --}}
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
+        {{-- Floating history button --}}
+        <div style="position:absolute;top:12px;left:12px;z-index:20;">
+            <div style="position:relative;display:inline-flex;align-items:center;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                <button id="hist-prev" disabled title="{{ __('Previous') }}"
+                    style="padding:6px 10px;background:none;border:none;border-right:1px solid #e5e7eb;cursor:pointer;font-size:14px;color:#d1d5db;border-radius:8px 0 0 8px;line-height:1;">←</button>
+                <button id="hist-float-btn" title="{{ __('Session history') }}"
+                    style="padding:6px 8px;background:none;border:none;border-right:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:13px;height:13px;color:#6b7280;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span id="hist-counter" style="color:#9ca3af;font-size:11px;min-width:28px;text-align:center;">0/0</span>
+                </button>
+                <button id="hist-next" disabled title="{{ __('Next') }}"
+                    style="padding:6px 10px;background:none;border:none;cursor:pointer;font-size:14px;color:#d1d5db;border-radius:0 8px 8px 0;line-height:1;">→</button>
+                {{-- History dropdown --}}
+                <div id="hist-list" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:300px;max-width:380px;max-height:300px;overflow-y:auto;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:30;"></div>
+            </div>
+        </div>
+
         {{-- Draggable image viewer --}}
         <div id="img-viewer" style="display:none; position:absolute; top:60px; left:12px; z-index:25; width:360px; height:320px; min-width:200px; min-height:150px;"
             class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-300 dark:border-gray-600 flex flex-col overflow-hidden">
@@ -41,28 +60,33 @@
 
             <div class="flex flex-col flex-1 overflow-hidden">
 
-                {{-- Country selector --}}
-                <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
-                    <select id="country-select" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
-                        <option value="">{{ __('All countries') }}</option>
-                        <option value="PT">Portugal</option>
-                        <option value="ES">Spain</option>
-                        <option value="GB">United Kingdom</option>
-                        <option value="FR">France</option>
-                        <option value="DE">Germany</option>
-                        <option value="IT">Italy</option>
-                        <option value="BR">Brazil</option>
-                        <option value="US">United States</option>
-                    </select>
-                </div>
+{{-- Area search --}}
+<div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px; position:relative;">
+    <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Search by locality text') }}</label>
+    <div class="flex gap-1">
+        <input type="text" id="area-search"
+            class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500"
+            placeholder="{{ __('Search area...') }}" autocomplete="off">
+        <button id="area-search-btn" style="padding:0 8px;background:#16a34a;border:none;border-radius:6px;cursor:pointer;color:white;font-size:11px;">{{ __('Search') }}</button>
+    <button id="area-search-clear" style="display:none;padding:0 6px;background:none;border:none;cursor:pointer;color:#9ca3af;font-size:14px;" title="{{ __('Clear') }}">✕</button>
+    </div>
+    <div id="area-results" style="display:none;position:absolute;left:12px;right:12px;top:100%;margin-top:2px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:50;max-height:280px;overflow-y:auto;"></div>
+    <p id="area-hint" class="text-xs text-gray-400 mt-1">{{ __('Detecting your location...') }}</p>
+</div>
 
                 {{-- Locality + Nominatim --}}
                 <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
                     <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
                     <div id="occurrence-info" class="hidden">
-                        <div id="locality-fields" class="space-y-0.5 mb-2"></div>
-                        <div class="flex gap-1 mt-2">
-                            <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search locality on map...') }}">
+                        <div style="display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;">
+                            <div id="locality-fields" class="space-y-0.5 flex-1"></div>
+                            <button id="share-btn" title="{{ __('Copy link to this locality') }}"
+                                style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#16a34a;font-size:11px;margin-top:1px;"
+                                onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">🔗</button>
+                        </div>
+                        <div class="flex gap-1 mt-1">
+                            <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;margin-top:10px;">{{ __('Position on map') }}</label>
+                            <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name to position on map...') }}">
                             <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
                         </div>
                         <div id="nominatim-results" class="mt-1 space-y-1 max-h-36 overflow-y-auto"></div>
@@ -125,6 +149,13 @@
                         <input type="text" id="comment-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Add a comment...') }}">
                         <button id="comment-submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200">{{ __('Send') }}</button>
                     </div>
+                    @else
+                    <p class="mt-2 text-xs text-gray-400 italic">
+                        {{ __('Only authenticated users can join the discussion.') }}
+                        <a href="{{ route('login') }}" class="text-green-600 hover:underline">{{ __('Login') }}</a>
+                        {{ __('or') }}
+                        <a href="{{ route('register') }}" class="text-green-600 hover:underline">{{ __('register') }}</a>.
+                    </p>
                     @endauth
                 </div>
 
@@ -154,6 +185,10 @@
         noOcc:        "{{ __('No occurrences found. Try a different country.') }}",
         occurrences:  "{{ __('occurrences') }}",
     };
+
+    // Session history
+var sessionHistory = [];
+var historyIndex = -1;
 
     // ── Map ───────────────────────────────────────────────────────────────────
     let map, marker, circle, currentGroup = null;
@@ -274,9 +309,9 @@
     function hideTooltip() { tooltipEl.style.display='none'; }
 
     // ── Nominatim ─────────────────────────────────────────────────────────────
-    function buildLocalityString(g) {
-        return [g.verbatim_locality,g.municipality,g.county,g.state_province,g.country_code].filter(Boolean).join(', ');
-    }
+function buildLocalityString(g) {
+    return [g.verbatim_locality, g.municipality, g.county].filter(Boolean).join(', ');
+}
     async function searchNominatim(query) {
         if (!query) return;
         document.getElementById('nominatim-results').innerHTML = '<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
@@ -322,26 +357,87 @@
         if (window._suggestionLayers) window._suggestionLayers.forEach(l=>map.removeLayer(l));
         window._suggestionLayers=[];
     }
-    function loadNextGroup() {
-        if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;}
-        if(window._nominatimPolygon){map.removeLayer(window._nominatimPolygon);window._nominatimPolygon=null;}
-        clearSuggestionLayers(); closeImgViewer(); hideTooltip();
-        document.getElementById('submit-btn').disabled=true;
-        document.getElementById('lat-input').value=''; document.getElementById('lng-input').value='';
-        document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
-        const country=document.getElementById('country-select').value;
-        document.getElementById('occurrence-loading').classList.remove('hidden');
-        document.getElementById('occurrence-info').classList.add('hidden');
-        fetch(APP_URL+'/georef/next?country='+country, {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
-        .then(r=>r.json())
-        .then(data=>{
-            document.getElementById('occurrence-loading').classList.add('hidden');
-            if(data.group){currentGroup=data.group; renderGroup(data.group,data.occurrences,data.suggestions,data.comments);}
-            else{document.getElementById('occurrence-info').classList.remove('hidden'); document.getElementById('locality-fields').innerHTML='<p style="color:#9ca3af;font-size:11px">'+TXT.noOcc+'</p>';}
-        })
-        .catch(()=>document.getElementById('occurrence-loading').classList.add('hidden'));
+function clearPanel() {
+    if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;}
+    if(window._nominatimPolygon){map.removeLayer(window._nominatimPolygon);window._nominatimPolygon=null;}
+    clearSuggestionLayers(); closeImgViewer(); hideTooltip();
+    document.getElementById('submit-btn').disabled=true;
+    document.getElementById('lat-input').value=''; document.getElementById('lng-input').value='';
+    document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
+    document.getElementById('occurrence-loading').classList.remove('hidden');
+    document.getElementById('occurrence-info').classList.add('hidden');
+}
+
+function loadNextGroup() {
+    clearPanel();
+    var params = '';
+    if (typeof currentArea !== 'undefined') {
+        if (currentArea.type === 'country') {
+            params = 'country=' + currentArea.country_code;
+        } else if (currentArea.type === 'text' && currentArea.q) {
+            params = 'q=' + encodeURIComponent(currentArea.q);
+        }
+        // type 'all' = no params
     }
-    loadNextGroup();
+    fetch(APP_URL+'/georef/next?' + params, {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
+    .then(r=>r.json())
+    .then(data=>{
+        document.getElementById('occurrence-loading').classList.add('hidden');
+        if(data.group){
+            addToHistory(data.group);
+            currentGroup=data.group;
+            renderGroup(data.group,data.occurrences,data.suggestions,data.comments);
+            updateUrl(data.group.id);
+        } else {
+            document.getElementById('occurrence-info').classList.remove('hidden');
+            document.getElementById('locality-fields').innerHTML='<p style="color:#9ca3af;font-size:11px">'+TXT.noOcc+'</p>';
+        }
+    })
+    .catch(()=>document.getElementById('occurrence-loading').classList.add('hidden'));
+}
+
+function loadGroup(groupId) {
+    clearPanel();
+    fetch(APP_URL+'/georef/group/'+groupId, {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
+    .then(r=>r.json())
+    .then(data=>{
+        document.getElementById('occurrence-loading').classList.add('hidden');
+        if(data.group){
+            currentGroup=data.group;
+            renderGroup(data.group,data.occurrences,data.suggestions,data.comments);
+            updateUrl(data.group.id);
+        }
+    })
+    .catch(()=>document.getElementById('occurrence-loading').classList.add('hidden'));
+}
+
+function addToHistory(group) {
+    sessionHistory = sessionHistory.filter(function(g){ return g.id !== group.id; });
+    sessionHistory.push({ id: group.id, label: buildGroupLabel(group) });
+    historyIndex = sessionHistory.length - 1;
+    localStorage.setItem('georef_history', JSON.stringify(sessionHistory));
+    localStorage.setItem('georef_index', historyIndex);
+    updateHistoryNav();
+}
+
+function buildGroupLabel(group) {
+    return [group.verbatim_locality, group.municipality, group.county, group.state_province, group.country_code]
+        .filter(Boolean).join(', ');
+}
+
+function updateUrl(groupId) {
+    var url = window.location.pathname + '?group=' + groupId;
+    history.pushState({ groupId: groupId }, '', url);
+}
+
+function updateHistoryNav() {
+    var prevBtn = document.getElementById('hist-prev');
+    var nextBtn = document.getElementById('hist-next');
+    var counter = document.getElementById('hist-counter');
+    if(prevBtn) { prevBtn.disabled = historyIndex <= 0; prevBtn.style.color = historyIndex <= 0 ? '#d1d5db' : '#374151'; }
+    if(nextBtn) { nextBtn.disabled = historyIndex >= sessionHistory.length - 1; nextBtn.style.color = historyIndex >= sessionHistory.length - 1 ? '#d1d5db' : '#374151'; }
+    if(counter) counter.textContent = sessionHistory.length > 0 ? (historyIndex + 1) + '/' + sessionHistory.length : '0/0';
+}
 
     // ── Render group ──────────────────────────────────────────────────────────
     function renderGroup(group, occurrences, suggestions, comments) {
@@ -366,10 +462,11 @@
             return '<div class="occ-row" id="'+occId+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
                 '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
                 '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">'+
-                '<div style="flex:1;min-width:0"><div style="word-break:break-word">'+label+'</div>'+
-                (taxon?'<div style="color:#9ca3af;font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
-                (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-                '</div><a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none">↗</a>'+
+                '<div style="flex:1;min-width:0">'+
+(taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
+'<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
+(meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
+                '</div><a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
                 imgBtn+'</div></div>';
         }).join('');
 
@@ -411,12 +508,13 @@
 
         renderComments(comments||[]);
 
-        const cf={'PT':[39.5,-8.0,7],'ES':[40.0,-3.7,6],'GB':[54.0,-2.0,6],'FR':[46.5,2.3,6],'DE':[51.2,10.4,6],'IT':[42.5,12.5,6],'BR':[-14.2,-51.9,4],'US':[37.1,-95.7,4]};
-        if (window._suggestionLayers&&window._suggestionLayers.length>0) {
-            map.fitBounds(L.featureGroup(window._suggestionLayers).getBounds().pad(0.5));
-        } else if (group.gbif_decimal_latitude&&group.gbif_decimal_longitude) {
-            map.flyTo([group.gbif_decimal_latitude,group.gbif_decimal_longitude],10);
-        } else { const f=cf[group.country_code]; if(f) map.flyTo([f[0],f[1]],f[2]); }
+// Only move map if there are suggestion layers to show
+if (window._suggestionLayers && window._suggestionLayers.length > 0) {
+    var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
+    if (!map.getBounds().intersects(bounds)) {
+        map.fitBounds(bounds);
+    }
+}
     }
 
     function renderComments(comments) {
@@ -440,8 +538,141 @@
             body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl})})
         .then(r=>r.json()).then(d=>{if(d.success)loadNextGroup();});
     });
-    document.getElementById('skip-btn').addEventListener('click',loadNextGroup);
-    document.getElementById('country-select').addEventListener('change',loadNextGroup);
+document.getElementById('skip-btn').addEventListener('click', loadNextGroup);
+document.getElementById('hist-prev').addEventListener('click', function(e) {
+    e.stopPropagation();
+    if(historyIndex > 0) { historyIndex--; localStorage.setItem('georef_index', historyIndex); loadGroup(sessionHistory[historyIndex].id); updateHistoryNav(); }
+});
+document.getElementById('hist-next').addEventListener('click', function(e) {
+    e.stopPropagation();
+    if(historyIndex < sessionHistory.length - 1) { historyIndex++; localStorage.setItem('georef_index', historyIndex); loadGroup(sessionHistory[historyIndex].id); updateHistoryNav(); }
+});
+
+// Handle browser back/forward
+window.addEventListener('popstate', function(e) {
+    if(e.state && e.state.groupId) loadGroup(e.state.groupId);
+});
+
+// Load from URL on page load — restore history state from localStorage
+updateHistoryNav();
+var urlParams = new URLSearchParams(window.location.search);
+var urlGroupId = urlParams.get('group');
+if(urlGroupId) {
+    // Find if this group is already in history and set index
+    var existingIdx = sessionHistory.findIndex(function(g){ return g.id === parseInt(urlGroupId); });
+    if(existingIdx !== -1) { historyIndex = existingIdx; updateHistoryNav(); }
+    loadGroup(parseInt(urlGroupId));
+} else if(sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
+    // Restore last viewed group from history
+    loadGroup(sessionHistory[historyIndex].id);
+} else {
+    loadNextGroup();
+}
+// ── Area search ───────────────────────────────────────────────────────────
+var areaSearchTimeout = null;
+var currentArea = { type: 'all' }; // what's currently active for filtering
+
+// loadNextGroupForArea is an alias for loadNextGroup (currentArea is used by loadNextGroup)
+function loadNextGroupForArea() { loadNextGroup(); }
+
+function renderAreaResults(results) {
+    var el = document.getElementById('area-results');
+    if (!results.length) {
+        el.innerHTML = '<div style="padding:10px 12px;font-size:11px;color:#9ca3af">{{ __("No matches found") }}</div>';
+        el.style.display = 'block';
+        return;
+    }
+    el.innerHTML = results.map(function(r) {
+        var badge = r.pending > 0
+            ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px">' + r.pending + ' {{ __("pending") }}</span>'
+            : '';
+        var count = '<span style="color:#9ca3af;font-size:10px;margin-left:auto;padding-left:8px">' + r.occurrence_count + ' occ.</span>';
+        return '<div onclick="selectArea(' + JSON.stringify(r).replace(/"/g, '&quot;') + ')" '
+            + 'style="padding:7px 12px;font-size:11px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:4px;" '
+            + 'onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'white\'">'
+            + '<span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + r.label + '</span>'
+            + badge + count
+            + '</div>';
+    }).join('');
+    el.style.display = 'block';
+}
+
+function selectArea(r) {
+    document.getElementById('area-search').value = r.label;
+    document.getElementById('area-results').style.display = 'none';
+    document.getElementById('area-search-clear').style.display = 'block';
+    document.getElementById('area-hint').textContent = r.occurrence_count
+        ? r.occurrence_count + ' {{ __("occurrences match") }}'
+        : '';
+    // Don't filter yet — user confirms with Enter or Search button
+}
+
+document.getElementById('area-search').addEventListener('input', function() {
+    var q = this.value.trim();
+    document.getElementById('area-search-clear').style.display = q ? 'block' : 'none';
+    clearTimeout(areaSearchTimeout);
+    if (q.length < 2) {
+        document.getElementById('area-results').style.display = 'none';
+        return;
+    }
+    areaSearchTimeout = setTimeout(function() {
+        fetch(APP_URL + '/georef/search-locality?q=' + encodeURIComponent(q), {
+            headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
+        })
+        .then(r => r.json())
+        .then(renderAreaResults);
+    }, 300);
+});
+
+document.getElementById('area-search').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('area-results').style.display = 'none';
+    }
+});
+
+document.getElementById('area-search-clear').addEventListener('click', function() {
+    document.getElementById('area-search').value = '';
+    document.getElementById('area-results').style.display = 'none';
+    this.style.display = 'none';
+    document.getElementById('area-hint').textContent = '{{ __("Showing all areas") }}';
+    currentArea = { type: 'all' };
+    loadNextGroupForArea();
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#area-search') && !e.target.closest('#area-results')) {
+        document.getElementById('area-results').style.display = 'none';
+    }
+});
+
+// Detect location by IP on load
+fetch(APP_URL + '/georef/detect-location', {
+    headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
+})
+.then(r => r.json())
+.then(function(loc) {
+    if (loc && loc.city) {
+        var label = [loc.city, loc.region, loc.country].filter(Boolean).join(', ');
+        document.getElementById('area-search').placeholder = label;
+        document.getElementById('area-hint').textContent = '{{ __("Detected:") }} ' + label + ' · {{ __("press Enter to use") }}';
+        
+        // Store detected location for use on Enter
+        window._detectedLocation = loc;
+        
+        document.getElementById('area-search').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !this.value.trim() && window._detectedLocation) {
+                var l = window._detectedLocation;
+                this.value = [l.city, l.region, l.country].filter(Boolean).join(', ');
+                currentArea = { type: 'country', country_code: l.country_code, label: this.value };
+                document.getElementById('area-hint').textContent = '';
+                document.getElementById('area-search-clear').style.display = 'block';
+                loadNextGroupForArea();
+            }
+        }, { once: true });
+    } else {
+        document.getElementById('area-hint').textContent = '{{ __("Type to search an area, or leave empty for all") }}';
+    }
+});
     var commentSubmit=document.getElementById('comment-submit');
     if(commentSubmit){
         commentSubmit.addEventListener('click',function(){
@@ -469,6 +700,67 @@
     }
     applyLayout();
     window.addEventListener('resize',applyLayout);
+
+document.getElementById('hist-float-btn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var list = document.getElementById('hist-list');
+    if(list.style.display === 'none' || list.style.display === '') {
+        list.style.display = 'block';
+        list.innerHTML = sessionHistory.slice().reverse().map(function(g, i) {
+            var realIndex = sessionHistory.length - 1 - i;
+            var active = realIndex === historyIndex;
+            return '<div onclick="historyGoto('+realIndex+')" style="padding:6px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid #f3f4f6;background:'+(active?'#f0fdf4':'white')+'" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\''+(active?'#f0fdf4':'white')+'\'">'+g.label+'</div>';
+        }).join('') || '<div style="padding:8px 10px;font-size:11px;color:#9ca3af">{{ __("No history yet") }}</div>';
+    } else {
+        list.style.display = 'none';
+    }
+});
+
+function historyGoto(index) {
+    historyIndex = index;
+    localStorage.setItem('georef_index', index);
+    loadGroup(sessionHistory[index].id);
+    document.getElementById('hist-list').style.display = 'none';
+    updateHistoryNav();
+}
+document.addEventListener('click', function() {
+    var list = document.getElementById('hist-list');
+    if(list) list.style.display = 'none';
+});
+
+function applyAreaSearch() {
+    var q = document.getElementById('area-search').value.trim();
+    if (!q) {
+        currentArea = { type: 'all' };
+        document.getElementById('area-hint').textContent = '{{ __("Showing all areas") }}';
+    } else if (window._detectedLocation && q === [window._detectedLocation.city, window._detectedLocation.region, window._detectedLocation.country].filter(Boolean).join(', ')) {
+        // User pressed Enter with the detected location — filter by country
+        currentArea = { type: 'country', country_code: window._detectedLocation.country_code, label: q };
+        document.getElementById('area-hint').textContent = '{{ __("Filtering by:") }} ' + window._detectedLocation.country;
+    } else {
+        currentArea = { type: 'text', q: q };
+        document.getElementById('area-hint').textContent = '{{ __("Searching for:") }} ' + q;
+    }
+    loadNextGroup();
+}
+
+document.getElementById('area-search-btn').addEventListener('click', applyAreaSearch);
+document.getElementById('area-search').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') applyAreaSearch();
+});
+
+document.getElementById('share-btn').addEventListener('click', function() {
+    if(!currentGroup) return;
+    var url = APP_URL + '/georef?group=' + currentGroup.id;
+    navigator.clipboard.writeText(url).then(function() {
+        var btn = document.getElementById('share-btn');
+        var orig = btn.innerHTML;
+        btn.innerHTML = '✓';
+        setTimeout(function(){ btn.innerHTML = orig; }, 2000);
+    }).catch(function() {
+        prompt('Copy this link:', APP_URL + '/georef?group=' + currentGroup.id);
+    });
+});
     </script>
     @endpush
 </x-layouts.georef>

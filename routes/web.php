@@ -22,6 +22,11 @@ Route::post('/georef/submit', [GeorefController::class, 'submit'])->name('georef
 Route::post('/georef/validate/{suggestion}', [GeorefController::class, 'validate'])->name('georef.validate');
 Route::post('/georef/comment', [GeorefController::class, 'comment'])->name('georef.comment')->middleware('auth');
 
+Route::get('/georef/group/{id}', [GeorefController::class, 'group'])->name('georef.group');
+
+Route::get('/georef/detect-location', [GeorefController::class, 'detectLocation'])->name('georef.detect-location');
+Route::get('/georef/search-locality', [GeorefController::class, 'searchLocality'])->name('georef.search-locality');
+
 // Auth routes
 Route::get('/auth/redirect/{provider}', [App\Http\Controllers\Auth\SocialiteController::class, 'redirect'])
     ->name('auth.social.redirect');
