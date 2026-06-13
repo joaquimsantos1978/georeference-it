@@ -60,69 +60,49 @@ class GeorefController extends Controller
 public function next(Request $request)
 {
     $country       = $request->get('country');
-    $q             = $request->get('q');
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
+
+    // Auto-sync if running low on ungeoreferenced occurrences for this country
+    if ($country) {
+        $threshold = (int) PlatformSetting::get('auto_sync_threshold', 50);
+        $available = LocalityGroup::whereHas('occurrences', function ($q) {
+                $q->where('georef_status', 'ungeoreferenced');
+            })
+            ->where('country_code', $country)
+            ->count();
+
+        if ($available < $threshold) {
+            $cacheKey = 'auto_sync_' . $country;
+            if (!\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addHours(6));
+                \App\Jobs\SyncGbifByCountry::dispatch($country);
+            }
+        }
+    }
 
     $group = null;
 
-    // Build locality filter closure
-    $localityFilter = function ($query) use ($q) {
-        $query->where('verbatim_locality', 'like', "%{$q}%")
-              ->orWhere('municipality',     'like', "%{$q}%")
-              ->orWhere('county',           'like', "%{$q}%")
-              ->orWhere('locality_string',  'like', "%{$q}%");
-    };
+    if (auth()->check() && in_array($preferredTask, ['validate', 'both'])) {
+        $group = LocalityGroup::where('pending_count', '>', 0)
+            ->when($country, fn($q) => $q->where('country_code', $country))
+            ->whereHas('suggestions', function ($q) {
+                $q->where('status', 'pending')
+                    ->where(function ($q2) {
+                        $q2->whereNull('user_id')
+                            ->orWhere('user_id', '!=', auth()->id());
+                    });
+            })
+            ->inRandomOrder()
+            ->first();
+    }
 
-    // Expand search: exact q → county → state_province → country → all
-    $filters = $q ? [
-        ['q' => $q],
-        ['county'         => $this->extractField($q, 'county')],
-        ['state_province' => $this->extractField($q, 'state_province')],
-        ['country_code'   => $country],
-        [],
-    ] : [[]];
-
-    foreach ($filters as $filter) {
-        if (auth()->check() && in_array($preferredTask, ['validate', 'both'])) {
-            $group = LocalityGroup::where('pending_count', '>', 0)
-                ->when(!empty($filter['q']), function ($query) use ($localityFilter) {
-                    $query->where($localityFilter);
-                })
-                ->when(!empty($filter['county']), fn($query) =>
-                    $query->where('county', 'like', '%'.$filter['county'].'%'))
-                ->when(!empty($filter['state_province']), fn($query) =>
-                    $query->where('state_province', 'like', '%'.$filter['state_province'].'%'))
-                ->when(!empty($filter['country_code']), fn($query) =>
-                    $query->where('country_code', $filter['country_code']))
-                ->whereHas('suggestions', function ($q) {
-                    $q->where('status', 'pending')
-                        ->where(function ($q2) {
-                            $q2->whereNull('user_id')
-                                ->orWhere('user_id', '!=', auth()->id());
-                        });
-                })
-                ->inRandomOrder()
-                ->first();
-        }
-
-        if (!$group && in_array($preferredTask, ['georef', 'both'])) {
-            $group = LocalityGroup::whereHas('occurrences', function ($q) {
-                    $q->whereIn('georef_status', ['ungeoreferenced']);
-                })
-                ->when(!empty($filter['q']), function ($query) use ($localityFilter) {
-                    $query->where($localityFilter);
-                })
-                ->when(!empty($filter['county']), fn($query) =>
-                    $query->where('county', 'like', '%'.$filter['county'].'%'))
-                ->when(!empty($filter['state_province']), fn($query) =>
-                    $query->where('state_province', 'like', '%'.$filter['state_province'].'%'))
-                ->when(!empty($filter['country_code']), fn($query) =>
-                    $query->where('country_code', $filter['country_code']))
-                ->inRandomOrder()
-                ->first();
-        }
-
-        if ($group) break;
+    if (!$group && in_array($preferredTask, ['georef', 'both'])) {
+        $group = LocalityGroup::whereHas('occurrences', function ($q) {
+                $q->whereIn('georef_status', ['ungeoreferenced']);
+            })
+            ->when($country, fn($q) => $q->where('country_code', $country))
+            ->inRandomOrder()
+            ->first();
     }
 
     if (!$group) {
@@ -130,13 +110,6 @@ public function next(Request $request)
     }
 
     return response()->json($this->groupData($group));
-}
-
-private function extractField(string $q, string $field): ?string
-{
-    // Future: use geocoding to extract county/state from free text
-    // For now return null — expansion uses country_code fallback
-    return null;
 }
 
     public function group(Request $request, int $groupId)
@@ -282,40 +255,45 @@ private function extractField(string $q, string $field): ?string
         return response()->json([]);
     }
 
-    public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $q = trim($request->get('q', ''));
+public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
+{
+    $q = trim($request->get('q', ''));
 
-        if (strlen($q) < 2) {
-            return response()->json([]);
-        }
-
-        $results = LocalityGroup::where(function ($query) use ($q) {
-                $query->where('verbatim_locality', 'like', "%{$q}%")
-                      ->orWhere('municipality', 'like', "%{$q}%")
-                      ->orWhere('county', 'like', "%{$q}%")
-                      ->orWhere('locality_string', 'like', "%{$q}%");
-            })
-            ->where('occurrence_count', '>', 0)
-            ->orderByRaw('(validated_count + pending_count) DESC')
-            ->limit(8)
-            ->get(['id', 'verbatim_locality', 'municipality', 'county',
-                   'state_province', 'country_code', 'occurrence_count',
-                   'pending_count', 'validated_count'])
-            ->map(fn($g) => [
-                'type'             => 'local',
-                'id'               => $g->id,
-                'label'            => implode(', ', array_filter([
-                    $g->verbatim_locality, $g->municipality,
-                    $g->county, $g->state_province, $g->country_code,
-                ])),
-                'occurrence_count' => $g->occurrence_count,
-                'pending'          => $g->pending_count,
-                'validated'        => $g->validated_count,
-            ]);
-
-        return response()->json($results);
+    if (strlen($q) < 2) {
+        return response()->json([]);
     }
+
+    $results = LocalityGroup::where(function ($query) use ($q) {
+            $query->where('verbatim_locality', 'like', "%{$q}%")
+                  ->orWhere('municipality',    'like', "%{$q}%")
+                  ->orWhere('county',          'like', "%{$q}%")
+                  ->orWhere('locality_string', 'like', "%{$q}%");
+        })
+        ->where('occurrence_count', '>', 0)
+        ->orderByRaw('(validated_count + pending_count) DESC')
+        ->limit(8)
+        ->get(['id', 'verbatim_locality', 'municipality', 'county',
+               'state_province', 'country_code', 'occurrence_count',
+               'pending_count', 'validated_count'])
+        ->map(fn($g) => [
+            'type'             => 'local',
+            'id'               => $g->id,
+            'label'            => implode(', ', array_filter([
+                $g->verbatim_locality, $g->municipality,
+                $g->county, $g->state_province, $g->country_code,
+            ])),
+            'occurrence_count' => $g->occurrence_count,
+            'pending'          => $g->pending_count,
+            'validated'        => $g->validated_count,
+        ]);
+
+    // If no local results, fetch from GBIF in background
+    if ($results->isEmpty()) {
+        \App\Jobs\FetchGbifByLocality::dispatch($q);
+    }
+
+    return response()->json($results);
+}
 
     private function applyVote(GeorefSuggestion $suggestion, $user, string $vote): void
     {
@@ -370,4 +348,15 @@ private function extractField(string $q, string $field): ?string
             }
         }
     }
+
+public function sync(Request $request): \Illuminate\Http\JsonResponse
+{
+    $country = $request->get('country', 'PT');
+    
+    \App\Jobs\SyncGbifByCountry::dispatch($country);
+    
+    return response()->json([
+        'message' => __('Sync started for ') . $country . __('. Results will appear shortly.'),
+    ]);
+}
 }

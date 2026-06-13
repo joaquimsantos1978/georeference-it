@@ -60,19 +60,206 @@
 
             <div class="flex flex-col flex-1 overflow-hidden">
 
-{{-- Area search --}}
-<div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px; position:relative;">
-    <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Search by locality text') }}</label>
-    <div class="flex gap-1">
-        <input type="text" id="area-search"
-            class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500"
-            placeholder="{{ __('Search area...') }}" autocomplete="off">
-        <button id="area-search-btn" style="padding:0 8px;background:#16a34a;border:none;border-radius:6px;cursor:pointer;color:white;font-size:11px;">{{ __('Search') }}</button>
-    <button id="area-search-clear" style="display:none;padding:0 6px;background:none;border:none;cursor:pointer;color:#9ca3af;font-size:14px;" title="{{ __('Clear') }}">✕</button>
-    </div>
-    <div id="area-results" style="display:none;position:absolute;left:12px;right:12px;top:100%;margin-top:2px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:50;max-height:280px;overflow-y:auto;"></div>
-    <p id="area-hint" class="text-xs text-gray-400 mt-1">{{ __('Detecting your location...') }}</p>
-</div>
+                {{-- Country selector --}}
+                <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
+                    <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Country') }}</label>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <select id="country-select" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+    <option value="">{{ __('All countries') }}</option>
+    <option value="AF">Afghanistan</option>
+    <option value="AL">Albania</option>
+    <option value="DZ">Algeria</option>
+    <option value="AD">Andorra</option>
+    <option value="AO">Angola</option>
+    <option value="AG">Antigua and Barbuda</option>
+    <option value="AR">Argentina</option>
+    <option value="AM">Armenia</option>
+    <option value="AU">Australia</option>
+    <option value="AT">Austria</option>
+    <option value="AZ">Azerbaijan</option>
+    <option value="BS">Bahamas</option>
+    <option value="BH">Bahrain</option>
+    <option value="BD">Bangladesh</option>
+    <option value="BB">Barbados</option>
+    <option value="BY">Belarus</option>
+    <option value="BE">Belgium</option>
+    <option value="BZ">Belize</option>
+    <option value="BJ">Benin</option>
+    <option value="BT">Bhutan</option>
+    <option value="BO">Bolivia</option>
+    <option value="BA">Bosnia and Herzegovina</option>
+    <option value="BW">Botswana</option>
+    <option value="BR">Brazil</option>
+    <option value="BN">Brunei</option>
+    <option value="BG">Bulgaria</option>
+    <option value="BF">Burkina Faso</option>
+    <option value="BI">Burundi</option>
+    <option value="CV">Cape Verde</option>
+    <option value="KH">Cambodia</option>
+    <option value="CM">Cameroon</option>
+    <option value="CA">Canada</option>
+    <option value="CF">Central African Republic</option>
+    <option value="TD">Chad</option>
+    <option value="CL">Chile</option>
+    <option value="CN">China</option>
+    <option value="CO">Colombia</option>
+    <option value="KM">Comoros</option>
+    <option value="CG">Congo</option>
+    <option value="CD">Congo (DR)</option>
+    <option value="CR">Costa Rica</option>
+    <option value="HR">Croatia</option>
+    <option value="CU">Cuba</option>
+    <option value="CY">Cyprus</option>
+    <option value="CZ">Czech Republic</option>
+    <option value="DK">Denmark</option>
+    <option value="DJ">Djibouti</option>
+    <option value="DM">Dominica</option>
+    <option value="DO">Dominican Republic</option>
+    <option value="EC">Ecuador</option>
+    <option value="EG">Egypt</option>
+    <option value="SV">El Salvador</option>
+    <option value="GQ">Equatorial Guinea</option>
+    <option value="ER">Eritrea</option>
+    <option value="EE">Estonia</option>
+    <option value="SZ">Eswatini</option>
+    <option value="ET">Ethiopia</option>
+    <option value="FJ">Fiji</option>
+    <option value="FI">Finland</option>
+    <option value="FR">France</option>
+    <option value="GA">Gabon</option>
+    <option value="GM">Gambia</option>
+    <option value="GE">Georgia</option>
+    <option value="DE">Germany</option>
+    <option value="GH">Ghana</option>
+    <option value="GR">Greece</option>
+    <option value="GD">Grenada</option>
+    <option value="GT">Guatemala</option>
+    <option value="GN">Guinea</option>
+    <option value="GW">Guinea-Bissau</option>
+    <option value="GY">Guyana</option>
+    <option value="HT">Haiti</option>
+    <option value="HN">Honduras</option>
+    <option value="HU">Hungary</option>
+    <option value="IS">Iceland</option>
+    <option value="IN">India</option>
+    <option value="ID">Indonesia</option>
+    <option value="IR">Iran</option>
+    <option value="IQ">Iraq</option>
+    <option value="IE">Ireland</option>
+    <option value="IL">Israel</option>
+    <option value="IT">Italy</option>
+    <option value="JM">Jamaica</option>
+    <option value="JP">Japan</option>
+    <option value="JO">Jordan</option>
+    <option value="KZ">Kazakhstan</option>
+    <option value="KE">Kenya</option>
+    <option value="KI">Kiribati</option>
+    <option value="KW">Kuwait</option>
+    <option value="KG">Kyrgyzstan</option>
+    <option value="LA">Laos</option>
+    <option value="LV">Latvia</option>
+    <option value="LB">Lebanon</option>
+    <option value="LS">Lesotho</option>
+    <option value="LR">Liberia</option>
+    <option value="LY">Libya</option>
+    <option value="LI">Liechtenstein</option>
+    <option value="LT">Lithuania</option>
+    <option value="LU">Luxembourg</option>
+    <option value="MG">Madagascar</option>
+    <option value="MW">Malawi</option>
+    <option value="MY">Malaysia</option>
+    <option value="MV">Maldives</option>
+    <option value="ML">Mali</option>
+    <option value="MT">Malta</option>
+    <option value="MH">Marshall Islands</option>
+    <option value="MR">Mauritania</option>
+    <option value="MU">Mauritius</option>
+    <option value="MX">Mexico</option>
+    <option value="FM">Micronesia</option>
+    <option value="MD">Moldova</option>
+    <option value="MC">Monaco</option>
+    <option value="MN">Mongolia</option>
+    <option value="ME">Montenegro</option>
+    <option value="MA">Morocco</option>
+    <option value="MZ">Mozambique</option>
+    <option value="MM">Myanmar</option>
+    <option value="NA">Namibia</option>
+    <option value="NR">Nauru</option>
+    <option value="NP">Nepal</option>
+    <option value="NL">Netherlands</option>
+    <option value="NZ">New Zealand</option>
+    <option value="NI">Nicaragua</option>
+    <option value="NE">Niger</option>
+    <option value="NG">Nigeria</option>
+    <option value="NO">Norway</option>
+    <option value="OM">Oman</option>
+    <option value="PK">Pakistan</option>
+    <option value="PW">Palau</option>
+    <option value="PA">Panama</option>
+    <option value="PG">Papua New Guinea</option>
+    <option value="PY">Paraguay</option>
+    <option value="PE">Peru</option>
+    <option value="PH">Philippines</option>
+    <option value="PL">Poland</option>
+    <option value="PT">Portugal</option>
+    <option value="QA">Qatar</option>
+    <option value="RO">Romania</option>
+    <option value="RU">Russia</option>
+    <option value="RW">Rwanda</option>
+    <option value="KN">Saint Kitts and Nevis</option>
+    <option value="LC">Saint Lucia</option>
+    <option value="VC">Saint Vincent and the Grenadines</option>
+    <option value="WS">Samoa</option>
+    <option value="SM">San Marino</option>
+    <option value="ST">Sao Tome and Principe</option>
+    <option value="SA">Saudi Arabia</option>
+    <option value="SN">Senegal</option>
+    <option value="RS">Serbia</option>
+    <option value="SC">Seychelles</option>
+    <option value="SL">Sierra Leone</option>
+    <option value="SG">Singapore</option>
+    <option value="SK">Slovakia</option>
+    <option value="SI">Slovenia</option>
+    <option value="SB">Solomon Islands</option>
+    <option value="SO">Somalia</option>
+    <option value="ZA">South Africa</option>
+    <option value="SS">South Sudan</option>
+    <option value="ES">Spain</option>
+    <option value="LK">Sri Lanka</option>
+    <option value="SD">Sudan</option>
+    <option value="SR">Suriname</option>
+    <option value="SE">Sweden</option>
+    <option value="CH">Switzerland</option>
+    <option value="SY">Syria</option>
+    <option value="TW">Taiwan</option>
+    <option value="TJ">Tajikistan</option>
+    <option value="TZ">Tanzania</option>
+    <option value="TH">Thailand</option>
+    <option value="TL">Timor-Leste</option>
+    <option value="TG">Togo</option>
+    <option value="TO">Tonga</option>
+    <option value="TT">Trinidad and Tobago</option>
+    <option value="TN">Tunisia</option>
+    <option value="TR">Turkey</option>
+    <option value="TM">Turkmenistan</option>
+    <option value="TV">Tuvalu</option>
+    <option value="UG">Uganda</option>
+    <option value="UA">Ukraine</option>
+    <option value="AE">United Arab Emirates</option>
+    <option value="GB">United Kingdom</option>
+    <option value="US">United States</option>
+    <option value="UY">Uruguay</option>
+    <option value="UZ">Uzbekistan</option>
+    <option value="VU">Vanuatu</option>
+    <option value="VE">Venezuela</option>
+    <option value="VN">Vietnam</option>
+    <option value="YE">Yemen</option>
+    <option value="ZM">Zambia</option>
+    <option value="ZW">Zimbabwe</option>
+                        </select>
+                        <span id="country-sync-status" style="font-size:10px;color:#9ca3af;"></span>
+                    </div>
+                </div>
 
                 {{-- Locality + Nominatim --}}
                 <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
@@ -374,8 +561,6 @@ function loadNextGroup() {
     if (typeof currentArea !== 'undefined') {
         if (currentArea.type === 'country') {
             params = 'country=' + currentArea.country_code;
-        } else if (currentArea.type === 'text' && currentArea.q) {
-            params = 'q=' + encodeURIComponent(currentArea.q);
         }
         // type 'all' = no params
     }
@@ -568,112 +753,33 @@ if(urlGroupId) {
 } else {
     loadNextGroup();
 }
-// ── Area search ───────────────────────────────────────────────────────────
-var areaSearchTimeout = null;
-var currentArea = { type: 'all' }; // what's currently active for filtering
+// ── Country selector ─────────────────────────────────────────────────────
+    var currentArea = { type: 'all' };
 
-// loadNextGroupForArea is an alias for loadNextGroup (currentArea is used by loadNextGroup)
-function loadNextGroupForArea() { loadNextGroup(); }
+    document.getElementById('country-select').addEventListener('change', function() {
+        var val = this.value;
+        currentArea = val ? { type: 'country', country_code: val } : { type: 'all' };
+        loadNextGroup();
+    });
 
-function renderAreaResults(results) {
-    var el = document.getElementById('area-results');
-    if (!results.length) {
-        el.innerHTML = '<div style="padding:10px 12px;font-size:11px;color:#9ca3af">{{ __("No matches found") }}</div>';
-        el.style.display = 'block';
-        return;
-    }
-    el.innerHTML = results.map(function(r) {
-        var badge = r.pending > 0
-            ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px">' + r.pending + ' {{ __("pending") }}</span>'
-            : '';
-        var count = '<span style="color:#9ca3af;font-size:10px;margin-left:auto;padding-left:8px">' + r.occurrence_count + ' occ.</span>';
-        return '<div onclick="selectArea(' + JSON.stringify(r).replace(/"/g, '&quot;') + ')" '
-            + 'style="padding:7px 12px;font-size:11px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:4px;" '
-            + 'onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'white\'">'
-            + '<span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + r.label + '</span>'
-            + badge + count
-            + '</div>';
-    }).join('');
-    el.style.display = 'block';
-}
-
-function selectArea(r) {
-    document.getElementById('area-search').value = r.label;
-    document.getElementById('area-results').style.display = 'none';
-    document.getElementById('area-search-clear').style.display = 'block';
-    document.getElementById('area-hint').textContent = r.occurrence_count
-        ? r.occurrence_count + ' {{ __("occurrences match") }}'
-        : '';
-    // Don't filter yet — user confirms with Enter or Search button
-}
-
-document.getElementById('area-search').addEventListener('input', function() {
-    var q = this.value.trim();
-    document.getElementById('area-search-clear').style.display = q ? 'block' : 'none';
-    clearTimeout(areaSearchTimeout);
-    if (q.length < 2) {
-        document.getElementById('area-results').style.display = 'none';
-        return;
-    }
-    areaSearchTimeout = setTimeout(function() {
-        fetch(APP_URL + '/georef/search-locality?q=' + encodeURIComponent(q), {
-            headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
-        })
-        .then(r => r.json())
-        .then(renderAreaResults);
-    }, 300);
-});
-
-document.getElementById('area-search').addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        document.getElementById('area-results').style.display = 'none';
-    }
-});
-
-document.getElementById('area-search-clear').addEventListener('click', function() {
-    document.getElementById('area-search').value = '';
-    document.getElementById('area-results').style.display = 'none';
-    this.style.display = 'none';
-    document.getElementById('area-hint').textContent = '{{ __("Showing all areas") }}';
-    currentArea = { type: 'all' };
-    loadNextGroupForArea();
-});
-
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('#area-search') && !e.target.closest('#area-results')) {
-        document.getElementById('area-results').style.display = 'none';
-    }
-});
-
-// Detect location by IP on load
-fetch(APP_URL + '/georef/detect-location', {
-    headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
-})
-.then(r => r.json())
-.then(function(loc) {
-    if (loc && loc.city) {
-        var label = [loc.city, loc.region, loc.country].filter(Boolean).join(', ');
-        document.getElementById('area-search').placeholder = label;
-        document.getElementById('area-hint').textContent = '{{ __("Detected:") }} ' + label + ' · {{ __("press Enter to use") }}';
-        
-        // Store detected location for use on Enter
-        window._detectedLocation = loc;
-        
-        document.getElementById('area-search').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !this.value.trim() && window._detectedLocation) {
-                var l = window._detectedLocation;
-                this.value = [l.city, l.region, l.country].filter(Boolean).join(', ');
-                currentArea = { type: 'country', country_code: l.country_code, label: this.value };
-                document.getElementById('area-hint').textContent = '';
-                document.getElementById('area-search-clear').style.display = 'block';
-                loadNextGroupForArea();
+    // Auto-detect country from IP and pre-select
+    fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
+    .then(r => r.json())
+    .then(function(loc) {
+        if (loc && loc.country_code) {
+            var sel = document.getElementById('country-select');
+            // Only pre-select if option exists
+            for (var i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === loc.country_code) {
+                    sel.value = loc.country_code;
+                    currentArea = { type: 'country', country_code: loc.country_code };
+                    break;
+                }
             }
-        }, { once: true });
-    } else {
-        document.getElementById('area-hint').textContent = '{{ __("Type to search an area, or leave empty for all") }}';
-    }
-});
-    var commentSubmit=document.getElementById('comment-submit');
+        }
+    });
+
+        var commentSubmit=document.getElementById('comment-submit');
     if(commentSubmit){
         commentSubmit.addEventListener('click',function(){
             var body=document.getElementById('comment-input').value.trim();

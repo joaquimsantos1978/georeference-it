@@ -27,6 +27,8 @@ Route::get('/georef/group/{id}', [GeorefController::class, 'group'])->name('geor
 Route::get('/georef/detect-location', [GeorefController::class, 'detectLocation'])->name('georef.detect-location');
 Route::get('/georef/search-locality', [GeorefController::class, 'searchLocality'])->name('georef.search-locality');
 
+Route::post('/georef/sync', [GeorefController::class, 'sync'])->name('georef.sync');
+
 // Auth routes
 Route::get('/auth/redirect/{provider}', [App\Http\Controllers\Auth\SocialiteController::class, 'redirect'])
     ->name('auth.social.redirect');
