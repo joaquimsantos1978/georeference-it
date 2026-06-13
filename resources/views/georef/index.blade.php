@@ -55,8 +55,6 @@
         {{-- SIDE PANEL --}}
         <div id="side-panel" style="width:380px; flex-shrink:0; z-index:10; display:flex; flex-direction:column; height:100%; overflow:hidden; position:relative;"
             class="bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700">
-            <div id="occ-tooltip" style="display:none; position:absolute; z-index:100; left:8px; right:8px; pointer-events:none;"
-                class="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 shadow-xl"></div>
 
             <div class="flex flex-col flex-1 overflow-hidden">
 
@@ -281,22 +279,22 @@
                 </div>
 
                 {{-- Occurrences list --}}
-                <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
-                    <div class="flex items-center justify-between mb-1">
+                <div class="p-3 border-b border-gray-200 dark:border-gray-700" style="min-height:0;flex-shrink:1;overflow:hidden;display:flex;flex-direction:column;">
+                    <div class="flex items-center justify-between mb-1" style="flex-shrink:0;">
                         <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences in this group') }}</span>
                         <span id="occurrence-count" class="text-xs text-gray-400"></span>
                     </div>
-                    <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="max-height:160px;"></div>
+                    <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="min-height:0;flex:1;max-height:180px;"></div>
                 </div>
 
                 {{-- Existing suggestions --}}
                 <div id="existing-suggestions" class="p-3 border-b border-gray-200 dark:border-gray-700 hidden" style="min-height:0;flex-shrink:1;overflow:hidden;display:flex;flex-direction:column;">
                     <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide" style="flex-shrink:0;">{{ __('Existing suggestions') }}</span>
-                    <div id="suggestions-list" class="mt-1 space-y-2" style="overflow-y:auto;min-height:0;flex:1;max-height:280px;"></div>
+                    <div id="suggestions-list" class="mt-1 space-y-2 overflow-y-auto" style="min-height:0;flex:1;max-height:260px;"></div>
                 </div>
 
                 {{-- Georef form --}}
-                <div class="p-3 flex-1 overflow-y-auto">
+                <div class="p-3 overflow-y-auto" style="flex-shrink:0;">
                     <p class="text-xs text-gray-400 mb-2">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
                     <form id="georef-form" class="space-y-2">
                         <div class="flex gap-2">
@@ -474,27 +472,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         window.addEventListener('mouseup', ()=>{ res=false; });
     })();
 
-    // ── Tooltip ───────────────────────────────────────────────────────────────
-    const tooltipEl = document.getElementById('occ-tooltip');
-    const panelEl   = document.getElementById('side-panel');
-    const occTooltipData = new Map();
-
-    function showTooltip(el, data) {
-        const lines = [
-            data.recorded_by ? '<span style="opacity:.6">Collector:</span> '+data.recorded_by : null,
-            data.event_date  ? '<span style="opacity:.6">Date:</span> '+data.event_date : null,
-            data.institution ? '<span style="opacity:.6">Institution:</span> '+data.institution : null,
-            data.collection  ? '<span style="opacity:.6">Collection:</span> '+data.collection : null,
-            data.basis       ? '<span style="opacity:.6">Basis:</span> '+data.basis : null,
-            data.key         ? '<span style="opacity:.6">GBIF key:</span> '+data.key : null,
-        ].filter(Boolean);
-        if (!lines.length) return;
-        tooltipEl.innerHTML = lines.map(l=>'<div style="padding:1px 0">'+l+'</div>').join('');
-        const rect=el.getBoundingClientRect(), pr=panelEl.getBoundingClientRect();
-        tooltipEl.style.top=(rect.bottom-pr.top+4)+'px';
-        tooltipEl.style.display='block';
-    }
-    function hideTooltip() { tooltipEl.style.display='none'; }
+    // ── Tooltip removed — info already visible inline in occurrence list ──────
 
     // ── Nominatim ─────────────────────────────────────────────────────────────
 function buildLocalityString(g) {
@@ -548,7 +526,7 @@ function buildLocalityString(g) {
 function clearPanel() {
     if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;}
     if(window._nominatimPolygon){map.removeLayer(window._nominatimPolygon);window._nominatimPolygon=null;}
-    clearSuggestionLayers(); closeImgViewer(); hideTooltip();
+    clearSuggestionLayers(); closeImgViewer();
     document.getElementById('submit-btn').disabled=true;
     document.getElementById('lat-input').value=''; document.getElementById('lng-input').value='';
     document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
@@ -628,7 +606,6 @@ function updateHistoryNav() {
     // ── Render group ──────────────────────────────────────────────────────────
     function renderGroup(group, occurrences, suggestions, comments) {
         document.getElementById('occurrence-info').classList.remove('hidden');
-        occTooltipData.clear();
         const fields=['verbatim_locality','country','state_province','county','municipality','island','water_body'].filter(f=>group[f]);
         document.getElementById('locality-fields').innerHTML=fields.map(f=>
             '<div style="display:flex;gap:8px"><span style="color:#9ca3af;width:112px;flex-shrink:0;font-size:11px">'+f.replace(/_/g,' ')+'</span>'+
@@ -665,8 +642,6 @@ function updateHistoryNav() {
             const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
             const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
             const occId='occ-'+o.id, media=(o.media&&o.media.length>0)?o.media[0]:null;
-            occTooltipData.set(occId,{recorded_by:o.recorded_by||'',event_date:o.event_date||'',institution:o.institution_code||'',collection:o.collection_code||'',basis:o.basis_of_record||'',key:o.gbif_occurrence_key||''});
-
             // Cluster color dot (shown when this occurrence belongs to a system suggestion cluster)
             const clusterColor = occClusterColor[o.id];
             const clusterDot = clusterColor
@@ -697,10 +672,6 @@ function updateHistoryNav() {
         }).join('');
 
 
-        document.querySelectorAll('.occ-row').forEach(function(row){
-            row.addEventListener('mouseenter',function(){var d=occTooltipData.get(this.id);if(d)showTooltip(this,d);});
-            row.addEventListener('mouseleave',hideTooltip);
-        });
         document.querySelectorAll('.img-btn').forEach(function(btn){
             btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
         });
