@@ -345,12 +345,12 @@ class GbifImportDownload extends Command
                 s.taxon_rank,
                 s.kingdom,
                 s.family,
-                IF(s.has_coordinate = 1, s.decimal_latitude, NULL),
-                IF(s.has_coordinate = 1, s.decimal_longitude, NULL),
-                IF(s.has_coordinate = 1, s.coordinate_uncertainty_m, NULL),
+                IF(s.has_coordinate = 'true', s.decimal_latitude, NULL),
+                IF(s.has_coordinate = 'true', s.decimal_longitude, NULL),
+                IF(s.has_coordinate = 'true', s.coordinate_uncertainty_m, NULL),
                 NULLIF(s.geodetic_datum, ''),
                 lg.id,
-                IF(s.has_coordinate = '1', 'gbif_georeferenced', 'ungeoreferenced'),
+                IF(s.has_coordinate = 'true', 'gbif_georeferenced', 'ungeoreferenced'),
                 NOW(), NOW(), NOW()
             FROM gbif_staging s
             JOIN locality_groups lg ON lg.group_hash = SHA1(CONCAT_WS('|',

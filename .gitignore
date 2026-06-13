@@ -18,6 +18,7 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/gbif/
 /vendor
 Homestead.json
 Homestead.yaml
