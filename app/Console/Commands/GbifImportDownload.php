@@ -376,7 +376,7 @@ class GbifImportDownload extends Command
                 gbif_geodetic_datum           = VALUES(gbif_geodetic_datum),
                 locality_group_id             = VALUES(locality_group_id),
                 georef_status = IF(
-                    georef_status IN ('validated', 'gbif_reviewed'),
+                    georef_status IN ('validated', 'gbif_reviewed', 'has_suggestion', 'conflicted'),
                     georef_status,
                     VALUES(georef_status)
                 ),
