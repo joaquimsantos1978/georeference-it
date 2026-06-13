@@ -638,11 +638,30 @@ function updateHistoryNav() {
         document.getElementById('nominatim-results').innerHTML='';
 
         document.getElementById('occurrence-count').textContent=occurrences.length+' '+TXT.occurrences;
+
+        const statusBadge = {
+            'gbif_georeferenced': ['#6b7280','georeferenced'],
+            'gbif_reviewed':      ['#16a34a','georeferenced ✓'],
+            'validated':          ['#16a34a','validated ✓'],
+            'has_suggestion':     ['#f59e0b','has suggestion'],
+            'conflicted':         ['#ef4444','conflicted'],
+            'ungeoreferenced':    ['#d1d5db','not georef'],
+        };
+
         document.getElementById('occurrences-list').innerHTML=occurrences.map(function(o){
             const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
             const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
             const occId='occ-'+o.id, media=(o.media&&o.media.length>0)?o.media[0]:null;
             occTooltipData.set(occId,{recorded_by:o.recorded_by||'',event_date:o.event_date||'',institution:o.institution_code||'',collection:o.collection_code||'',basis:o.basis_of_record||'',key:o.gbif_occurrence_key||''});
+
+            // Badge
+            const [badgeColor, badgeLabel] = statusBadge[o.georef_status] || ['#d1d5db','—'];
+            const hasCoords = o.gbif_decimal_latitude && o.gbif_decimal_longitude;
+            const coordHint = hasCoords
+                ? '<span style="color:#9ca3af;font-size:10px">'+parseFloat(o.gbif_decimal_latitude).toFixed(4)+', '+parseFloat(o.gbif_decimal_longitude).toFixed(4)+'</span>'
+                : '';
+            const badge='<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+badgeColor+'20;color:'+badgeColor+';border:1px solid '+badgeColor+'40;white-space:nowrap">'+badgeLabel+'</span>';
+
             var imgBtn='';
             if(media) imgBtn='<button class="img-btn" style="flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'"><img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.parentElement.style.display=\'none\'"></button>';
             return '<div class="occ-row" id="'+occId+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
@@ -652,9 +671,12 @@ function updateHistoryNav() {
 (taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
 '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
 (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-                '</div><a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
+(coordHint?'<div style="margin-top:1px">'+coordHint+'</div>':'')+
+                '</div>'+badge+
+                '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
                 imgBtn+'</div></div>';
         }).join('');
+
 
         document.querySelectorAll('.occ-row').forEach(function(row){
             row.addEventListener('mouseenter',function(){var d=occTooltipData.get(this.id);if(d)showTooltip(this,d);});

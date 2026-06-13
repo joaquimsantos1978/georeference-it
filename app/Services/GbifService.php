@@ -261,19 +261,24 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             $clusterIds = array_column($cluster, 'id');
             $n          = count($cluster);
 
-            $suggestion = GeorefSuggestion::create([
-                'locality_group_id'        => $group->id,
-                'user_id'                  => null,
-                'anon_name'                => 'System',
-                'decimal_latitude'         => $centroid['lat'],
-                'decimal_longitude'        => $centroid['lng'],
-                'coordinate_uncertainty_m' => $centroid['uncertainty'],
-                'geodetic_datum'           => 'WGS84',
-                'georeference_sources'     => 'GBIF_CONSISTENCY_CHECK',
-                'georeference_remarks'     => 'Cluster of ' . $n . ' georeferenced occurrence' . ($n > 1 ? 's' : '') . ' — inconsistency detected within locality group',
-                'status'                   => 'pending',
-                'georeferenced_date'       => now(),
-            ]);
+            // firstOrCreate guards against concurrent duplicate runs on the same group
+            $suggestion = GeorefSuggestion::firstOrCreate(
+                [
+                    'locality_group_id'    => $group->id,
+                    'user_id'              => null,
+                    'decimal_latitude'     => $centroid['lat'],
+                    'decimal_longitude'    => $centroid['lng'],
+                    'georeference_sources' => 'GBIF_CONSISTENCY_CHECK',
+                ],
+                [
+                    'anon_name'                => 'System',
+                    'coordinate_uncertainty_m' => $centroid['uncertainty'],
+                    'geodetic_datum'           => 'WGS84',
+                    'georeference_remarks'     => 'Cluster of ' . $n . ' georeferenced occurrence' . ($n > 1 ? 's' : '') . ' — inconsistency detected within locality group',
+                    'status'                   => 'pending',
+                    'georeferenced_date'       => now(),
+                ]
+            );
 
             // Record which occurrences belong to OTHER clusters (to flag on validation)
             $outsideIds = array_diff($allIds, $clusterIds);
