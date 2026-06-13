@@ -276,6 +276,9 @@ class GbifImportDownload extends Command
         // Replicates LocalityGroup::hashFromOccurrence() in SQL:
         // SHA1 of non-empty lowercased fields joined by '|'
         // NULLIF(LOWER(TRIM(...)), '') converts empty → NULL so CONCAT_WS skips them
+        // COALESCE(verbatim_locality, locality): use verbatimLocality if present,
+        // else fall back to locality (DwC interpreted field). Both map to verbatim_locality
+        // column in locality_groups for grouping and display.
         DB::statement("
             INSERT IGNORE INTO locality_groups
                 (group_hash, country_code, state_province, county, municipality,
@@ -286,19 +289,19 @@ class GbifImportDownload extends Command
                     NULLIF(LOWER(TRIM(COALESCE(state_province, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(county, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(municipality, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(verbatim_locality, ''))), '')
+                    NULLIF(LOWER(TRIM(COALESCE(verbatim_locality, locality, ''))), '')
                 )) AS group_hash,
                 MIN(country_code),
                 MIN(state_province),
                 MIN(county),
                 MIN(municipality),
-                MIN(verbatim_locality),
+                MIN(COALESCE(verbatim_locality, locality)),
                 MIN(TRIM(CONCAT_WS(', ',
                     NULLIF(country_code, ''),
                     NULLIF(state_province, ''),
                     NULLIF(county, ''),
                     NULLIF(municipality, ''),
-                    NULLIF(verbatim_locality, '')
+                    NULLIF(COALESCE(verbatim_locality, locality), '')
                 ))),
                 NOW(),
                 NOW()
@@ -337,7 +340,7 @@ class GbifImportDownload extends Command
                 s.state_province,
                 s.county,
                 s.municipality,
-                s.verbatim_locality,
+                COALESCE(s.verbatim_locality, s.locality),
                 s.island,
                 s.island_group,
                 s.water_body,
@@ -358,7 +361,7 @@ class GbifImportDownload extends Command
                 NULLIF(LOWER(TRIM(COALESCE(s.state_province, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.county, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.municipality, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.verbatim_locality, ''))), '')
+                NULLIF(LOWER(TRIM(COALESCE(s.verbatim_locality, s.locality, ''))), '')
             ))
             WHERE s.basis_of_record = 'PRESERVED_SPECIMEN'
             ON DUPLICATE KEY UPDATE
@@ -429,7 +432,7 @@ class GbifImportDownload extends Command
             'county'                        => 'county',
             'municipality'                  => 'municipality',
             'verbatimLocality'              => 'verbatim_locality',
-            'locality'                      => '@dummy', // interpreted, we prefer verbatimLocality
+            'locality'                      => 'locality', // fallback when verbatimLocality is empty
             'island'                        => 'island',
             'islandGroup'                   => 'island_group',
             'waterBody'                     => 'water_body',

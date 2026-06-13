@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\GeorefSuggestion;
 use App\Models\LocalityGroup;
 use App\Models\Occurrence;
+use App\Models\PlatformSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -217,7 +218,28 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             return 'consistent';
         }
 
-        // Multiple clusters — inconsistency detected.
+        // Multiple clusters — check if they're geographically close.
+        // Two known precise points within the same locality (e.g. a botanical garden)
+        // are both correct; only flag if centroids are far apart.
+        $centroids = array_map(fn($c) => $this->computeCentroid($c), $clusters);
+        $maxDist = 0;
+        for ($i = 0; $i < count($centroids); $i++) {
+            for ($j = $i + 1; $j < count($centroids); $j++) {
+                $d = $this->haversineDistance(
+                    $centroids[$i]['lat'], $centroids[$i]['lng'],
+                    $centroids[$j]['lat'], $centroids[$j]['lng']
+                );
+                $maxDist = max($maxDist, $d);
+            }
+        }
+
+        $inconsistencyThresholdM = (int) PlatformSetting::get('inconsistency_distance_m', 5000);
+        if ($maxDist < $inconsistencyThresholdM) {
+            $group->update(['consistency_status' => 'consistent']);
+            return 'consistent';
+        }
+
+        // Multiple clusters far apart — inconsistency detected.
         // Skip if competing suggestions already exist for this group.
         $existingSystemSuggestions = GeorefSuggestion::where('locality_group_id', $group->id)
             ->whereNull('user_id')
