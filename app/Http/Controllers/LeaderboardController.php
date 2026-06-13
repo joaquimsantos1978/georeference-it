@@ -9,9 +9,9 @@ class LeaderboardController extends Controller
     public function index()
     {
         $users = User::with('userLevel')
-            ->withCount('suggestions')
-            ->where('total_validated', '>', 0)
-            ->orderBy('total_validated', 'desc')
+            ->withCount(['suggestions', 'validations'])
+            ->orderByDesc('total_validated')
+            ->orderByDesc('suggestions_count')
             ->take(50)
             ->get();
 

@@ -11,12 +11,13 @@
                         <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-12">#</th>
                         <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('User') }}</th>
                         <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Level') }}</th>
-                        <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Validated contributions') }}</th>
+                        <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Validated georefs') }}</th>
                         <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Suggestions') }}</th>
+                        <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Votes') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @foreach($users as $i => $user)
+                    @forelse($users as $i => $user)
                     <tr class="{{ auth()->check() && auth()->id() === $user->id ? 'bg-green-50 dark:bg-green-900/20' : '' }}">
                         <td class="px-5 py-3 text-gray-400 font-mono">
                             @if($i === 0) 🥇
@@ -43,8 +44,13 @@
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ $user->userLevel?->name ?? '—' }}</td>
                         <td class="px-5 py-3 font-semibold text-gray-900 dark:text-white">{{ number_format($user->total_validated) }}</td>
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->suggestions_count) }}</td>
+                        <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->validations_count) }}</td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="6" class="px-5 py-10 text-center text-gray-400">{{ __('No contributors yet.') }}</td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
