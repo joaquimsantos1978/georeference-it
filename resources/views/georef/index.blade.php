@@ -670,7 +670,7 @@ function updateHistoryNav() {
             // Cluster color dot (shown when this occurrence belongs to a system suggestion cluster)
             const clusterColor = occClusterColor[o.id];
             const clusterDot = clusterColor
-                ? '<span title="Belongs to suggestion cluster" style="flex-shrink:0;display:inline-block;width:8px;height:8px;border-radius:50%;background:'+clusterColor+';margin-top:3px"></span>'
+                ? '<span title="Belongs to suggestion cluster" style="flex-shrink:0;display:inline-block;width:7px;height:7px;border-radius:50%;background:'+clusterColor+'"></span>'
                 : '';
 
             // Badge
@@ -686,12 +686,11 @@ function updateHistoryNav() {
             return '<div class="occ-row" id="'+occId+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
                 '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
                 '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">'+
-                clusterDot+
                 '<div style="flex:1;min-width:0">'+
 (taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
 '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
 (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-(coordHint?'<div style="margin-top:1px">'+coordHint+'</div>':'')+
+(hasCoords?'<div style="display:flex;align-items:center;gap:4px;margin-top:1px">'+clusterDot+coordHint+'</div>':'')+
                 '</div>'+badge+
                 '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
                 imgBtn+'</div></div>';
@@ -710,7 +709,11 @@ function updateHistoryNav() {
         if (suggestions&&suggestions.length>0) {
             document.getElementById('existing-suggestions').classList.remove('hidden');
             const colors=clusterColors;
+            var competing = suggestions.length > 1 && suggestions.some(function(s){ return s.cluster_occurrence_ids && s.cluster_occurrence_ids.length > 0; });
             var sugHtml='';
+            if (competing) {
+                sugHtml += '<p style="font-size:10px;color:#6b7280;margin-bottom:6px;font-style:italic">Agreeing with one suggestion automatically disagrees with the others.</p>';
+            }
             suggestions.forEach(function(s,i){
                 var color=colors[i%colors.length];
                 var c=L.circle([s.decimal_latitude,s.decimal_longitude],{radius:s.coordinate_uncertainty_m||1000,color:color,fillColor:color,fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
@@ -719,8 +722,8 @@ function updateHistoryNav() {
                 var pct=Math.min(100,(s.total_points/THRESHOLD)*100);
                 var dot='<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
                 var valButtons=IS_AUTH
-                    ?'<button onclick="validateSuggestion('+s.id+',\'agree\')" style="color:#16a34a;background:none;border:none;cursor:pointer;font-size:11px">'+TXT.agree+'</button>'+
-                      '<button onclick="validateSuggestion('+s.id+',\'disagree\')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:11px">'+TXT.disagree+'</button>'
+                    ?'<button onclick="validateSuggestion('+s.id+',\'agree\','+competing+')" style="color:#16a34a;background:none;border:none;cursor:pointer;font-size:11px">'+TXT.agree+'</button>'+
+                      '<button onclick="validateSuggestion('+s.id+',\'disagree\','+competing+')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:11px">'+TXT.disagree+'</button>'
                     :'<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
                 sugHtml+='<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">'+
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
@@ -755,9 +758,26 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
         circle=L.circle([lat,lng],{radius:unc||1000,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
         map.flyTo([lat,lng],12);
     }
-    function validateSuggestion(id,vote) {
-        fetch(APP_URL+'/georef/validate/'+id,{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({vote:vote})})
-        .then(r=>r.json()).then(d=>{if(d.success)loadNextGroup();});
+    function validateSuggestion(id, vote, hasCompeting) {
+        // When agreeing in a competing-suggestion context, use agreeWith which
+        // auto-disagrees with the other suggestions and signals to advance.
+        const url = (vote === 'agree' && hasCompeting)
+            ? APP_URL+'/georef/agree-with/'+id
+            : APP_URL+'/georef/validate/'+id;
+        const body = vote === 'agree' && hasCompeting ? '{}' : JSON.stringify({vote});
+
+        fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'}, body})
+            .then(r=>r.json())
+            .then(d => {
+                if (!d.success) return;
+                // Agree always advances; disagree only advances if not competing
+                if (vote === 'agree' || !hasCompeting) {
+                    loadNextGroup();
+                } else {
+                    // Disagree in competing context: reload the group to reflect updated votes
+                    if (currentGroup) loadGroup(currentGroup.id);
+                }
+            });
     }
     document.getElementById('submit-btn').addEventListener('click',function(){
         if(!currentGroup)return;

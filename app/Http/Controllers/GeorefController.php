@@ -210,6 +210,40 @@ public function next(Request $request)
         return response()->json(['success' => true]);
     }
 
+    // Agree with one suggestion and auto-disagree with all competing ones in the same group.
+    // Returns advance=true so the frontend moves to the next group.
+    public function agreeWith(Request $request, GeorefSuggestion $suggestion)
+    {
+        if (!auth()->check()) {
+            return response()->json(['success' => false, 'message' => 'Login required'], 401);
+        }
+
+        $user = auth()->user();
+
+        if ($suggestion->user_id && $suggestion->user_id === $user->id) {
+            return response()->json(['success' => false, 'message' => 'Cannot validate your own suggestion']);
+        }
+
+        if ($suggestion->validations()->where('user_id', $user->id)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Already voted']);
+        }
+
+        $this->applyVote($suggestion, $user, 'agree');
+
+        // Auto-disagree with all other pending suggestions in the same group
+        $competing = GeorefSuggestion::where('locality_group_id', $suggestion->locality_group_id)
+            ->where('id', '!=', $suggestion->id)
+            ->where('status', 'pending')
+            ->whereDoesntHave('validations', fn($q) => $q->where('user_id', $user->id))
+            ->get();
+
+        foreach ($competing as $other) {
+            $this->applyVote($other, $user, 'disagree');
+        }
+
+        return response()->json(['success' => true, 'advance' => true]);
+    }
+
     public function comment(Request $request)
     {
         $validated = $request->validate([

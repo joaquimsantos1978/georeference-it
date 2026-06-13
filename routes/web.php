@@ -20,6 +20,7 @@ Route::get('/georef', [GeorefController::class, 'index'])->name('georef.index');
 Route::get('/georef/next', [GeorefController::class, 'next'])->name('georef.next');
 Route::post('/georef/submit', [GeorefController::class, 'submit'])->name('georef.submit');
 Route::post('/georef/validate/{suggestion}', [GeorefController::class, 'validate'])->name('georef.validate');
+Route::post('/georef/agree-with/{suggestion}', [GeorefController::class, 'agreeWith'])->name('georef.agree-with');
 Route::post('/georef/comment', [GeorefController::class, 'comment'])->name('georef.comment')->middleware('auth');
 
 Route::get('/georef/group/{id}', [GeorefController::class, 'group'])->name('georef.group');
