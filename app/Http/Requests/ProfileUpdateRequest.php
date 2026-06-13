@@ -17,15 +17,22 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name'  => ['required', 'string', 'max:255'],
             'email' => [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
+                'required', 'string', 'lowercase', 'email', 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            'bio'                  => ['nullable', 'string', 'max:500'],
+            'orcid'                => ['nullable', 'string', 'regex:/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/'],
+            'preferred_task'       => ['nullable', 'in:georef,validate,both'],
+            'email_notifications'  => ['boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email_notifications' => $this->boolean('email_notifications'),
+        ]);
     }
 }

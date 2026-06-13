@@ -83,14 +83,17 @@ public function next(Request $request)
     $group = null;
 
     if (auth()->check() && in_array($preferredTask, ['validate', 'both'])) {
+        $userId = auth()->id();
         $group = LocalityGroup::where('pending_count', '>', 0)
             ->when($country, fn($q) => $q->where('country_code', $country))
-            ->whereHas('suggestions', function ($q) {
+            ->whereHas('suggestions', function ($q) use ($userId) {
                 $q->where('status', 'pending')
-                    ->where(function ($q2) {
+                    ->where(function ($q2) use ($userId) {
                         $q2->whereNull('user_id')
-                            ->orWhere('user_id', '!=', auth()->id());
-                    });
+                            ->orWhere('user_id', '!=', $userId);
+                    })
+                    // exclude suggestions this user already voted on
+                    ->whereDoesntHave('validations', fn($q3) => $q3->where('user_id', $userId));
             })
             ->inRandomOrder()
             ->first();
@@ -300,10 +303,10 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
         $weight = $user->getVoteWeight();
 
         GeorefValidation::create([
-            'suggestion_id' => $suggestion->id,
-            'user_id'       => $user->id,
-            'vote'          => $vote,
-            'points_awarded'=> $vote === 'agree' ? $weight : 0,
+            'suggestion_id'  => $suggestion->id,
+            'user_id'        => $user->id,
+            'vote'           => $vote,
+            'points_awarded' => $vote === 'agree' ? $weight : -$weight,
         ]);
 
         if ($vote === 'agree') {
@@ -311,11 +314,29 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
             $suggestion->refresh();
 
             $threshold = (int) PlatformSetting::get('validation_threshold', 60);
-
             if ($suggestion->total_points >= $threshold) {
                 $this->validateSuggestion($suggestion);
             }
+        } elseif ($vote === 'disagree') {
+            $suggestion->decrement('total_points', $weight);
+            $suggestion->refresh();
+
+            $conflictThreshold = (int) PlatformSetting::get('conflict_threshold', -20);
+            if ($suggestion->total_points <= $conflictThreshold) {
+                $this->conflictSuggestion($suggestion);
+            }
         }
+    }
+
+    private function conflictSuggestion(GeorefSuggestion $suggestion): void
+    {
+        $suggestion->update(['status' => 'conflicted']);
+
+        $suggestion->localityGroup->occurrences()
+            ->where('georef_status', 'has_suggestion')
+            ->update(['georef_status' => 'ungeoreferenced']);
+
+        $suggestion->localityGroup->update(['pending_count' => 0]);
     }
 
     private function validateSuggestion(GeorefSuggestion $suggestion): void
@@ -327,6 +348,18 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
         $suggestion->localityGroup->occurrences()
             ->whereNotIn('id', $excludedIds)
             ->update(['georef_status' => 'validated']);
+
+        // For consistency-check suggestions, the excluded occurrences are from
+        // competing clusters — flag them as needing correction by their publisher.
+        if ($suggestion->georeference_sources === 'GBIF_CONSISTENCY_CHECK' && !empty($excludedIds)) {
+            $suggestion->localityGroup->occurrences()
+                ->whereIn('id', $excludedIds)
+                ->where('georef_status', 'gbif_georeferenced')
+                ->update(['georef_status' => 'gbif_reviewed']);
+
+            // Mark the group as resolved
+            $suggestion->localityGroup->update(['consistency_status' => 'resolved']);
+        }
 
         $suggestion->localityGroup->decrement('pending_count');
         $suggestion->localityGroup->increment('validated_count');

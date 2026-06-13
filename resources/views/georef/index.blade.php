@@ -373,9 +373,10 @@
         occurrences:  "{{ __('occurrences') }}",
     };
 
-    // Session history
-var sessionHistory = [];
-var historyIndex = -1;
+    // Session history — restored from localStorage on every page load
+var sessionHistory = JSON.parse(localStorage.getItem('georef_history') || '[]');
+var historyIndex   = parseInt(localStorage.getItem('georef_index') ?? '-1');
+if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex = sessionHistory.length - 1;
 
     // ── Map ───────────────────────────────────────────────────────────────────
     let map, marker, circle, currentGroup = null;

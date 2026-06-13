@@ -180,11 +180,146 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         return $isNewGroup ? $localityGroup : null;
     }
 
+    public function checkConsistency(LocalityGroup $group): string
+    {
+        // Only groups with 2+ georeferenced occurrences are interesting
+        $georefOccurrences = $group->occurrences()
+            ->where('georef_status', 'gbif_georeferenced')
+            ->whereNotNull('gbif_decimal_latitude')
+            ->whereNotNull('gbif_decimal_longitude')
+            ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m']);
+
+        if ($georefOccurrences->count() < 2) {
+            $group->update(['consistency_status' => 'consistent']);
+            return 'consistent';
+        }
+
+        $points = $georefOccurrences->map(fn($o) => [
+            'id'          => $o->id,
+            'lat'         => (float) $o->gbif_decimal_latitude,
+            'lng'         => (float) $o->gbif_decimal_longitude,
+            'uncertainty' => (float) ($o->gbif_coordinate_uncertainty_m ?: 10000),
+        ])->toArray();
+
+        $clusters = $this->clusterByOverlap($points);
+
+        if (count($clusters) === 1) {
+            $group->update(['consistency_status' => 'consistent']);
+            return 'consistent';
+        }
+
+        // Multiple clusters — inconsistency detected.
+        // Skip if competing suggestions already exist for this group.
+        $existingSystemSuggestions = GeorefSuggestion::where('locality_group_id', $group->id)
+            ->whereNull('user_id')
+            ->where('georeference_sources', 'GBIF_CONSISTENCY_CHECK')
+            ->exists();
+
+        if ($existingSystemSuggestions) {
+            $group->update(['consistency_status' => 'inconsistent']);
+            return 'inconsistent';
+        }
+
+        // Create one competing suggestion per cluster.
+        // Each suggestion excludes the occurrences from OTHER clusters,
+        // so when it wins validation those occurrences get flagged as gbif_reviewed.
+        $allIds = array_column($points, 'id');
+
+        foreach ($clusters as $cluster) {
+            $centroid   = $this->computeCentroid($cluster);
+            $clusterIds = array_column($cluster, 'id');
+            $n          = count($cluster);
+
+            $suggestion = GeorefSuggestion::create([
+                'locality_group_id'        => $group->id,
+                'user_id'                  => null,
+                'anon_name'                => 'System',
+                'decimal_latitude'         => $centroid['lat'],
+                'decimal_longitude'        => $centroid['lng'],
+                'coordinate_uncertainty_m' => $centroid['uncertainty'],
+                'geodetic_datum'           => 'WGS84',
+                'georeference_sources'     => 'GBIF_CONSISTENCY_CHECK',
+                'georeference_remarks'     => 'Cluster of ' . $n . ' georeferenced occurrence' . ($n > 1 ? 's' : '') . ' — inconsistency detected within locality group',
+                'status'                   => 'pending',
+                'georeferenced_date'       => now(),
+            ]);
+
+            // Record which occurrences belong to OTHER clusters (to flag on validation)
+            $outsideIds = array_diff($allIds, $clusterIds);
+            foreach ($outsideIds as $occurrenceId) {
+                $suggestion->exclusions()->create(['occurrence_id' => $occurrenceId]);
+            }
+        }
+
+        $group->update([
+            'consistency_status' => 'inconsistent',
+            'pending_count'      => $group->pending_count + count($clusters),
+        ]);
+
+        return 'inconsistent';
+    }
+
     public function createAutoSuggestions(LocalityGroup $group): void
     {
-   // Skip for now - will implement reference lookup later
-    return;
+        // Skip if the group already has any suggestion (human or system)
+        if (GeorefSuggestion::where('locality_group_id', $group->id)->exists()) {
+            return;
         }
+
+        // Need at least one ungeoreferenced occurrence to act on
+        $hasUngeoreferenced = $group->occurrences()
+            ->where('georef_status', 'ungeoreferenced')
+            ->exists();
+
+        if (!$hasUngeoreferenced) {
+            return;
+        }
+
+        // Find georeferenced occurrences in this same locality group
+        $georefOccurrences = $group->occurrences()
+            ->where('georef_status', 'gbif_georeferenced')
+            ->whereNotNull('gbif_decimal_latitude')
+            ->whereNotNull('gbif_decimal_longitude')
+            ->get(['gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m']);
+
+        if ($georefOccurrences->isEmpty()) {
+            return;
+        }
+
+        $points = $georefOccurrences->map(fn($o) => [
+            'lat'         => (float) $o->gbif_decimal_latitude,
+            'lng'         => (float) $o->gbif_decimal_longitude,
+            'uncertainty' => (float) ($o->gbif_coordinate_uncertainty_m ?: 10000),
+        ])->toArray();
+
+        $clusters = $this->clusterByOverlap($points);
+
+        foreach ($clusters as $cluster) {
+            $centroid = $this->computeCentroid($cluster);
+            $n        = count($cluster);
+
+            GeorefSuggestion::create([
+                'locality_group_id'        => $group->id,
+                'user_id'                  => null,
+                'anon_name'                => 'System',
+                'decimal_latitude'         => $centroid['lat'],
+                'decimal_longitude'        => $centroid['lng'],
+                'coordinate_uncertainty_m' => $centroid['uncertainty'],
+                'geodetic_datum'           => 'WGS84',
+                'georeference_sources'     => 'GBIF',
+                'georeference_remarks'     => 'Auto-generated from ' . $n . ' georeferenced occurrence' . ($n > 1 ? 's' : '') . ' sharing the same locality',
+                'status'                   => 'pending',
+                'georeferenced_date'       => now(),
+            ]);
+        }
+
+        // Mark ungeoreferenced occurrences in this group as having a suggestion
+        $group->occurrences()
+            ->where('georef_status', 'ungeoreferenced')
+            ->update(['georef_status' => 'has_suggestion']);
+
+        $this->updateGroupCounters($group);
+    }
 
     private function clusterByOverlap(array $points): array
     {
