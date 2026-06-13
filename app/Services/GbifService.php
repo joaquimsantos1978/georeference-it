@@ -182,11 +182,20 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
 
     public function checkConsistency(LocalityGroup $group): string
     {
+        // Skip groups without a specific locality name — country-only and province-only
+        // groups aggregate unrelated records across large areas and cannot be meaningfully
+        // clustered for consistency checking.
+        if (!$group->verbatim_locality && !$group->municipality && !$group->county) {
+            $group->update(['consistency_status' => 'consistent']);
+            return 'consistent';
+        }
+
         // Only groups with 2+ georeferenced occurrences are interesting
         $georefOccurrences = $group->occurrences()
             ->where('georef_status', 'gbif_georeferenced')
             ->whereNotNull('gbif_decimal_latitude')
             ->whereNotNull('gbif_decimal_longitude')
+            ->limit(500) // clusterByOverlap is O(n²) — cap at 500 to stay fast
             ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m']);
 
         if ($georefOccurrences->count() < 2) {
@@ -261,6 +270,11 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
 
     public function createAutoSuggestions(LocalityGroup $group): void
     {
+        // Skip country/province-only groups — too vague to cluster meaningfully
+        if (!$group->verbatim_locality && !$group->municipality && !$group->county) {
+            return;
+        }
+
         // Skip if the group already has any suggestion (human or system)
         if (GeorefSuggestion::where('locality_group_id', $group->id)->exists()) {
             return;
@@ -280,6 +294,7 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             ->where('georef_status', 'gbif_georeferenced')
             ->whereNotNull('gbif_decimal_latitude')
             ->whereNotNull('gbif_decimal_longitude')
+            ->limit(500) // clusterByOverlap is O(n²) — cap to stay fast
             ->get(['gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m']);
 
         if ($georefOccurrences->isEmpty()) {

@@ -290,9 +290,9 @@
                 </div>
 
                 {{-- Existing suggestions --}}
-                <div id="existing-suggestions" class="p-3 border-b border-gray-200 dark:border-gray-700 hidden shrink-0">
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Existing suggestions') }}</span>
-                    <div id="suggestions-list" class="mt-1 space-y-2"></div>
+                <div id="existing-suggestions" class="p-3 border-b border-gray-200 dark:border-gray-700 hidden" style="min-height:0;flex-shrink:1;overflow:hidden;display:flex;flex-direction:column;">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide" style="flex-shrink:0;">{{ __('Existing suggestions') }}</span>
+                    <div id="suggestions-list" class="mt-1 space-y-2" style="overflow-y:auto;min-height:0;flex:1;max-height:280px;"></div>
                 </div>
 
                 {{-- Georef form --}}
