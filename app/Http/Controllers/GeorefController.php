@@ -52,6 +52,7 @@ class GeorefController extends Controller
                     'submitted_by'             => $s->submitted_by,
                     'georeference_remarks'     => $s->georeference_remarks,
                     'cluster_occurrence_ids'   => $clusterIds,
+                    'is_own'                   => auth()->check() && $s->user_id === auth()->id(),
                 ];
             });
 

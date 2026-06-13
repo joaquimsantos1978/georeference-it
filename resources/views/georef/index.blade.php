@@ -284,6 +284,12 @@
                         <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences in this group') }}</span>
                         <span id="occurrence-count" class="text-xs text-gray-400"></span>
                     </div>
+                    <div id="occ-select-controls" class="hidden mb-1 flex flex-wrap gap-1" style="flex-shrink:0;">
+                        <button onclick="occSelectAll(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('All') }}</button>
+                        <button onclick="occSelectAll(false)" class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('None') }}</button>
+                        <button onclick="occSelectByStatus(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('Georef') }}</button>
+                        <button onclick="occSelectByStatus(false)" class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('Ungeoref') }}</button>
+                    </div>
                     <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="min-height:0;flex:1;max-height:180px;"></div>
                 </div>
 
@@ -604,8 +610,26 @@ function updateHistoryNav() {
 }
 
     // ── Render group ──────────────────────────────────────────────────────────
+    // Stored so occSelectByStatus can access georef_status per occurrence row
+    let _currentOccurrences = [];
+
+    function occSelectAll(checked) {
+        document.querySelectorAll('.occurrence-checkbox').forEach(cb => cb.checked = checked);
+    }
+    function occSelectByStatus(georeffed) {
+        const georefStatuses = ['gbif_georeferenced','gbif_reviewed','validated'];
+        document.querySelectorAll('.occurrence-checkbox').forEach(cb => {
+            const o = _currentOccurrences.find(o => String(o.id) === cb.value);
+            if (!o) return;
+            cb.checked = georeffed ? georefStatuses.includes(o.georef_status) : !georefStatuses.includes(o.georef_status);
+        });
+    }
+
     function renderGroup(group, occurrences, suggestions, comments) {
         document.getElementById('occurrence-info').classList.remove('hidden');
+        _currentOccurrences = occurrences;
+        const ctrl = document.getElementById('occ-select-controls');
+        if (occurrences.length > 1) ctrl.classList.remove('hidden'); else ctrl.classList.add('hidden');
         const fields=['verbatim_locality','country','state_province','county','municipality','island','water_body'].filter(f=>group[f]);
         document.getElementById('locality-fields').innerHTML=fields.map(f=>
             '<div style="display:flex;gap:8px"><span style="color:#9ca3af;width:112px;flex-shrink:0;font-size:11px">'+f.replace(/_/g,' ')+'</span>'+
@@ -692,10 +716,13 @@ function updateHistoryNav() {
                 window._suggestionLayers.push(c,m);
                 var pct=Math.min(100,(s.total_points/THRESHOLD)*100);
                 var dot='<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
-                var valButtons=IS_AUTH
-                    ?'<button onclick="validateSuggestion('+s.id+',\'agree\','+competing+')" style="color:#16a34a;background:none;border:none;cursor:pointer;font-size:11px">'+TXT.agree+'</button>'+
-                      '<button onclick="validateSuggestion('+s.id+',\'disagree\','+competing+')" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:11px">'+TXT.disagree+'</button>'
-                    :'<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
+                var pillBase = 'font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid;cursor:pointer;font-weight:500;';
+                var valButtons = IS_AUTH
+                    ? (s.is_own
+                        ? '<span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Your submission") }}</span>'
+                        : '<button onclick="validateSuggestion('+s.id+',\'agree\','+competing+')" style="'+pillBase+'color:#16a34a;border-color:#16a34a;background:#f0fdf4;">'+TXT.agree+'</button>'+
+                          '<button onclick="validateSuggestion('+s.id+',\'disagree\','+competing+')" style="'+pillBase+'color:#ef4444;border-color:#ef4444;background:#fff1f2;">'+TXT.disagree+'</button>')
+                    : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
                 sugHtml+='<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">'+
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
                     '<div style="flex:1">'+
