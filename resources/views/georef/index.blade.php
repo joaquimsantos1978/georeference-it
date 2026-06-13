@@ -648,11 +648,30 @@ function updateHistoryNav() {
             'ungeoreferenced':    ['#d1d5db','not georef'],
         };
 
+        const clusterColors = ['#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+
+        // Build map: occurrence_id → cluster color (from system suggestions with exclusions)
+        const occClusterColor = {};
+        suggestions.forEach(function(s, i) {
+            if (s.cluster_occurrence_ids && s.cluster_occurrence_ids.length > 0) {
+                const color = clusterColors[i % clusterColors.length];
+                s.cluster_occurrence_ids.forEach(function(oid) {
+                    occClusterColor[oid] = color;
+                });
+            }
+        });
+
         document.getElementById('occurrences-list').innerHTML=occurrences.map(function(o){
             const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
             const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
             const occId='occ-'+o.id, media=(o.media&&o.media.length>0)?o.media[0]:null;
             occTooltipData.set(occId,{recorded_by:o.recorded_by||'',event_date:o.event_date||'',institution:o.institution_code||'',collection:o.collection_code||'',basis:o.basis_of_record||'',key:o.gbif_occurrence_key||''});
+
+            // Cluster color dot (shown when this occurrence belongs to a system suggestion cluster)
+            const clusterColor = occClusterColor[o.id];
+            const clusterDot = clusterColor
+                ? '<span title="Belongs to suggestion cluster" style="flex-shrink:0;display:inline-block;width:8px;height:8px;border-radius:50%;background:'+clusterColor+';margin-top:3px"></span>'
+                : '';
 
             // Badge
             const [badgeColor, badgeLabel] = statusBadge[o.georef_status] || ['#d1d5db','—'];
@@ -667,6 +686,7 @@ function updateHistoryNav() {
             return '<div class="occ-row" id="'+occId+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
                 '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
                 '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">'+
+                clusterDot+
                 '<div style="flex:1;min-width:0">'+
 (taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
 '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
@@ -689,7 +709,7 @@ function updateHistoryNav() {
         clearSuggestionLayers();
         if (suggestions&&suggestions.length>0) {
             document.getElementById('existing-suggestions').classList.remove('hidden');
-            const colors=['#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+            const colors=clusterColors;
             var sugHtml='';
             suggestions.forEach(function(s,i){
                 var color=colors[i%colors.length];

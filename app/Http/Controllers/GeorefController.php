@@ -27,19 +27,33 @@ class GeorefController extends Controller
                 'recorded_by', 'event_date', 'dataset_key', 'basis_of_record',
             ]);
 
+        $allGeorefIds = $occurrences
+            ->whereNotNull('gbif_decimal_latitude')
+            ->pluck('id')
+            ->all();
+
         $suggestions = GeorefSuggestion::where('locality_group_id', $group->id)
             ->where('status', 'pending')
-            ->with('user')
+            ->with(['user', 'exclusions'])
             ->get()
-            ->map(fn($s) => [
-                'id'                      => $s->id,
-                'decimal_latitude'        => $s->decimal_latitude,
-                'decimal_longitude'       => $s->decimal_longitude,
-                'coordinate_uncertainty_m'=> $s->coordinate_uncertainty_m,
-                'total_points'            => $s->total_points,
-                'submitted_by'            => $s->submitted_by,
-                'georeference_remarks'    => $s->georeference_remarks,
-            ]);
+            ->map(function ($s) use ($allGeorefIds) {
+                $excludedIds = $s->exclusions->pluck('occurrence_id')->all();
+                // Occurrences in this cluster = all georef occurrences minus the excluded ones
+                $clusterIds = count($excludedIds) > 0
+                    ? array_values(array_diff($allGeorefIds, $excludedIds))
+                    : [];
+
+                return [
+                    'id'                       => $s->id,
+                    'decimal_latitude'         => $s->decimal_latitude,
+                    'decimal_longitude'        => $s->decimal_longitude,
+                    'coordinate_uncertainty_m' => $s->coordinate_uncertainty_m,
+                    'total_points'             => $s->total_points,
+                    'submitted_by'             => $s->submitted_by,
+                    'georeference_remarks'     => $s->georeference_remarks,
+                    'cluster_occurrence_ids'   => $clusterIds,
+                ];
+            });
 
         $comments = LocalityGroupComment::where('locality_group_id', $group->id)
             ->with('user')->latest()->take(20)->get()
