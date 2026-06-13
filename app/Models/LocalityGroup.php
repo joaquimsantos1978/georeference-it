@@ -34,7 +34,9 @@ class LocalityGroup extends Model
     {
         // Use verbatimLocality if present, fall back to locality (DwC interpreted field).
         // Must match the COALESCE(verbatim_locality, locality) logic in GbifImportDownload SQL.
-        $verbatimLocality = $fields['verbatim_locality'] ?? $fields['locality'] ?? '';
+        $verbatimLocality = (trim($fields['verbatim_locality'] ?? '') !== '')
+            ? $fields['verbatim_locality']
+            : ($fields['locality'] ?? '');
 
         $parts = array_filter([
             strtolower(trim($fields['country_code'] ?? '')),

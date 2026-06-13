@@ -289,19 +289,19 @@ class GbifImportDownload extends Command
                     NULLIF(LOWER(TRIM(COALESCE(state_province, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(county, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(municipality, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(verbatim_locality, locality, ''))), '')
+                    NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''), ''))), '')
                 )) AS group_hash,
                 MIN(country_code),
                 MIN(state_province),
                 MIN(county),
                 MIN(municipality),
-                MIN(COALESCE(verbatim_locality, locality)),
+                MIN(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''))) ,
                 MIN(TRIM(CONCAT_WS(', ',
                     NULLIF(country_code, ''),
                     NULLIF(state_province, ''),
                     NULLIF(county, ''),
                     NULLIF(municipality, ''),
-                    NULLIF(COALESCE(verbatim_locality, locality), '')
+                    NULLIF(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),'')), '')
                 ))),
                 NOW(),
                 NOW()
@@ -340,7 +340,7 @@ class GbifImportDownload extends Command
                 s.state_province,
                 s.county,
                 s.municipality,
-                COALESCE(s.verbatim_locality, s.locality),
+                COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),'')),
                 s.island,
                 s.island_group,
                 s.water_body,
@@ -361,7 +361,7 @@ class GbifImportDownload extends Command
                 NULLIF(LOWER(TRIM(COALESCE(s.state_province, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.county, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.municipality, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.verbatim_locality, s.locality, ''))), '')
+                NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),''), ''))), '')
             ))
             WHERE s.basis_of_record = 'PRESERVED_SPECIMEN'
             ON DUPLICATE KEY UPDATE

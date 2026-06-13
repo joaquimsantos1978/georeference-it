@@ -28,11 +28,20 @@ class GbifResetConsistency extends Command
             });
         }
 
-        $ids = $query->pluck('id');
-        $this->line("  Found {$ids->count()} suggestions to delete");
+        $count = $query->count();
+        $this->line("  Found {$count} suggestions to delete");
 
-        DB::table('georef_suggestion_exclusions')->whereIn('suggestion_id', $ids)->delete();
-        DB::table('georef_suggestions')->whereIn('id', $ids)->delete();
+        // DELETE via JOIN avoids large IN() lists that cause lock timeouts
+        DB::statement("
+            DELETE e FROM georef_suggestion_exclusions e
+            JOIN georef_suggestions s ON s.id = e.suggestion_id
+            WHERE s.user_id IS NULL AND s.georeference_sources = 'GBIF_CONSISTENCY_CHECK'
+        ");
+
+        DB::statement("
+            DELETE FROM georef_suggestions
+            WHERE user_id IS NULL AND georeference_sources = 'GBIF_CONSISTENCY_CHECK'
+        ");
 
         $this->info('Resetting consistency_status to unchecked...');
         $n = DB::table('locality_groups')
