@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GeorefController;
+use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DashboardController;
@@ -14,6 +15,7 @@ Route::get('/about', function () {
 })->name('about');
 
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
+Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
 
 // Georeferencing (public)
 Route::get('/georef', [GeorefController::class, 'index'])->name('georef.index');

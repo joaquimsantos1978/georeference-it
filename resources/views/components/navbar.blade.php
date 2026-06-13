@@ -6,8 +6,10 @@
             </a>
             <div class="hidden sm:flex items-center gap-5">
                 <a href="{{ route('georef.index') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Georeference') }}</a>
+                <a href="{{ route('explore') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Explore') }}</a>
                 <a href="{{ route('leaderboard') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Leaderboard') }}</a>
                 <a href="{{ route('about') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('About') }}</a>
+                <a href="/api/v1/occurrences" target="_blank" class="text-sm text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 font-mono">API</a>
             </div>
         </div>
 
@@ -87,8 +89,10 @@
                 <div x-show="open" @click.away="open = false" x-cloak
                      class="absolute right-0 top-12 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                     <a href="{{ route('georef.index') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Georeference') }}</a>
+                    <a href="{{ route('explore') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Explore') }}</a>
                     <a href="{{ route('leaderboard') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Leaderboard') }}</a>
                     <a href="{{ route('about') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('About') }}</a>
+                    <a href="/api/v1/occurrences" target="_blank" class="block px-4 py-2 text-sm font-mono text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">API</a>
                 </div>
             </div>
         </div>
