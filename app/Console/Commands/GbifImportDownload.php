@@ -389,6 +389,7 @@ class GbifImportDownload extends Command
 
         $this->info('Step 3/3: Updating group counters...');
 
+        // Update counters for groups that have occurrences
         DB::statement("
             UPDATE locality_groups lg
             JOIN (
@@ -405,6 +406,18 @@ class GbifImportDownload extends Command
                 lg.pending_count    = c.pending,
                 lg.validated_count  = c.validated,
                 lg.updated_at       = NOW()
+        ");
+
+        // Zero out groups whose occurrences all moved to other groups
+        DB::statement("
+            UPDATE locality_groups lg
+            LEFT JOIN occurrences o ON o.locality_group_id = lg.id
+            SET lg.occurrence_count = 0,
+                lg.pending_count    = 0,
+                lg.validated_count  = 0,
+                lg.updated_at       = NOW()
+            WHERE o.id IS NULL
+              AND lg.occurrence_count > 0
         ");
 
         $this->info('  Counters updated.');
