@@ -175,6 +175,7 @@ cp .env.example .env
 sed -i "s/APP_ENV=local/APP_ENV=production/" .env
 sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
 sed -i "s/APP_URL=http:\/\/localhost/APP_URL=https:\/\/georeference.it/" .env
+sed -i "s/DB_CONNECTION=sqlite/DB_CONNECTION=mysql/" .env
 sed -i "s/DB_DATABASE=laravel/DB_DATABASE=georeference_it/" .env
 sed -i "s/DB_USERNAME=root/DB_USERNAME=georef/" .env
 sed -i "s/DB_PASSWORD=/DB_PASSWORD=${DB_PASS}/" .env
