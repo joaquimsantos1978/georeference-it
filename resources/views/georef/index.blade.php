@@ -251,10 +251,10 @@
         {{-- MAP --}}
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
-        {{-- Measure tool button --}}
-        <div style="position:absolute;top:52px;right:12px;z-index:20;">
+        {{-- Measure tool button — bottom-left, above layer control --}}
+        <div style="position:absolute;bottom:96px;left:12px;z-index:20;">
             <button id="measure-btn" onclick="toggleMeasure()" title="{{ __('Measure distance') }}"
-                style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer;font-size:12px;color:#374151;font-weight:500;">
+                style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:white;border:2px solid rgba(0,0,0,0.2);border-radius:4px;box-shadow:none;cursor:pointer;font-size:12px;color:#374151;font-weight:500;">
                 <svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h10M3 17h6"/>
                 </svg>
