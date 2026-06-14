@@ -251,17 +251,6 @@
         {{-- MAP --}}
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
-        {{-- Measure tool button — bottom-left, above layer control --}}
-        <div style="position:absolute;bottom:96px;left:12px;z-index:20;">
-            <button id="measure-btn" onclick="toggleMeasure()" title="{{ __('Measure distance') }}"
-                style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:white;border:2px solid rgba(0,0,0,0.2);border-radius:4px;box-shadow:none;cursor:pointer;font-size:12px;color:#374151;font-weight:500;">
-                <svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h10M3 17h6"/>
-                </svg>
-                {{ __('Measure') }}
-            </button>
-        </div>
-
         {{-- Floating history button (positioned over the map) --}}
         <div style="position:absolute;top:12px;left:272px;z-index:20;">
             <div style="position:relative;display:inline-flex;align-items:center;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
@@ -432,6 +421,22 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     osm.addTo(map);
     L.control.layers({ 'OpenStreetMap': osm, 'ESRI Satellite': esriSat, 'ESRI Satellite + Labels': esriSatLabels, 'ESRI Street Map': esriStreet, 'ESRI Topo': esriTopo }, {}, { position: 'bottomleft' }).addTo(map);
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+    // Measure button as a Leaflet control (bottomleft, above layers)
+    const MeasureControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd() {
+            const btn = L.DomUtil.create('button', '');
+            btn.id = 'measure-btn';
+            btn.title = '{{ __("Measure distance") }}';
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:4px" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h10M3 17h6"/></svg>{{ __("Measure") }}';
+            btn.style.cssText = 'display:flex;align-items:center;padding:5px 9px;background:white;border:2px solid rgba(0,0,0,0.2);border-radius:4px;cursor:pointer;font-size:12px;color:#374151;font-weight:500;font-family:inherit;';
+            L.DomEvent.on(btn, 'click', L.DomEvent.stopPropagation);
+            L.DomEvent.on(btn, 'click', toggleMeasure);
+            return btn;
+        }
+    });
+    new MeasureControl().addTo(map);
     map.on('click', e => { if (!measureMode) placeMarker(e.latlng.lat, e.latlng.lng); });
 
     // ── Radius handle helpers ─────────────────────────────────────────────────
