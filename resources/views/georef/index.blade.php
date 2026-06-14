@@ -429,8 +429,8 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             const btn = L.DomUtil.create('button', '');
             btn.id = 'measure-btn';
             btn.title = '{{ __("Measure distance") }}';
-            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:4px" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h10M3 17h6"/></svg>{{ __("Measure") }}';
-            btn.style.cssText = 'display:flex;align-items:center;padding:5px 9px;background:white;border:2px solid rgba(0,0,0,0.2);border-radius:4px;cursor:pointer;font-size:12px;color:#374151;font-weight:500;font-family:inherit;';
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="1"/><line x1="6" y1="7" x2="6" y2="12"/><line x1="10" y1="7" x2="10" y2="11"/><line x1="14" y1="7" x2="14" y2="12"/><line x1="18" y1="7" x2="18" y2="11"/></svg>';
+            btn.style.cssText = 'display:flex;align-items:center;padding:5px 7px;background:white;border:2px solid rgba(0,0,0,0.2);border-radius:4px;cursor:pointer;color:#374151;font-family:inherit;';
             L.DomEvent.on(btn, 'click', L.DomEvent.stopPropagation);
             L.DomEvent.on(btn, 'click', toggleMeasure);
             return btn;
