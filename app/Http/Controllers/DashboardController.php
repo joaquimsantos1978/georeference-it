@@ -17,6 +17,7 @@ class DashboardController extends Controller
 
         $validations = $user->validations()
             ->with(['suggestion.localityGroup'])
+            ->whereHas('suggestion', fn($q) => $q->where('user_id', '!=', $user->id)->orWhereNull('user_id'))
             ->latest()
             ->paginate(20, ['*'], 'vpage');
 

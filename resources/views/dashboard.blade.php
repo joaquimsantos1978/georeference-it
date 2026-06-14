@@ -32,7 +32,7 @@
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
                 <p class="text-xs text-gray-500 uppercase tracking-wide">{{ __('Validations cast') }}</p>
-                <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ auth()->user()->validations()->count() }}</p>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ auth()->user()->validations()->whereHas('suggestion', fn($q) => $q->where('user_id', '!=', auth()->id())->orWhereNull('user_id'))->count() }}</p>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
                 <p class="text-xs text-gray-500 uppercase tracking-wide">{{ __('Vote weight') }}</p>
