@@ -18,6 +18,7 @@ class LocalityGroup extends Model
         'occurrence_count',
         'pending_count',
         'validated_count',
+        'consistency_status',
     ];
 
     public function occurrences(): HasMany
