@@ -41,6 +41,7 @@
                     <option value="has_suggestion" {{ request('status') === 'has_suggestion' ? 'selected' : '' }}>{{ __('Has suggestions') }}</option>
                     <option value="validated" {{ request('status') === 'validated' ? 'selected' : '' }}>{{ __('Validated') }}</option>
                     <option value="georeferenced" {{ request('status') === 'georeferenced' ? 'selected' : '' }}>{{ __('Georeferenced (any)') }}</option>
+                    <option value="inconsistent" {{ request('status') === 'inconsistent' ? 'selected' : '' }}>{{ __('Inconsistent') }}</option>
                 </select>
             </div>
             <div class="flex gap-2">

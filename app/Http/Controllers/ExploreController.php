@@ -41,6 +41,7 @@ class ExploreController extends Controller
                 'has_suggestion'  => $query->where('pending_count', '>', 0),
                 'validated'       => $query->where('validated_count', '>', 0),
                 'georeferenced'   => $query->whereHas('occurrences', fn($q) => $q->whereIn('georef_status', ['gbif_georeferenced', 'validated', 'gbif_reviewed'])),
+                'inconsistent'    => $query->where('consistency_status', 'inconsistent'),
                 default           => null,
             };
         }
