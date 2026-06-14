@@ -251,6 +251,17 @@
         {{-- MAP --}}
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
+        {{-- Measure tool button --}}
+        <div style="position:absolute;top:52px;right:12px;z-index:20;">
+            <button id="measure-btn" onclick="toggleMeasure()" title="{{ __('Measure distance') }}"
+                style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer;font-size:12px;color:#374151;font-weight:500;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h10M3 17h6"/>
+                </svg>
+                {{ __('Measure') }}
+            </button>
+        </div>
+
         {{-- Floating history button (positioned over the map) --}}
         <div style="position:absolute;top:12px;left:272px;z-index:20;">
             <div style="position:relative;display:inline-flex;align-items:center;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
@@ -410,7 +421,7 @@ var historyIndex   = parseInt(localStorage.getItem('georef_index') ?? '-1');
 if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex = sessionHistory.length - 1;
 
     // ── Map ───────────────────────────────────────────────────────────────────
-    let map, marker, circle, currentGroup = null;
+    let map, marker, circle, radiusHandle, currentGroup = null;
     map = L.map('map', { zoomControl: false }).setView([39.5, -8.0], 6);
     const osm           = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 });
     const esriSat       = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 19 });
@@ -421,38 +432,138 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     osm.addTo(map);
     L.control.layers({ 'OpenStreetMap': osm, 'ESRI Satellite': esriSat, 'ESRI Satellite + Labels': esriSatLabels, 'ESRI Street Map': esriStreet, 'ESRI Topo': esriTopo }, {}, { position: 'bottomleft' }).addTo(map);
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
-    map.on('click', e => placeMarker(e.latlng.lat, e.latlng.lng));
+    map.on('click', e => { if (!measureMode) placeMarker(e.latlng.lat, e.latlng.lng); });
+
+    // ── Radius handle helpers ─────────────────────────────────────────────────
+    function getRadiusHandleLatLng(centerLatLng, radiusM) {
+        // Place handle due East of centre
+        const earthR = 6378137;
+        const dLng = (radiusM / (earthR * Math.cos(centerLatLng.lat * Math.PI / 180))) * (180 / Math.PI);
+        return L.latLng(centerLatLng.lat, centerLatLng.lng + dLng);
+    }
+
+    function updateRadiusHandle() {
+        if (!circle || !radiusHandle) return;
+        radiusHandle.setLatLng(getRadiusHandleLatLng(circle.getLatLng(), circle.getRadius()));
+    }
+
+    function setUncertainty(v) {
+        v = Math.max(1, Math.round(v));
+        document.getElementById('uncertainty-input').value = v;
+        document.getElementById('uncertainty-slider').value = Math.min(v, 500000);
+        document.getElementById('uncertainty-display').textContent = v.toLocaleString() + 'm';
+        if (circle) { circle.setRadius(v); updateRadiusHandle(); }
+    }
 
     function placeMarker(lat, lng) {
         const unc = parseInt(document.getElementById('uncertainty-input').value) || 1000;
         if (marker) { map.removeLayer(marker); marker = null; }
         if (circle) { map.removeLayer(circle); circle = null; }
+        if (radiusHandle) { map.removeLayer(radiusHandle); radiusHandle = null; }
+
         marker = L.marker([lat, lng], { draggable: true }).addTo(map);
         circle = L.circle([lat, lng], { radius: unc, color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.15, weight: 2 }).addTo(map);
+
+        // Radius drag handle — white circle on the East edge of the circle
+        const handleIcon = L.divIcon({
+            className: '',
+            html: '<div style="width:14px;height:14px;border-radius:50%;background:white;border:2px solid #16a34a;box-shadow:0 1px 4px rgba(0,0,0,0.3);cursor:ew-resize;"></div>',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+        });
+        radiusHandle = L.marker(getRadiusHandleLatLng(L.latLng(lat, lng), unc), {
+            icon: handleIcon,
+            draggable: true,
+            zIndexOffset: 1000,
+        }).addTo(map);
+
+        radiusHandle.on('drag', e => {
+            const center = circle.getLatLng();
+            const handle = e.target.getLatLng();
+            const newRadius = Math.round(center.distanceTo(handle));
+            circle.setRadius(newRadius);
+            document.getElementById('uncertainty-input').value = newRadius;
+            document.getElementById('uncertainty-slider').value = Math.min(newRadius, 500000);
+            document.getElementById('uncertainty-display').textContent = newRadius.toLocaleString() + 'm';
+        });
+        radiusHandle.on('dragend', () => updateRadiusHandle()); // snap handle to East
+
         document.getElementById('lat-input').value = lat.toFixed(7);
         document.getElementById('lng-input').value = lng.toFixed(7);
         document.getElementById('uncertainty-display').textContent = unc.toLocaleString() + 'm';
         document.getElementById('uncertainty-slider').value = Math.min(unc, 500000);
         document.getElementById('submit-btn').disabled = false;
+
         marker.on('drag', e => {
             const p = e.target.getLatLng();
             circle.setLatLng(p);
+            updateRadiusHandle();
             document.getElementById('lat-input').value = p.lat.toFixed(7);
             document.getElementById('lng-input').value = p.lng.toFixed(7);
         });
     }
 
     document.getElementById('uncertainty-input').addEventListener('input', function() {
-        const v = parseInt(this.value) || 1000;
-        document.getElementById('uncertainty-slider').value = Math.min(v, 500000);
-        document.getElementById('uncertainty-display').textContent = v.toLocaleString() + 'm';
-        if (circle) circle.setRadius(v);
+        setUncertainty(parseInt(this.value) || 1000);
     });
     document.getElementById('uncertainty-slider').addEventListener('input', function() {
-        const v = parseInt(this.value);
-        document.getElementById('uncertainty-input').value = v;
-        document.getElementById('uncertainty-display').textContent = v.toLocaleString() + 'm';
-        if (circle) circle.setRadius(v);
+        setUncertainty(parseInt(this.value));
+    });
+
+    // ── Distance measurement tool ─────────────────────────────────────────────
+    let measureMode = false, measurePoints = [], measureLines = [], measureMarkers = [], measureLabel = null;
+
+    function formatDist(m) {
+        return m >= 1000 ? (m/1000).toFixed(2) + ' km' : Math.round(m) + ' m';
+    }
+
+    function updateMeasureLabel() {
+        if (!measurePoints.length) return;
+        let total = 0;
+        for (let i = 1; i < measurePoints.length; i++) total += measurePoints[i-1].distanceTo(measurePoints[i]);
+        const last = measurePoints[measurePoints.length - 1];
+        if (measureLabel) map.removeLayer(measureLabel);
+        measureLabel = L.tooltip({ permanent: true, direction: 'top', className: 'measure-tooltip' })
+            .setLatLng(last)
+            .setContent('<b>' + formatDist(total) + '</b>')
+            .addTo(map);
+    }
+
+    function clearMeasure() {
+        measurePoints = [];
+        measureLines.forEach(l => map.removeLayer(l)); measureLines = [];
+        measureMarkers.forEach(m => map.removeLayer(m)); measureMarkers = [];
+        if (measureLabel) { map.removeLayer(measureLabel); measureLabel = null; }
+    }
+
+    function toggleMeasure() {
+        measureMode = !measureMode;
+        const btn = document.getElementById('measure-btn');
+        if (measureMode) {
+            btn.style.background = '#16a34a';
+            btn.style.color = 'white';
+            map.getContainer().style.cursor = 'crosshair';
+            clearMeasure();
+        } else {
+            btn.style.background = 'white';
+            btn.style.color = '#374151';
+            map.getContainer().style.cursor = '';
+            clearMeasure();
+        }
+    }
+
+    map.on('click', e => {
+        if (!measureMode) return;
+        const latlng = e.latlng;
+        // Small dot at each click
+        const dot = L.circleMarker(latlng, { radius: 4, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1, weight: 2 }).addTo(map);
+        measureMarkers.push(dot);
+        if (measurePoints.length > 0) {
+            const line = L.polyline([measurePoints[measurePoints.length-1], latlng], { color: '#f59e0b', weight: 2, dashArray: '6' }).addTo(map);
+            measureLines.push(line);
+        }
+        measurePoints.push(latlng);
+        updateMeasureLabel();
     });
 
     // ── Image viewer ──────────────────────────────────────────────────────────
@@ -565,7 +676,7 @@ function hideOverlay() {
 
 function clearPanel() {
     showOverlay();
-    if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;}
+    if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;} if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
     if(window._nominatimPolygon){map.removeLayer(window._nominatimPolygon);window._nominatimPolygon=null;}
     clearSuggestionLayers(); closeImgViewer();
     document.getElementById('submit-btn').disabled=true;
@@ -795,7 +906,7 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
         }).join('');
     }
     function previewSuggestion(lat,lng,unc) {
-        if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;}
+        if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;} if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
         circle=L.circle([lat,lng],{radius:unc||1000,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
         map.flyTo([lat,lng],12);
     }
