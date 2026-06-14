@@ -74,58 +74,64 @@ class GeorefController extends Controller
 
 public function next(Request $request)
 {
-    $country       = $request->get('country');
+    $focus         = trim($request->get('focus', ''));
+    $country       = strtoupper(trim($request->get('country', ''))) ?: null;
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
 
-    // Auto-sync if running low on ungeoreferenced occurrences for this country
-    if ($country) {
-        $threshold = (int) PlatformSetting::get('auto_sync_threshold', 50);
-        $available = LocalityGroup::whereHas('occurrences', function ($q) {
-                $q->where('georef_status', 'ungeoreferenced');
-            })
-            ->where('country_code', $country)
-            ->count();
+    // Build reusable locality-scope constraints in order of specificity:
+    // 1. focus text match, 2. last served state_province (geographic coherence), 3. country, 4. any
+    $lastProvince = session('georef_last_province');
 
-        if ($available < $threshold) {
-            $cacheKey = 'auto_sync_' . $country;
-            if (!\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-                \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addHours(6));
-                \App\Jobs\SyncGbifByCountry::dispatch($country);
-            }
-        }
+    $scopes = [];
+    if ($focus !== '') {
+        $scopes[] = fn($q) => $q->where(fn($q2) =>
+            $q2->where('verbatim_locality', 'like', "%{$focus}%")
+               ->orWhere('municipality',    'like', "%{$focus}%")
+               ->orWhere('county',          'like', "%{$focus}%")
+               ->orWhere('state_province',  'like', "%{$focus}%")
+        )->when($country, fn($q2) => $q2->where('country_code', $country));
     }
+    if ($lastProvince) {
+        $scopes[] = fn($q) => $q->where('state_province', $lastProvince)
+            ->when($country, fn($q2) => $q2->where('country_code', $country));
+    }
+    if ($country) {
+        $scopes[] = fn($q) => $q->where('country_code', $country);
+    }
+    $scopes[] = fn($q) => $q; // fallback: any
 
     $group = null;
 
-    if (auth()->check() && in_array($preferredTask, ['validate', 'both'])) {
-        $userId = auth()->id();
-        $group = LocalityGroup::where('pending_count', '>', 0)
-            ->when($country, fn($q) => $q->where('country_code', $country))
-            ->whereHas('suggestions', function ($q) use ($userId) {
-                $q->where('status', 'pending')
-                    ->where(function ($q2) use ($userId) {
-                        $q2->whereNull('user_id')
-                            ->orWhere('user_id', '!=', $userId);
-                    })
-                    // exclude suggestions this user already voted on
-                    ->whereDoesntHave('validations', fn($q3) => $q3->where('user_id', $userId));
-            })
-            ->inRandomOrder()
-            ->first();
-    }
+    foreach ($scopes as $scope) {
+        if (auth()->check() && in_array($preferredTask, ['validate', 'both'])) {
+            $userId = auth()->id();
+            $group = LocalityGroup::where('pending_count', '>', 0)
+                ->tap($scope)
+                ->whereHas('suggestions', function ($q) use ($userId) {
+                    $q->where('status', 'pending')
+                      ->where(fn($q2) => $q2->whereNull('user_id')->orWhere('user_id', '!=', $userId))
+                      ->whereDoesntHave('validations', fn($q3) => $q3->where('user_id', $userId));
+                })
+                ->inRandomOrder()
+                ->first();
+        }
 
-    if (!$group && in_array($preferredTask, ['georef', 'both'])) {
-        $group = LocalityGroup::whereHas('occurrences', function ($q) {
-                $q->whereIn('georef_status', ['ungeoreferenced']);
-            })
-            ->when($country, fn($q) => $q->where('country_code', $country))
-            ->inRandomOrder()
-            ->first();
+        if (!$group && in_array($preferredTask, ['georef', 'both'])) {
+            $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
+                ->tap($scope)
+                ->inRandomOrder()
+                ->first();
+        }
+
+        if ($group) break;
     }
 
     if (!$group) {
         return response()->json(['group' => null]);
     }
+
+    // Remember this group's province for geographic coherence on next call
+    session(['georef_last_province' => $group->state_province]);
 
     return response()->json($this->groupData($group));
 }

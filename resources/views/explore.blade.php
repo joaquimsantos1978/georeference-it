@@ -86,7 +86,11 @@
                             @endif
                         </td>
                         <td class="px-4 py-2.5 text-right">
-                            <a href="{{ route('georef.index') }}?group={{ $group->id }}"
+                            @php
+                            $focusVal = $group->verbatim_locality ?: ($group->municipality ?: ($group->county ?: $group->state_province));
+                            $focusParams = http_build_query(array_filter(['focus' => $focusVal, 'country' => $group->country_code, 'group' => $group->id]));
+                        @endphp
+                        <a href="{{ route('georef.index') }}?{{ $focusParams }}"
                                class="text-xs text-green-600 hover:underline whitespace-nowrap">{{ __('Georeference →') }}</a>
                         </td>
                     </tr>

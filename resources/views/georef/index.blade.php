@@ -60,8 +60,14 @@
 
                 {{-- Country selector --}}
                 <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
-                    <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Country') }}</label>
+                    <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Focus area') }}</label>
                     <div style="display:flex;align-items:center;gap:6px;">
+                        <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
+                            class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <button id="focus-clear" title="{{ __('Clear focus') }}" style="display:none;font-size:14px;background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+                        <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
+                    </div>
+                    {{-- hidden country select kept for auto-detect, but no longer shown --}}
                         <select id="country-select" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
     <option value="">{{ __('All countries') }}</option>
     <option value="AF">Afghanistan</option>
@@ -255,7 +261,7 @@
     <option value="ZM">Zambia</option>
     <option value="ZW">Zimbabwe</option>
                         </select>
-                        <span id="country-sync-status" style="font-size:10px;color:#9ca3af;"></span>
+                        <span id="country-sync-status" style="font-size:10px;color:#9ca3af;display:none;"></span>
                     </div>
                 </div>
 
@@ -542,14 +548,10 @@ function clearPanel() {
 
 function loadNextGroup() {
     clearPanel();
-    var params = '';
-    if (typeof currentArea !== 'undefined') {
-        if (currentArea.type === 'country') {
-            params = 'country=' + currentArea.country_code;
-        }
-        // type 'all' = no params
-    }
-    fetch(APP_URL+'/georef/next?' + params, {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
+    var parts = [];
+    if (window._georefFocus) parts.push('focus=' + encodeURIComponent(window._georefFocus));
+    if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
+    fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>r.json())
     .then(data=>{
         document.getElementById('occurrence-loading').classList.add('hidden');
@@ -814,27 +816,47 @@ if(urlGroupId) {
 } else {
     loadNextGroup();
 }
-// ── Country selector ─────────────────────────────────────────────────────
-    var currentArea = { type: 'all' };
+// ── Focus input ───────────────────────────────────────────────────────────
+    window._georefFocus   = '{{ request("focus", "") }}';
+    window._georefCountry = '';
 
-    document.getElementById('country-select').addEventListener('change', function() {
-        var val = this.value;
-        currentArea = val ? { type: 'country', country_code: val } : { type: 'all' };
+    var focusInput = document.getElementById('focus-input');
+    var focusClear = document.getElementById('focus-clear');
+    var focusHint  = document.getElementById('focus-hint');
+
+    if (window._georefFocus) {
+        focusInput.value = window._georefFocus;
+        focusClear.style.display = 'block';
+    }
+
+    function applyFocus() {
+        window._georefFocus = focusInput.value.trim();
+        focusClear.style.display = window._georefFocus ? 'block' : 'none';
+        focusHint.style.display = 'none';
+        loadNextGroup();
+    }
+
+    focusInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') applyFocus(); });
+    focusInput.addEventListener('blur', function() { if (focusInput.value.trim() !== window._georefFocus) applyFocus(); });
+    focusClear.addEventListener('click', function() {
+        focusInput.value = '';
+        window._georefFocus = '';
+        focusClear.style.display = 'none';
+        focusHint.style.display = 'none';
         loadNextGroup();
     });
 
-    // Auto-detect country from IP and pre-select
+    // Auto-detect country from IP (used as soft default, not shown in UI)
     fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
     .then(r => r.json())
     .then(function(loc) {
         if (loc && loc.country_code) {
+            window._georefCountry = loc.country_code;
+            // Keep the hidden select in sync for legacy code paths
             var sel = document.getElementById('country-select');
-            // Only pre-select if option exists
-            for (var i = 0; i < sel.options.length; i++) {
-                if (sel.options[i].value === loc.country_code) {
-                    sel.value = loc.country_code;
-                    currentArea = { type: 'country', country_code: loc.country_code };
-                    break;
+            if (sel) {
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === loc.country_code) { sel.value = loc.country_code; break; }
                 }
             }
         }
