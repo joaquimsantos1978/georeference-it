@@ -59,10 +59,11 @@
                 @endif
             </div>
             @if($nextLevel)
+            @php $remaining = $nextLevel->min_validated - auth()->user()->total_validated; @endphp
             <div class="bg-gray-100 dark:bg-gray-700 rounded-full h-2">
                 <div class="bg-green-500 h-2 rounded-full transition-all" style="width:{{ $progress }}%"></div>
             </div>
-            <p class="text-xs text-gray-400 mt-1">{{ auth()->user()->total_validated }} / {{ $nextLevel->min_validated }}</p>
+            <p class="text-xs text-gray-400 mt-1">{{ auth()->user()->total_validated }} / {{ $nextLevel->min_validated }} validated · <span class="text-green-600 font-medium">{{ $remaining }} more</span> to reach <span class="font-medium text-gray-600 dark:text-gray-300">{{ $nextLevel->name }}</span></p>
             @endif
         </div>
         @endif

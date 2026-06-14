@@ -450,6 +450,24 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
                         'level'   => $submitter->userLevel->name,
                     ],
                 ]);
+            } else {
+                // Notify at 50% progress toward next level
+                $nextLevel = \App\Models\UserLevel::where('min_validated', '>', $submitter->userLevel->min_validated)
+                    ->orderBy('min_validated')->first();
+                if ($nextLevel) {
+                    $range    = $nextLevel->min_validated - $submitter->userLevel->min_validated;
+                    $progress = $submitter->total_validated - $submitter->userLevel->min_validated;
+                    $remaining = $nextLevel->min_validated - $submitter->total_validated;
+                    if ($range > 0 && $progress === intval($range / 2)) {
+                        $submitter->notifications()->create([
+                            'type' => 'progress',
+                            'data' => [
+                                'message' => "Halfway to {$nextLevel->name}! {$remaining} more validated georeferences to go.",
+                                'level'   => $nextLevel->name,
+                            ],
+                        ]);
+                    }
+                }
             }
         }
     }
