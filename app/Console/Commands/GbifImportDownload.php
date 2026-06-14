@@ -41,7 +41,7 @@ class GbifImportDownload extends Command
             }
 
             // Step 2: extract occurrence.txt and parse meta.xml
-            [$csvPath, $colList] = $this->extractAndMapColumns($zipPath);
+            [$csvPath, $colList, $ignoreHeader, $multimediaPath] = $this->extractAndMapColumns($zipPath);
             if (!$csvPath) {
                 return self::FAILURE;
             }
@@ -50,10 +50,17 @@ class GbifImportDownload extends Command
             if (!$this->loadIntoStaging($csvPath, $colList)) {
                 return self::FAILURE;
             }
+        } else {
+            $multimediaPath = null;
         }
 
         // Step 4: staging → locality_groups + occurrences
         $this->processStaging();
+
+        // Step 4b: import multimedia if extracted
+        if (!empty($multimediaPath) && file_exists($multimediaPath)) {
+            $this->importMultimedia($multimediaPath);
+        }
 
         // Step 5: cleanup
         if (!$this->option('skip-cleanup')) {
@@ -220,14 +227,37 @@ class GbifImportDownload extends Command
         stream_copy_to_stream($src, $dest);
         fclose($src);
         fclose($dest);
-        $zip->close();
 
         $this->info('Extracted: ' . $this->bytes(filesize($csvTarget)));
 
         // Check if the DWCA has a header line to skip
         $ignoreHeader = (int) ($core['ignoreHeaderLines'] ?? 0);
 
-        return [$csvTarget, $colList, $ignoreHeader];
+        // Also extract multimedia extension if present
+        $multimediaPath = null;
+        foreach ($xml->extension ?? [] as $ext) {
+            $rowType = (string) ($ext['rowType'] ?? '');
+            if (str_contains($rowType, 'Multimedia') || str_contains($rowType, 'multimedia')) {
+                $mLoc   = (string) ($ext->files->location ?? '');
+                if ($mLoc) {
+                    $mTarget = "{$this->storageDir}/" . basename($mLoc);
+                    $mSrc    = $zip->getStream($mLoc);
+                    if ($mSrc) {
+                        $mDest = fopen($mTarget, 'wb');
+                        stream_copy_to_stream($mSrc, $mDest);
+                        fclose($mSrc);
+                        fclose($mDest);
+                        $multimediaPath = $mTarget;
+                        $this->info("Extracted multimedia: " . $this->bytes(filesize($mTarget)));
+                    }
+                }
+                break;
+            }
+        }
+
+        $zip->close();
+
+        return [$csvTarget, $colList, $ignoreHeader, $multimediaPath];
     }
 
     // -------------------------------------------------------------------------
@@ -421,6 +451,95 @@ class GbifImportDownload extends Command
         ");
 
         $this->info('  Counters updated.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Import multimedia extension (multimedia.txt) → occurrences.media
+    // -------------------------------------------------------------------------
+
+    private function importMultimedia(string $path): void
+    {
+        $this->info('Importing multimedia...');
+
+        $fh = fopen($path, 'r');
+        if (!$fh) {
+            $this->warn("Cannot open multimedia file: {$path}");
+            return;
+        }
+
+        // Read header to find column indices
+        $header = fgetcsv($fh, 0, "\t");
+        if (!$header) { fclose($fh); return; }
+        $header = array_map('trim', $header);
+
+        $idxGbifId    = array_search('gbifID', $header);
+        $idxType      = array_search('type', $header);
+        $idxFormat    = array_search('format', $header);
+        $idxIdentifier = array_search('identifier', $header);
+        $idxTitle     = array_search('title', $header);
+        $idxLicense   = array_search('license', $header);
+
+        if ($idxGbifId === false || $idxIdentifier === false) {
+            $this->warn('multimedia.txt missing gbifID or identifier columns');
+            fclose($fh);
+            return;
+        }
+
+        // Group media items by gbifID, keep only StillImage entries
+        $byOccurrence = [];
+        while (($row = fgetcsv($fh, 0, "\t")) !== false) {
+            $gbifId = trim($row[$idxGbifId] ?? '');
+            $type   = trim($row[$idxType] ?? '');
+            if (!$gbifId || ($type && !str_contains(strtolower($type), 'image'))) {
+                continue;
+            }
+            $identifier = trim($row[$idxIdentifier] ?? '');
+            if (!$identifier) continue;
+
+            $byOccurrence[$gbifId][] = array_filter([
+                'type'       => $type ?: 'StillImage',
+                'format'     => trim($row[$idxFormat] ?? ''),
+                'identifier' => $identifier,
+                'title'      => trim($row[$idxTitle] ?? ''),
+                'license'    => trim($row[$idxLicense] ?? ''),
+            ]);
+        }
+        fclose($fh);
+
+        $this->info('  Found media for ' . count($byOccurrence) . ' occurrences. Updating...');
+
+        $bar = $this->output->createProgressBar(count($byOccurrence));
+        $bar->start();
+
+        $chunk = [];
+        foreach ($byOccurrence as $gbifId => $items) {
+            $chunk[$gbifId] = $items;
+            if (count($chunk) >= 500) {
+                $this->updateMediaChunk($chunk);
+                $chunk = [];
+            }
+            $bar->advance();
+        }
+        if ($chunk) {
+            $this->updateMediaChunk($chunk);
+        }
+
+        $bar->finish();
+        $this->newLine();
+        $this->info('  Multimedia import done.');
+    }
+
+    private function updateMediaChunk(array $chunk): void
+    {
+        $cases = '';
+        $keys  = [];
+        foreach ($chunk as $gbifId => $items) {
+            $json   = addslashes(json_encode(array_values($items)));
+            $cases .= "WHEN gbif_occurrence_key = '{$gbifId}' THEN '{$json}'\n";
+            $keys[] = $gbifId;
+        }
+        $inList = implode(',', array_map(fn($k) => "'{$k}'", $keys));
+        DB::statement("UPDATE occurrences SET media = CASE {$cases} END WHERE gbif_occurrence_key IN ({$inList})");
     }
 
     // -------------------------------------------------------------------------

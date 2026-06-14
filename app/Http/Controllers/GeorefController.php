@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GeorefSuggestion;
 use App\Models\GeorefValidation;
+use App\Models\GeorefSuggestionExclusion;
 use App\Models\LocalityGroup;
 use App\Models\LocalityGroupComment;
 use App\Models\Occurrence;
@@ -81,6 +82,7 @@ public function next(Request $request)
     // Build reusable locality-scope constraints in order of specificity:
     // 1. focus text match, 2. last served state_province (geographic coherence), 3. country, 4. any
     $lastProvince = session('georef_last_province');
+    $lastCounty   = session('georef_last_county');
 
     $scopes = [];
     if ($focus !== '') {
@@ -91,6 +93,10 @@ public function next(Request $request)
                ->orWhere('state_province',  'like', "%{$focus}%")
         )->when($country, fn($q2) => $q2->where('country_code', $country));
     }
+    if ($lastCounty) {
+        $scopes[] = fn($q) => $q->where('county', $lastCounty)
+            ->when($country, fn($q2) => $q2->where('country_code', $country));
+    }
     if ($lastProvince) {
         $scopes[] = fn($q) => $q->where('state_province', $lastProvince)
             ->when($country, fn($q2) => $q2->where('country_code', $country));
@@ -100,11 +106,26 @@ public function next(Request $request)
     }
     $scopes[] = fn($q) => $q; // fallback: any
 
-    $group = null;
+    $group  = null;
+    $userId = auth()->check() ? auth()->id() : null;
 
-    foreach ($scopes as $scope) {
-        if (auth()->check() && in_array($preferredTask, ['validate', 'both'])) {
-            $userId = auth()->id();
+    foreach ($scopes as $scopeIdx => $scope) {
+        $isFocusScope = ($focus !== '' && $scopeIdx === 0);
+
+        // Within the focus scope, always try both task types regardless of preference
+        // (the user explicitly said where they want to work — show any available work there)
+        $wantsValidate = $userId && ($isFocusScope || in_array($preferredTask, ['validate', 'both']));
+        $wantsGeoref   = $isFocusScope || in_array($preferredTask, ['georef', 'both']);
+
+        // Try georef first (preferred outcome for most users), then validate
+        if ($wantsGeoref) {
+            $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
+                ->tap($scope)
+                ->inRandomOrder()
+                ->first();
+        }
+
+        if (!$group && $wantsValidate) {
             $group = LocalityGroup::where('pending_count', '>', 0)
                 ->tap($scope)
                 ->whereHas('suggestions', function ($q) use ($userId) {
@@ -116,13 +137,6 @@ public function next(Request $request)
                 ->first();
         }
 
-        if (!$group && in_array($preferredTask, ['georef', 'both'])) {
-            $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
-                ->tap($scope)
-                ->inRandomOrder()
-                ->first();
-        }
-
         if ($group) break;
     }
 
@@ -130,8 +144,11 @@ public function next(Request $request)
         return response()->json(['group' => null]);
     }
 
-    // Remember this group's province for geographic coherence on next call
-    session(['georef_last_province' => $group->state_province]);
+    // Remember county + province for geographic coherence on next call
+    session([
+        'georef_last_province' => $group->state_province,
+        'georef_last_county'   => $group->county,
+    ]);
 
     return response()->json($this->groupData($group));
 }
@@ -436,6 +453,48 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
             }
         }
     }
+
+public function destroySuggestion(Request $request, GeorefSuggestion $suggestion): \Illuminate\Http\JsonResponse
+{
+    if ($suggestion->user_id !== auth()->id()) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+    }
+
+    $group = $suggestion->localityGroup;
+    $suggestion->validations()->delete();
+    $suggestion->exclusions()->delete();
+    $suggestion->delete();
+
+    // Recount pending suggestions for this group
+    if ($group) {
+        $group->pending_count   = $group->suggestions()->where('status', 'pending')->count();
+        $group->validated_count = $group->suggestions()->where('status', 'validated')->count();
+        $group->save();
+    }
+
+    return response()->json(['success' => true]);
+}
+
+public function revokeValidation(Request $request, GeorefValidation $validation): \Illuminate\Http\JsonResponse
+{
+    if ($validation->user_id !== auth()->id()) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+    }
+
+    $suggestion = $validation->suggestion;
+    $points = $validation->points_awarded ?? 0;
+    $vote   = $validation->vote;
+
+    $validation->delete();
+
+    // Reverse the points on the suggestion
+    if ($suggestion) {
+        $suggestion->total_points -= ($vote === 'agree' ? $points : -$points);
+        $suggestion->save();
+    }
+
+    return response()->json(['success' => true]);
+}
 
 public function sync(Request $request): \Illuminate\Http\JsonResponse
 {

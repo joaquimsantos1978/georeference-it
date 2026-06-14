@@ -1,74 +1,21 @@
 <x-layouts.georef>
     <div id="georef-wrap" style="position:relative; height:100%; width:100%; display:flex; flex-direction:row;">
 
-        {{-- MAP --}}
-        <div id="map" style="flex:1; position:relative; z-index:0;"></div>
+        {{-- LEFT PANEL: focus area + locality + occurrences --}}
+        <div id="left-panel" style="width:260px; flex-shrink:0; z-index:10; display:flex; flex-direction:column; height:100%; overflow:hidden; border-right:1px solid #e5e7eb;"
+            class="bg-white dark:bg-gray-900">
 
-        {{-- Floating history button --}}
-        <div style="position:absolute;top:12px;left:12px;z-index:20;">
-            <div style="position:relative;display:inline-flex;align-items:center;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-                <button id="hist-prev" disabled title="{{ __('Previous') }}"
-                    style="padding:6px 10px;background:none;border:none;border-right:1px solid #e5e7eb;cursor:pointer;font-size:14px;color:#d1d5db;border-radius:8px 0 0 8px;line-height:1;">←</button>
-                <button id="hist-float-btn" title="{{ __('Session history') }}"
-                    style="padding:6px 8px;background:none;border:none;border-right:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;gap:4px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width:13px;height:13px;color:#6b7280;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span id="hist-counter" style="color:#9ca3af;font-size:11px;min-width:28px;text-align:center;">0/0</span>
-                </button>
-                <button id="hist-next" disabled title="{{ __('Next') }}"
-                    style="padding:6px 10px;background:none;border:none;cursor:pointer;font-size:14px;color:#d1d5db;border-radius:0 8px 8px 0;line-height:1;">→</button>
-                {{-- History dropdown --}}
-                <div id="hist-list" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:300px;max-width:380px;max-height:300px;overflow-y:auto;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:30;"></div>
-            </div>
-        </div>
-
-        {{-- Draggable image viewer --}}
-        <div id="img-viewer" style="display:none; position:absolute; top:60px; left:12px; z-index:25; width:360px; height:320px; min-width:200px; min-height:150px;"
-            class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-300 dark:border-gray-600 flex flex-col overflow-hidden">
-            <div id="img-viewer-bar" class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 cursor-move select-none shrink-0 border-b border-gray-200 dark:border-gray-700">
-                <span id="img-viewer-title" class="text-xs text-gray-500 truncate flex-1 mr-2"></span>
-                <div class="flex items-center gap-2 shrink-0">
-                    <a id="img-viewer-link" href="#" target="_blank" class="text-xs text-green-600 hover:underline">{{ __('Full size') }}</a>
-                    <button onclick="closeImgViewer()" class="text-gray-400 hover:text-gray-600 text-sm leading-none ml-1">✕</button>
+            {{-- Focus area --}}
+            <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
+                <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Focus area') }}</label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
+                        class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                    <button id="focus-clear" title="{{ __('Clear focus') }}" style="display:none;font-size:14px;background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+                    <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
                 </div>
-            </div>
-            <div class="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 shrink-0 border-b border-gray-100 dark:border-gray-700">
-                <button onclick="zoomImg(-0.25)" class="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 hover:bg-gray-50">−</button>
-                <button onclick="zoomImg(0.25)" class="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 hover:bg-gray-50">+</button>
-                <button onclick="resetImgZoom()" class="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 hover:bg-gray-50">1:1</button>
-                <span id="img-zoom-label" class="text-xs text-gray-400 ml-1">100%</span>
-                <span class="text-xs text-gray-300 ml-auto">{{ __('scroll to zoom · drag to pan') }}</span>
-            </div>
-            <div id="img-pan-area" class="flex-1 overflow-hidden relative cursor-grab" style="background:#f3f4f6;">
-                <img id="img-viewer-img" src="" alt="" style="position:absolute; transform-origin:0 0; cursor:grab; user-select:none;" draggable="false">
-            </div>
-            <div id="img-resize-handle" style="position:absolute; bottom:0; right:0; width:16px; height:16px; cursor:se-resize; z-index:10;">
-                <svg viewBox="0 0 16 16" style="width:16px;height:16px;opacity:0.4;">
-                    <line x1="4" y1="16" x2="16" y2="4" stroke="#6b7280" stroke-width="1.5"/>
-                    <line x1="8" y1="16" x2="16" y2="8" stroke="#6b7280" stroke-width="1.5"/>
-                    <line x1="12" y1="16" x2="16" y2="12" stroke="#6b7280" stroke-width="1.5"/>
-                </svg>
-            </div>
-        </div>
-
-        {{-- SIDE PANEL --}}
-        <div id="side-panel" style="width:380px; flex-shrink:0; z-index:10; display:flex; flex-direction:column; height:100%; overflow:hidden; position:relative;"
-            class="bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700">
-
-            <div class="flex flex-col flex-1 overflow-hidden">
-
-                {{-- Country selector --}}
-                <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
-                    <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Focus area') }}</label>
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
-                            class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
-                        <button id="focus-clear" title="{{ __('Clear focus') }}" style="display:none;font-size:14px;background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
-                        <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
-                    </div>
-                    {{-- hidden country select kept for auto-detect, but no longer shown --}}
-                        <select id="country-select" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                {{-- hidden country select kept for auto-detect --}}
+                <select id="country-select" style="display:none;" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
     <option value="">{{ __('All countries') }}</option>
     <option value="AF">Afghanistan</option>
     <option value="AL">Albania</option>
@@ -260,109 +207,183 @@
     <option value="YE">Yemen</option>
     <option value="ZM">Zambia</option>
     <option value="ZW">Zimbabwe</option>
-                        </select>
-                        <span id="country-sync-status" style="font-size:10px;color:#9ca3af;display:none;"></span>
-                    </div>
-                </div>
+                </select>
+                <span id="country-sync-status" style="font-size:10px;color:#9ca3af;display:none;"></span>
+            </div>
 
-                {{-- Locality + Nominatim --}}
-                <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
-                    <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
-                    <div id="occurrence-info" class="hidden">
-                        <div style="display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;">
-                            <div id="locality-fields" class="space-y-0.5 flex-1"></div>
-                            <button id="share-btn" title="{{ __('Copy link to this locality') }}"
-                                style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#16a34a;font-size:11px;margin-top:1px;"
-                                onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">🔗</button>
-                        </div>
-                        <div class="flex gap-1 mt-1">
-                            <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;margin-top:10px;">{{ __('Position on map') }}</label>
-                            <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name to position on map...') }}">
-                            <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
-                        </div>
-                        <div id="nominatim-results" class="mt-1 space-y-1 max-h-36 overflow-y-auto"></div>
+            {{-- Locality + Nominatim --}}
+            <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+                <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
+                <div id="occurrence-info" class="hidden">
+                    <div style="display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;">
+                        <div id="locality-fields" class="space-y-0.5 flex-1"></div>
+                        <button id="share-btn" title="{{ __('Copy link to this locality') }}"
+                            style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#16a34a;font-size:11px;margin-top:1px;"
+                            onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">🔗</button>
                     </div>
+                    <div class="flex gap-1 mt-1">
+                        <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place to position on map...') }}">
+                        <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
+                    </div>
+                    <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
                 </div>
+            </div>
 
-                {{-- Occurrences list --}}
-                <div class="p-3 border-b border-gray-200 dark:border-gray-700" style="min-height:0;flex-shrink:1;overflow:hidden;display:flex;flex-direction:column;">
-                    <div class="flex items-center justify-between mb-1" style="flex-shrink:0;">
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences in this group') }}</span>
-                        <span id="occurrence-count" class="text-xs text-gray-400"></span>
-                    </div>
-                    <div id="occ-select-controls" class="hidden mb-1 flex flex-wrap gap-1" style="flex-shrink:0;">
+            {{-- Occurrences list (takes remaining space) --}}
+            <div class="p-3" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;margin-bottom:4px;">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences') }}</span>
+                    <span id="occurrence-count" class="text-xs text-gray-400"></span>
+                </div>
+                <p class="text-xs text-gray-400 italic mb-1" style="flex-shrink:0;">{{ __('Check specimens to include in this georeference:') }}</p>
+                <div id="occ-select-controls" class="hidden mb-1" style="flex-shrink:0;">
+                    <div class="flex flex-wrap gap-1">
                         <button onclick="occSelectAll(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('All') }}</button>
                         <button onclick="occSelectAll(false)" class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('None') }}</button>
                         <button onclick="occSelectByStatus(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('Georef') }}</button>
                         <button onclick="occSelectByStatus(false)" class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('Ungeoref') }}</button>
                     </div>
-                    <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="min-height:0;flex:1;max-height:180px;"></div>
                 </div>
-
-                {{-- Existing suggestions --}}
-                <div id="existing-suggestions" class="p-3 border-b border-gray-200 dark:border-gray-700 hidden" style="min-height:0;flex-shrink:1;overflow:hidden;display:flex;flex-direction:column;">
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide" style="flex-shrink:0;">{{ __('Existing suggestions') }}</span>
-                    <div id="suggestions-list" class="mt-1 space-y-2 overflow-y-auto" style="min-height:0;flex:1;max-height:260px;"></div>
-                </div>
-
-                {{-- Georef form --}}
-                <div class="p-3 overflow-y-auto" style="flex-shrink:0;">
-                    <p class="text-xs text-gray-400 mb-2">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
-                    <form id="georef-form" class="space-y-2">
-                        <div class="flex gap-2">
-                            <div class="flex-1">
-                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Latitude') }}</label>
-                                <input type="number" id="lat-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
-                            </div>
-                            <div class="flex-1">
-                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Longitude') }}</label>
-                                <input type="number" id="lng-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Uncertainty') }} <span id="uncertainty-display" class="text-green-600 font-semibold"></span></label>
-                            <input type="number" id="uncertainty-input" min="1" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="1000">
-                            <input type="range" id="uncertainty-slider" min="100" max="500000" step="1000" value="1000" class="w-full mt-1 accent-green-600">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Remarks') }}</label>
-                            <textarea id="remarks-input" rows="2" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Optional notes...') }}"></textarea>
-                        </div>
-                        @guest
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Your name (optional)') }}</label>
-                            <input type="text" id="anon-name" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Anonymous') }}">
-                        </div>
-                        @endguest
-                    </form>
-                </div>
-
-                {{-- Discussion --}}
-                <div class="p-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
-                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Discussion') }}</span>
-                    <div id="comments-list" class="mt-1 space-y-1 max-h-24 overflow-y-auto"></div>
-                    @auth
-                    <div class="mt-2 flex gap-1">
-                        <input type="text" id="comment-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Add a comment...') }}">
-                        <button id="comment-submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200">{{ __('Send') }}</button>
-                    </div>
-                    @else
-                    <p class="mt-2 text-xs text-gray-400 italic">
-                        {{ __('Only authenticated users can join the discussion.') }}
-                        <a href="{{ route('login') }}" class="text-green-600 hover:underline">{{ __('Login') }}</a>
-                        {{ __('or') }}
-                        <a href="{{ route('register') }}" class="text-green-600 hover:underline">{{ __('register') }}</a>.
-                    </p>
-                    @endauth
-                </div>
-
-                {{-- Action buttons --}}
-                <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0">
-                    <button id="skip-btn" class="flex-1 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 rounded-lg py-2 hover:bg-gray-50">{{ __('Skip') }}</button>
-                    <button id="submit-btn" class="flex-1 text-sm bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>{{ __('Submit') }}</button>
-                </div>
+                <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="flex:1;min-height:0;"></div>
             </div>
         </div>
+
+        {{-- MAP --}}
+        <div id="map" style="flex:1; position:relative; z-index:0;"></div>
+
+        {{-- Floating history button (positioned over the map) --}}
+        <div style="position:absolute;top:12px;left:272px;z-index:20;">
+            <div style="position:relative;display:inline-flex;align-items:center;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                <button id="hist-prev" disabled title="{{ __('Previous') }}"
+                    style="padding:6px 10px;background:none;border:none;border-right:1px solid #e5e7eb;cursor:pointer;font-size:14px;color:#d1d5db;border-radius:8px 0 0 8px;line-height:1;">←</button>
+                <button id="hist-float-btn" title="{{ __('Session history') }}"
+                    style="padding:6px 8px;background:none;border:none;border-right:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:13px;height:13px;color:#6b7280;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span id="hist-counter" style="color:#9ca3af;font-size:11px;min-width:28px;text-align:center;">0/0</span>
+                </button>
+                <button id="hist-next" disabled title="{{ __('Next') }}"
+                    style="padding:6px 10px;background:none;border:none;cursor:pointer;font-size:14px;color:#d1d5db;border-radius:0 8px 8px 0;line-height:1;">→</button>
+                {{-- History dropdown --}}
+                <div id="hist-list" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:300px;max-width:380px;max-height:300px;overflow-y:auto;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:30;"></div>
+            </div>
+        </div>
+
+        {{-- Draggable image viewer --}}
+        <div id="img-viewer" style="display:none; position:absolute; top:60px; left:284px; z-index:25; width:360px; height:320px; min-width:200px; min-height:150px;"
+            class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-300 dark:border-gray-600 flex flex-col overflow-hidden">
+            <div id="img-viewer-bar" class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 cursor-move select-none shrink-0 border-b border-gray-200 dark:border-gray-700">
+                <span id="img-viewer-title" class="text-xs text-gray-500 truncate flex-1 mr-2"></span>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a id="img-viewer-link" href="#" target="_blank" class="text-xs text-green-600 hover:underline">{{ __('Full size') }}</a>
+                    <button onclick="closeImgViewer()" class="text-gray-400 hover:text-gray-600 text-sm leading-none ml-1">✕</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 shrink-0 border-b border-gray-100 dark:border-gray-700">
+                <button onclick="zoomImg(-0.25)" class="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 hover:bg-gray-50">−</button>
+                <button onclick="zoomImg(0.25)" class="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 hover:bg-gray-50">+</button>
+                <button onclick="resetImgZoom()" class="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 hover:bg-gray-50">1:1</button>
+                <span id="img-zoom-label" class="text-xs text-gray-400 ml-1">100%</span>
+                <span class="text-xs text-gray-300 ml-auto">{{ __('scroll to zoom · drag to pan') }}</span>
+            </div>
+            <div id="img-pan-area" class="flex-1 overflow-hidden relative cursor-grab" style="background:#f3f4f6;">
+                <img id="img-viewer-img" src="" alt="" style="position:absolute; transform-origin:0 0; cursor:grab; user-select:none;" draggable="false">
+            </div>
+            <div id="img-resize-handle" style="position:absolute; bottom:0; right:0; width:16px; height:16px; cursor:se-resize; z-index:10;">
+                <svg viewBox="0 0 16 16" style="width:16px;height:16px;opacity:0.4;">
+                    <line x1="4" y1="16" x2="16" y2="4" stroke="#6b7280" stroke-width="1.5"/>
+                    <line x1="8" y1="16" x2="16" y2="8" stroke="#6b7280" stroke-width="1.5"/>
+                    <line x1="12" y1="16" x2="16" y2="12" stroke="#6b7280" stroke-width="1.5"/>
+                </svg>
+            </div>
+        </div>
+
+        {{-- RIGHT PANEL: suggestions + georef form + discussion + buttons --}}
+        <div id="right-panel" style="width:320px; flex-shrink:0; z-index:10; display:flex; flex-direction:column; height:100%; overflow:hidden; border-left:1px solid #e5e7eb; position:relative;"
+            class="bg-white dark:bg-gray-900 shadow-2xl">
+
+            {{-- Loading overlay --}}
+            <div id="panel-overlay" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,0.75);z-index:50;align-items:center;justify-content:center;backdrop-filter:blur(1px);">
+                <svg style="width:32px;height:32px;animation:spin 0.8s linear infinite;color:#16a34a;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                    <path style="opacity:0.85" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+            </div>
+            <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+            {{-- Existing suggestions (always shown) --}}
+            <div id="existing-suggestions" style="flex-shrink:0;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column;max-height:40%;min-height:0;">
+                <div class="px-3 pt-3 pb-1" style="flex-shrink:0;">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Existing suggestions') }}</span>
+                </div>
+                <div id="suggestions-list" class="px-3 pb-2 space-y-2 overflow-y-auto" style="flex:1;min-height:0;">
+                    <p id="suggestions-empty" style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __('No suggestions yet for this group.') }}</p>
+                </div>
+            </div>
+
+            {{-- Georef form (takes remaining space) --}}
+            <div class="p-4 overflow-y-auto" style="flex:1;min-height:0;">
+                <p class="text-xs text-gray-400 mb-4 mt-1">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
+                <form id="georef-form" class="space-y-2">
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Latitude') }}</label>
+                            <input type="number" id="lat-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Longitude') }}</label>
+                            <input type="number" id="lng-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Uncertainty') }} <span id="uncertainty-display" class="text-green-600 font-semibold"></span></label>
+                        <input type="number" id="uncertainty-input" min="1" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="1000">
+                        <input type="range" id="uncertainty-slider" min="100" max="500000" step="1000" value="1000" class="w-full mt-1 accent-green-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Remarks') }}</label>
+                        <textarea id="remarks-input" rows="2" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Optional notes...') }}"></textarea>
+                    </div>
+                    @guest
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Your name (optional)') }}</label>
+                        <input type="text" id="anon-name" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Anonymous') }}">
+                    </div>
+                    @endguest
+                </form>
+            </div>
+
+            {{-- Discussion --}}
+            <div class="p-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+                <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Discussion') }}</span>
+                <div id="comments-list" class="mt-1 space-y-1 max-h-20 overflow-y-auto"></div>
+                @auth
+                <div class="mt-2 flex gap-1">
+                    <input type="text" id="comment-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Add a comment...') }}">
+                    <button id="comment-submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200">{{ __('Send') }}</button>
+                </div>
+                @else
+                <p class="mt-2 text-xs text-gray-400 italic">
+                    {{ __('Only authenticated users can join the discussion.') }}
+                    <a href="{{ route('login') }}" class="text-green-600 hover:underline">{{ __('Login') }}</a>
+                    {{ __('or') }}
+                    <a href="{{ route('register') }}" class="text-green-600 hover:underline">{{ __('register') }}</a>.
+                </p>
+                @endauth
+            </div>
+
+            {{-- Action buttons --}}
+            <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0">
+                <button id="skip-btn" class="flex-1 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 rounded-lg py-2 hover:bg-gray-50">{{ __('Skip') }}</button>
+                <button id="submit-btn" class="flex-1 text-sm bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>{{ __('Submit') }}</button>
+            </div>
+        </div>
+
+        {{-- Hidden stubs for dead JS references --}}
+        <input type="text" id="area-search" style="display:none">
+        <button id="area-search-btn" style="display:none"></button>
+        <span id="area-hint" style="display:none"></span>
     </div>
 
     @push('scripts')
@@ -484,8 +505,6 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         window.addEventListener('mouseup', ()=>{ res=false; });
     })();
 
-    // ── Tooltip removed — info already visible inline in occurrence list ──────
-
     // ── Nominatim ─────────────────────────────────────────────────────────────
 function buildLocalityString(g) {
     return [g.verbatim_locality, g.municipality, g.county].filter(Boolean).join(', ');
@@ -535,7 +554,17 @@ function buildLocalityString(g) {
         if (window._suggestionLayers) window._suggestionLayers.forEach(l=>map.removeLayer(l));
         window._suggestionLayers=[];
     }
+function showOverlay() {
+    var o = document.getElementById('panel-overlay');
+    if (o) { o.style.display = 'flex'; }
+}
+function hideOverlay() {
+    var o = document.getElementById('panel-overlay');
+    if (o) { o.style.display = 'none'; }
+}
+
 function clearPanel() {
+    showOverlay();
     if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;}
     if(window._nominatimPolygon){map.removeLayer(window._nominatimPolygon);window._nominatimPolygon=null;}
     clearSuggestionLayers(); closeImgViewer();
@@ -544,6 +573,12 @@ function clearPanel() {
     document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
     document.getElementById('occurrence-loading').classList.remove('hidden');
     document.getElementById('occurrence-info').classList.add('hidden');
+    // Clear stale content so overlay renders over blank, not old data
+    document.getElementById('locality-fields').innerHTML='';
+    document.getElementById('occurrences-list').innerHTML='';
+    document.getElementById('suggestions-list').innerHTML='<p id="suggestions-empty" style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
+    document.getElementById('comments-list').innerHTML='';
+    document.getElementById('nominatim-results').innerHTML='';
 }
 
 function loadNextGroup() {
@@ -554,6 +589,7 @@ function loadNextGroup() {
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>r.json())
     .then(data=>{
+        hideOverlay();
         document.getElementById('occurrence-loading').classList.add('hidden');
         if(data.group){
             addToHistory(data.group);
@@ -565,7 +601,7 @@ function loadNextGroup() {
             document.getElementById('locality-fields').innerHTML='<p style="color:#9ca3af;font-size:11px">'+TXT.noOcc+'</p>';
         }
     })
-    .catch(()=>document.getElementById('occurrence-loading').classList.add('hidden'));
+    .catch(()=>{ hideOverlay(); document.getElementById('occurrence-loading').classList.add('hidden'); });
 }
 
 function loadGroup(groupId) {
@@ -573,6 +609,7 @@ function loadGroup(groupId) {
     fetch(APP_URL+'/georef/group/'+groupId, {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>r.json())
     .then(data=>{
+        hideOverlay();
         document.getElementById('occurrence-loading').classList.add('hidden');
         if(data.group){
             currentGroup=data.group;
@@ -580,7 +617,7 @@ function loadGroup(groupId) {
             updateUrl(data.group.id);
         }
     })
-    .catch(()=>document.getElementById('occurrence-loading').classList.add('hidden'));
+    .catch(()=>{ hideOverlay(); document.getElementById('occurrence-loading').classList.add('hidden'); });
 }
 
 function addToHistory(group) {
@@ -612,7 +649,6 @@ function updateHistoryNav() {
 }
 
     // ── Render group ──────────────────────────────────────────────────────────
-    // Stored so occSelectByStatus can access georef_status per occurrence row
     let _currentOccurrences = [];
 
     function occSelectAll(checked) {
@@ -634,8 +670,10 @@ function updateHistoryNav() {
         if (occurrences.length > 1) ctrl.classList.remove('hidden'); else ctrl.classList.add('hidden');
         const fields=['verbatim_locality','country','state_province','county','municipality','island','water_body'].filter(f=>group[f]);
         document.getElementById('locality-fields').innerHTML=fields.map(f=>
-            '<div style="display:flex;gap:8px"><span style="color:#9ca3af;width:112px;flex-shrink:0;font-size:11px">'+f.replace(/_/g,' ')+'</span>'+
-            '<span style="font-weight:500;font-size:11px">'+group[f]+'</span></div>'
+            '<div style="margin-bottom:5px">'+
+            '<div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;font-weight:500">'+f.replace(/_/g,' ')+'</div>'+
+            '<div style="font-size:12px;font-weight:500;line-height:1.3;word-break:break-word">'+group[f]+'</div>'+
+            '</div>'
         ).join('');
         document.getElementById('nominatim-input').value=buildLocalityString(group);
         document.getElementById('nominatim-results').innerHTML='';
@@ -653,7 +691,6 @@ function updateHistoryNav() {
 
         const clusterColors = ['#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
 
-        // Build map: occurrence_id → cluster color (from system suggestions with exclusions)
         const occClusterColor = {};
         suggestions.forEach(function(s, i) {
             if (s.cluster_occurrence_ids && s.cluster_occurrence_ids.length > 0) {
@@ -668,22 +705,26 @@ function updateHistoryNav() {
             const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
             const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
             const occId='occ-'+o.id, media=(o.media&&o.media.length>0)?o.media[0]:null;
-            // Cluster color dot (shown when this occurrence belongs to a system suggestion cluster)
             const clusterColor = occClusterColor[o.id];
             const clusterDot = clusterColor
                 ? '<span title="Belongs to suggestion cluster" style="flex-shrink:0;display:inline-block;width:7px;height:7px;border-radius:50%;background:'+clusterColor+'"></span>'
                 : '';
-
-            // Badge
             const [badgeColor, badgeLabel] = statusBadge[o.georef_status] || ['#d1d5db','—'];
             const hasCoords = o.gbif_decimal_latitude && o.gbif_decimal_longitude;
             const coordHint = hasCoords
                 ? '<span style="color:#9ca3af;font-size:10px">'+parseFloat(o.gbif_decimal_latitude).toFixed(4)+', '+parseFloat(o.gbif_decimal_longitude).toFixed(4)+'</span>'
                 : '';
             const badge='<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+badgeColor+'20;color:'+badgeColor+';border:1px solid '+badgeColor+'40;white-space:nowrap">'+badgeLabel+'</span>';
-
             var imgBtn='';
-            if(media) imgBtn='<button class="img-btn" style="flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'"><img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.parentElement.style.display=\'none\'"></button>';
+            if(media){
+                var isDirectImg = media.identifier && !media.identifier.includes('manifest') &&
+                    (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(media.identifier) || (media.format && media.format.startsWith('image/')));
+                var btnStyle='flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#f9fafb;';
+                var btnContent = isDirectImg
+                    ? '<img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'📷\';this.parentElement.style.fontSize=\'14px\'">'
+                    : '<span style="font-size:14px" title="{{ __("View specimen image") }}">📷</span>';
+                imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
+            }
             return '<div class="occ-row" id="'+occId+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
                 '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
                 '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">'+
@@ -697,14 +738,12 @@ function updateHistoryNav() {
                 imgBtn+'</div></div>';
         }).join('');
 
-
         document.querySelectorAll('.img-btn').forEach(function(btn){
             btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
         });
 
         clearSuggestionLayers();
         if (suggestions&&suggestions.length>0) {
-            document.getElementById('existing-suggestions').classList.remove('hidden');
             const colors=clusterColors;
             var competing = suggestions.length > 1 && suggestions.some(function(s){ return s.cluster_occurrence_ids && s.cluster_occurrence_ids.length > 0; });
             var sugHtml='';
@@ -721,7 +760,8 @@ function updateHistoryNav() {
                 var pillBase = 'font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid;cursor:pointer;font-weight:500;';
                 var valButtons = IS_AUTH
                     ? (s.is_own
-                        ? '<span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Your submission") }}</span>'
+                        ? '<span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Your submission") }}</span>'+
+                          '<button onclick="deleteSuggestion('+s.id+')" style="font-size:10px;padding:2px 8px;border-radius:999px;border:1px solid #ef4444;color:#ef4444;background:#fff1f2;cursor:pointer;">{{ __("Delete") }}</button>'
                         : '<button onclick="validateSuggestion('+s.id+',\'agree\','+competing+')" style="'+pillBase+'color:#16a34a;border-color:#16a34a;background:#f0fdf4;">'+TXT.agree+'</button>'+
                           '<button onclick="validateSuggestion('+s.id+',\'disagree\','+competing+')" style="'+pillBase+'color:#ef4444;border-color:#ef4444;background:#fff1f2;">'+TXT.disagree+'</button>')
                     : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
@@ -735,11 +775,12 @@ function updateHistoryNav() {
                     '</div></div></div>';
             });
             document.getElementById('suggestions-list').innerHTML=sugHtml;
-        } else { document.getElementById('existing-suggestions').classList.add('hidden'); }
+        } else {
+            document.getElementById('suggestions-list').innerHTML='<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
+        }
 
         renderComments(comments||[]);
 
-// Only move map if there are suggestion layers to show
 if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
     if (!map.getBounds().intersects(bounds)) {
@@ -759,8 +800,6 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
         map.flyTo([lat,lng],12);
     }
     function validateSuggestion(id, vote, hasCompeting) {
-        // When agreeing in a competing-suggestion context, use agreeWith which
-        // auto-disagrees with the other suggestions and signals to advance.
         const url = (vote === 'agree' && hasCompeting)
             ? APP_URL+'/georef/agree-with/'+id
             : APP_URL+'/georef/validate/'+id;
@@ -770,11 +809,9 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
             .then(r=>r.json())
             .then(d => {
                 if (!d.success) return;
-                // Agree always advances; disagree only advances if not competing
                 if (vote === 'agree' || !hasCompeting) {
                     loadNextGroup();
                 } else {
-                    // Disagree in competing context: reload the group to reflect updated votes
                     if (currentGroup) loadGroup(currentGroup.id);
                 }
             });
@@ -796,26 +833,23 @@ document.getElementById('hist-next').addEventListener('click', function(e) {
     if(historyIndex < sessionHistory.length - 1) { historyIndex++; localStorage.setItem('georef_index', historyIndex); loadGroup(sessionHistory[historyIndex].id); updateHistoryNav(); }
 });
 
-// Handle browser back/forward
 window.addEventListener('popstate', function(e) {
     if(e.state && e.state.groupId) loadGroup(e.state.groupId);
 });
 
-// Load from URL on page load — restore history state from localStorage
 updateHistoryNav();
 var urlParams = new URLSearchParams(window.location.search);
 var urlGroupId = urlParams.get('group');
 if(urlGroupId) {
-    // Find if this group is already in history and set index
     var existingIdx = sessionHistory.findIndex(function(g){ return g.id === parseInt(urlGroupId); });
     if(existingIdx !== -1) { historyIndex = existingIdx; updateHistoryNav(); }
     loadGroup(parseInt(urlGroupId));
 } else if(sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
-    // Restore last viewed group from history
     loadGroup(sessionHistory[historyIndex].id);
 } else {
     loadNextGroup();
 }
+
 // ── Focus input ───────────────────────────────────────────────────────────
     window._georefFocus   = '{{ request("focus", "") }}';
     window._georefCountry = '';
@@ -846,13 +880,11 @@ if(urlGroupId) {
         loadNextGroup();
     });
 
-    // Auto-detect country from IP (used as soft default, not shown in UI)
     fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
     .then(r => r.json())
     .then(function(loc) {
         if (loc && loc.country_code) {
             window._georefCountry = loc.country_code;
-            // Keep the hidden select in sync for legacy code paths
             var sel = document.getElementById('country-select');
             if (sel) {
                 for (var i = 0; i < sel.options.length; i++) {
@@ -874,21 +906,25 @@ if(urlGroupId) {
 
     // ── Layout ────────────────────────────────────────────────────────────────
     function applyLayout() {
-        var wrap=document.getElementById('georef-wrap'), panel=document.getElementById('side-panel'), mapDiv=document.getElementById('map');
-        var innerPanel=panel.querySelector('.flex.flex-col.flex-1');
-        if (window.innerWidth<768) {
-            wrap.style.flexDirection='column'; panel.style.width='100%'; panel.style.height='55%';
-            mapDiv.style.height='45%'; mapDiv.style.flex='none';
-            if(innerPanel)innerPanel.style.overflowY='auto';
+        var wrap       = document.getElementById('georef-wrap');
+        var leftPanel  = document.getElementById('left-panel');
+        var rightPanel = document.getElementById('right-panel');
+        var mapDiv     = document.getElementById('map');
+        if (window.innerWidth < 768) {
+            wrap.style.flexDirection = 'column';
+            if (leftPanel)  { leftPanel.style.width='100%';  leftPanel.style.height='auto'; leftPanel.style.maxHeight='30%'; leftPanel.style.borderRight='none'; leftPanel.style.borderBottom='1px solid #e5e7eb'; }
+            if (rightPanel) { rightPanel.style.width='100%'; rightPanel.style.height='45%'; rightPanel.style.borderLeft='none'; rightPanel.style.borderTop='1px solid #e5e7eb'; }
+            mapDiv.style.height='25%'; mapDiv.style.flex='none';
         } else {
-            wrap.style.flexDirection='row'; panel.style.width='380px'; panel.style.height='100%';
+            wrap.style.flexDirection = 'row';
+            if (leftPanel)  { leftPanel.style.width='260px'; leftPanel.style.height='100%'; leftPanel.style.maxHeight=''; leftPanel.style.borderRight='1px solid #e5e7eb'; leftPanel.style.borderBottom=''; }
+            if (rightPanel) { rightPanel.style.width='320px'; rightPanel.style.height='100%'; rightPanel.style.borderLeft='1px solid #e5e7eb'; rightPanel.style.borderTop=''; }
             mapDiv.style.height=''; mapDiv.style.flex='1';
-            if(innerPanel)innerPanel.style.overflowY='hidden';
         }
         map.invalidateSize();
     }
     applyLayout();
-    window.addEventListener('resize',applyLayout);
+    window.addEventListener('resize', applyLayout);
 
 document.getElementById('hist-float-btn').addEventListener('click', function(e) {
     e.stopPropagation();
@@ -917,26 +953,15 @@ document.addEventListener('click', function() {
     if(list) list.style.display = 'none';
 });
 
-function applyAreaSearch() {
-    var q = document.getElementById('area-search').value.trim();
-    if (!q) {
-        currentArea = { type: 'all' };
-        document.getElementById('area-hint').textContent = '{{ __("Showing all areas") }}';
-    } else if (window._detectedLocation && q === [window._detectedLocation.city, window._detectedLocation.region, window._detectedLocation.country].filter(Boolean).join(', ')) {
-        // User pressed Enter with the detected location — filter by country
-        currentArea = { type: 'country', country_code: window._detectedLocation.country_code, label: q };
-        document.getElementById('area-hint').textContent = '{{ __("Filtering by:") }} ' + window._detectedLocation.country;
-    } else {
-        currentArea = { type: 'text', q: q };
-        document.getElementById('area-hint').textContent = '{{ __("Searching for:") }} ' + q;
-    }
-    loadNextGroup();
+function deleteSuggestion(id) {
+    if (!confirm('{{ __("Delete your georeferencing suggestion? This cannot be undone.") }}')) return;
+    fetch(APP_URL+'/georef/suggestion/'+id, {
+        method: 'DELETE',
+        headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
+    }).then(r => r.json()).then(d => {
+        if (d.success && currentGroup) loadGroup(currentGroup.id);
+    });
 }
-
-document.getElementById('area-search-btn').addEventListener('click', applyAreaSearch);
-document.getElementById('area-search').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') applyAreaSearch();
-});
 
 document.getElementById('share-btn').addEventListener('click', function() {
     if(!currentGroup) return;

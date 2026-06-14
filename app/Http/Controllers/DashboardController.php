@@ -8,7 +8,19 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        return view('dashboard');
+        $user = auth()->user();
+
+        $suggestions = $user->suggestions()
+            ->with(['localityGroup'])
+            ->latest()
+            ->paginate(20, ['*'], 'spage');
+
+        $validations = $user->validations()
+            ->with(['suggestion.localityGroup'])
+            ->latest()
+            ->paginate(20, ['*'], 'vpage');
+
+        return view('dashboard', compact('suggestions', 'validations'));
     }
 
     public function updatePreferences(Request $request)

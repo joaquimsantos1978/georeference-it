@@ -26,6 +26,15 @@ class ExploreController extends Controller
             $query->where('country_code', strtoupper($request->country));
         }
 
+        if ($request->filled('dataset_key')) {
+            $groupIds = \Illuminate\Support\Facades\DB::table('occurrences')
+                ->where('dataset_key', $request->dataset_key)
+                ->whereNotNull('locality_group_id')
+                ->distinct()
+                ->pluck('locality_group_id');
+            $query->whereIn('id', $groupIds);
+        }
+
         if ($request->filled('status')) {
             match ($request->status) {
                 'ungeoreferenced' => $query->whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced')),

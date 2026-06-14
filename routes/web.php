@@ -6,6 +6,7 @@ use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DatasetController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [GeorefController::class, 'index'])->name('home');
@@ -14,6 +15,11 @@ Route::get('/about', function () {
     return view('about');
 })->name('about');
 
+Route::get('/api-docs', function () {
+    return view('api-docs');
+})->name('api-docs');
+
+Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets');
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
 
@@ -23,6 +29,8 @@ Route::get('/georef/next', [GeorefController::class, 'next'])->name('georef.next
 Route::post('/georef/submit', [GeorefController::class, 'submit'])->name('georef.submit');
 Route::post('/georef/validate/{suggestion}', [GeorefController::class, 'validate'])->name('georef.validate');
 Route::post('/georef/agree-with/{suggestion}', [GeorefController::class, 'agreeWith'])->name('georef.agree-with');
+Route::delete('/georef/suggestion/{suggestion}', [GeorefController::class, 'destroySuggestion'])->name('georef.suggestion.destroy')->middleware('auth');
+Route::delete('/georef/validation/{validation}', [GeorefController::class, 'revokeValidation'])->name('georef.validation.revoke')->middleware('auth');
 Route::post('/georef/comment', [GeorefController::class, 'comment'])->name('georef.comment')->middleware('auth');
 
 Route::get('/georef/group/{id}', [GeorefController::class, 'group'])->name('georef.group');

@@ -7,7 +7,17 @@
         </div>
 
         {{-- Filters --}}
+        @if(request('dataset_key'))
+        <div class="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-2 text-sm text-green-800 dark:text-green-300">
+            <span>Filtered to dataset <code class="font-mono text-xs">{{ request('dataset_key') }}</code></span>
+            <a href="{{ route('explore') }}" class="ml-auto text-xs text-green-600 hover:underline">Clear filter</a>
+        </div>
+        @endif
+
         <form method="GET" action="{{ route('explore') }}" class="flex flex-wrap gap-2 items-end">
+            @if(request('dataset_key'))
+            <input type="hidden" name="dataset_key" value="{{ request('dataset_key') }}">
+            @endif
             <div class="flex-1 min-w-48">
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Search locality') }}</label>
                 <input type="text" name="q" value="{{ request('q') }}"
@@ -35,7 +45,7 @@
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">{{ __('Search') }}</button>
-                @if(request()->hasAny(['q','country','status']))
+                @if(request()->hasAny(['q','country','status','dataset_key']))
                     <a href="{{ route('explore') }}" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">{{ __('Clear') }}</a>
                 @endif
             </div>
