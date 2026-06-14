@@ -1,12 +1,12 @@
-﻿<x-layouts.app>
-<x-slot name="title">API â€” georeference.it</x-slot>
+<x-layouts.app>
+<x-slot name="title">API — georeference.it</x-slot>
 
 {{-- Hero --}}
 <div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-8 bg-gradient-to-br from-green-700 to-green-900 text-white px-6 py-10">
     <div class="max-w-4xl mx-auto">
         <div class="flex items-center gap-2 mb-3">
             <span class="text-xs font-mono bg-white/20 px-2 py-0.5 rounded">v1</span>
-            <span class="text-xs bg-white/20 px-2 py-0.5 rounded">Public Â· No auth required</span>
+            <span class="text-xs bg-white/20 px-2 py-0.5 rounded">Public · No auth required</span>
             <span class="text-xs bg-white/20 px-2 py-0.5 rounded">60 req/min</span>
         </div>
         <h1 class="text-3xl font-bold mb-2">georeference.it API</h1>
@@ -15,7 +15,7 @@
             <code class="bg-black/30 text-green-200 font-mono text-sm px-4 py-2 rounded-lg">{{ url('/api/v1') }}</code>
             <a href="{{ url('/api/v1/occurrences') }}" target="_blank"
                class="text-xs bg-white/10 hover:bg-white/20 border border-white/20 text-white px-3 py-2 rounded-lg transition">
-                Try it â†’ <span class="font-mono">/occurrences</span>
+                Try it → <span class="font-mono">/occurrences</span>
             </a>
         </div>
     </div>
@@ -52,7 +52,7 @@
                     <span class="text-xs font-bold bg-green-100 text-green-700 rounded px-2 py-0.5 font-mono">GET</span>
                     <code class="text-sm font-mono text-gray-800 dark:text-gray-100">/api/v1/occurrences</code>
                     <a href="{{ url('/api/v1/occurrences') }}?per_page=5" target="_blank"
-                       class="ml-auto text-xs text-green-600 hover:underline">Try â†’</a>
+                       class="ml-auto text-xs text-green-600 hover:underline">Try →</a>
                 </div>
                 <div class="px-5 py-4">
                     <p class="text-sm text-gray-500 mb-4">Paginated list of occurrences. All filters are optional and combinable.</p>
@@ -63,12 +63,12 @@
                             <th class="text-left pb-2 font-medium">Description</th>
                         </tr></thead>
                         <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50 text-xs">
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">country</td><td class="py-2 text-gray-400">ISO 3166-1 Î±-2</td><td class="py-2 text-gray-500">Filter by country code â€” <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PT</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ES</code>, â€¦</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">country</td><td class="py-2 text-gray-400">ISO 3166-1 α-2</td><td class="py-2 text-gray-500">Filter by country code — <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PT</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ES</code>, …</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">dataset_key</td><td class="py-2 text-gray-400">UUID</td><td class="py-2 text-gray-500">Filter by GBIF dataset key</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">status</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500"><code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">validated</code> Â· <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">has_suggestion</code> Â· <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ungeoreferenced</code> Â· <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_georeferenced</code></td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">status</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500"><code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">validated</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">has_suggestion</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ungeoreferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_georeferenced</code></td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">scientific_name</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Partial match on scientific name</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">per_page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Records per page â€” default 100, max 500</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Page number â€” default 1</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">per_page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Records per page — default 100, max 500</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Page number — default 1</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">format</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Set to <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">jsonld</code> for JSON-LD output</td></tr>
                         </tbody>
                     </table>
@@ -84,7 +84,7 @@
                     <span class="text-xs font-bold bg-green-100 text-green-700 rounded px-2 py-0.5 font-mono">GET</span>
                     <code class="text-sm font-mono text-gray-800 dark:text-gray-100">/api/v1/occurrences/{gbif_key}</code>
                     <a href="{{ url('/api/v1/occurrences') }}/3014169604" target="_blank"
-                       class="ml-auto text-xs text-green-600 hover:underline">Try â†’</a>
+                       class="ml-auto text-xs text-green-600 hover:underline">Try →</a>
                 </div>
                 <div class="px-5 py-4">
                     <p class="text-sm text-gray-500">Returns a single occurrence by its GBIF numeric key. Accepts <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">Accept: application/ld+json</code> or <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">?format=jsonld</code>.</p>
@@ -97,7 +97,7 @@
                     <span class="text-xs font-bold bg-green-100 text-green-700 rounded px-2 py-0.5 font-mono">GET</span>
                     <code class="text-sm font-mono text-gray-800 dark:text-gray-100">/api/v1/datasets</code>
                     <a href="{{ url('/api/v1/datasets') }}" target="_blank"
-                       class="ml-auto text-xs text-green-600 hover:underline">Try â†’</a>
+                       class="ml-auto text-xs text-green-600 hover:underline">Try →</a>
                 </div>
                 <div class="px-5 py-4">
                     <p class="text-sm text-gray-500 mb-3">Aggregated statistics per GBIF dataset. Optional filters: <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">country</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">institution_code</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">q</code> (free text on institution/collection). Returns <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">dataset_key</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">institution_code</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">collection_code</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">total</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">georeferenced</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">validated</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">ungeoreferenced</code>.</p>
@@ -109,7 +109,7 @@
         {{-- Response format --}}
         <section id="response">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">Response format</h2>
-            <p class="text-sm text-gray-500 mb-4">Coordinates reflect the best available georeference: community-validated â†’ pending suggestion â†’ original GBIF coordinates.</p>
+            <p class="text-sm text-gray-500 mb-4">Coordinates reflect the best available georeference: community-validated → pending suggestion → original GBIF coordinates.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -189,7 +189,7 @@
                             ['scientificName', 'Full scientific name with authorship', true],
                             ['taxonRank', 'Rank of the taxon (SPECIES, GENUS, etc.)', true],
                             ['kingdom / family', 'Higher taxonomy', true],
-                            ['eventDate', 'Date of collection â€” ISO 8601', true],
+                            ['eventDate', 'Date of collection — ISO 8601', true],
                             ['recordedBy', 'Collector name(s)', true],
                             ['country / countryCode', 'Country name and ISO 3166-1 alpha-2 code', true],
                             ['stateProvince', 'State or province', true],
@@ -199,16 +199,16 @@
                             ['waterBody', 'Water body name when applicable', true],
                             ['verbatimLocality', 'Original locality text from the specimen label', true],
                             ['decimalLatitude / decimalLongitude', 'Best available coordinates', true],
-                            ['geodeticDatum', 'Coordinate reference system â€” WGS84', true],
+                            ['geodeticDatum', 'Coordinate reference system — WGS84', true],
                             ['coordinateUncertaintyInMeters', 'Radius of positional uncertainty in metres', true],
                             ['georeferencedBy', 'Who georeferenced (contributor or system)', true],
-                            ['georeferencedDate', 'Date of georeference â€” ISO 8601', true],
-                            ['georeferenceProtocol', 'Protocol used â€” Zermoglio et al. 2020', true],
+                            ['georeferencedDate', 'Date of georeference — ISO 8601', true],
+                            ['georeferenceProtocol', 'Protocol used — Zermoglio et al. 2020', true],
                             ['georeferenceSources', 'Tools used (georeference.it, OpenStreetMap, etc.)', true],
                             ['georeferenceRemarks', 'Free-text notes added by the georeferencer', true],
                             ['georeferenceVerificationStatus', 'DwC verification status (see below)', true],
-                            ['georef_status', 'Platform internal status â€” omitted from JSON-LD', false],
-                            ['localityGroupID', 'Locality group identifier â€” omitted from JSON-LD', false],
+                            ['georef_status', 'Platform internal status — omitted from JSON-LD', false],
+                            ['localityGroupID', 'Locality group identifier — omitted from JSON-LD', false],
                         ];
                         @endphp
                         @foreach($apiFields as $f)
@@ -248,7 +248,7 @@
                 </div>
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                     <code class="text-xs font-mono text-gray-500">requires georeference</code>
-                    <p class="text-xs text-gray-500 mt-1">No coordinates available â€” specimen needs georeferencing.</p>
+                    <p class="text-xs text-gray-500 mt-1">No coordinates available — specimen needs georeferencing.</p>
                     <span class="inline-block mt-2 text-xs font-mono bg-gray-100 text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">ungeoreferenced</span>
                 </div>
             </div>
@@ -284,7 +284,7 @@ data.forEach(o =>
 );</code></pre>
                 </div>
                 <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Python â€” fetch all pages</p>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Python — fetch all pages</p>
                     <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">import requests
 
 url = "{{ url('/api/v1/occurrences') }}"
@@ -305,7 +305,7 @@ print(f"{len(records)} records")</code></pre>
 
         {{-- Data note --}}
         <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-4 text-sm text-amber-800 dark:text-amber-300">
-            <strong>Data provenance</strong> â€” Records are imported from
+            <strong>Data provenance</strong> — Records are imported from
             <a href="https://www.gbif.org" target="_blank" class="underline">GBIF</a>.
             Community georeferences follow the
             <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="underline">Georeferencing Quick Reference Guide (Zermoglio et al. 2020)</a>.
@@ -316,5 +316,3 @@ print(f"{len(records)} records")</code></pre>
 </div>{{-- /flex --}}
 </div>{{-- /max-w --}}
 </x-layouts.app>
-
-
