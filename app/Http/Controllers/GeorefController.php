@@ -542,6 +542,25 @@ public function revokeValidation(Request $request, GeorefValidation $validation)
     return response()->json(['success' => true]);
 }
 
+public function findByGbifKey(Request $request, string $key): \Illuminate\Http\JsonResponse
+{
+    // Accept full GBIF URLs: extract numeric key
+    if (preg_match('/(\d{6,})/', $key, $m)) {
+        $key = $m[1];
+    }
+
+    $occurrence = \App\Models\Occurrence::where('gbif_occurrence_key', $key)
+        ->whereNotNull('locality_group_id')
+        ->first(['locality_group_id']);
+
+    if (!$occurrence) {
+        return response()->json(['error' => 'Occurrence not found. It may not have been imported yet.'], 404);
+    }
+
+    $group = LocalityGroup::findOrFail($occurrence->locality_group_id);
+    return response()->json($this->groupData($group));
+}
+
 public function sync(Request $request): \Illuminate\Http\JsonResponse
 {
     $country = $request->get('country', 'PT');

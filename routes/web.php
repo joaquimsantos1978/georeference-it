@@ -37,6 +37,7 @@ Route::get('/georef/group/{id}', [GeorefController::class, 'group'])->name('geor
 
 Route::get('/georef/detect-location', [GeorefController::class, 'detectLocation'])->name('georef.detect-location');
 Route::get('/georef/search-locality', [GeorefController::class, 'searchLocality'])->name('georef.search-locality');
+Route::get('/georef/occurrence/{key}', [GeorefController::class, 'findByGbifKey'])->name('georef.occurrence');
 
 Route::post('/georef/sync', [GeorefController::class, 'sync'])->name('georef.sync');
 
