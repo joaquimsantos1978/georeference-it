@@ -430,12 +430,15 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
     private function updateGroupCounters(LocalityGroup $group): void
     {
         $group->update([
-            'occurrence_count' => $group->occurrences()->count(),
-            'pending_count' => $group->occurrences()
+            'occurrence_count'      => $group->occurrences()->count(),
+            'pending_count'         => $group->occurrences()
                 ->whereIn('georef_status', ['has_suggestion', 'conflicted'])
                 ->count(),
-            'validated_count' => $group->occurrences()
+            'validated_count'       => $group->occurrences()
                 ->where('georef_status', 'validated')
+                ->count(),
+            'ungeoreferenced_count' => $group->occurrences()
+                ->where('georef_status', 'ungeoreferenced')
                 ->count(),
         ]);
     }

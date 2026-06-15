@@ -120,20 +120,30 @@ public function next(Request $request)
 
         // Try georef first (preferred outcome for most users), then validate
         if ($isFocusScope) {
-            // Get top 50 unseen matches, pick randomly in PHP (avoids ORDER BY RAND on huge sets)
-            $candidates = LocalityGroup::where(fn($q) => $q
-                    ->where('ungeoreferenced_count', '>', 0)
-                    ->orWhere('pending_count', '>', 0))
+            // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
+            $focusMatch = fn($q) => $q->whereRaw(
+                'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+                [$focus]
+            )->when($country, fn($q2) => $q2->where('country_code', $country));
+
+            $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
-                ->when(!$userId, fn($q) => $q->where('pending_count', 0))
-                ->whereRaw(
-                    'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
-                    [$focus]
-                )
+                ->tap($focusMatch)
                 ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                 ->orderByDesc('occurrence_count')
                 ->limit(50)
                 ->get();
+
+            if ($candidates->isEmpty() && $userId) {
+                $candidates = LocalityGroup::where('pending_count', '>', 0)
+                    ->where('occurrence_count', '<', 10000)
+                    ->tap($focusMatch)
+                    ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
+                    ->orderByDesc('occurrence_count')
+                    ->limit(50)
+                    ->get();
+            }
+
             $group = $candidates->isNotEmpty() ? $candidates->random() : null;
 
             if (!$group) {
@@ -143,11 +153,8 @@ public function next(Request $request)
             }
         } else {
             if ($wantsGeoref) {
-                $georefCandidates = LocalityGroup::where(fn($q) => $q
-                        ->where('ungeoreferenced_count', '>', 0)
-                        ->orWhere('pending_count', '>', 0))
+                $georefCandidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
-                    ->when(!$userId, fn($q) => $q->where('pending_count', 0))
                     ->tap($scope)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->orderByDesc('occurrence_count')
