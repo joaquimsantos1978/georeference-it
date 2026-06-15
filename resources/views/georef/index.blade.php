@@ -14,14 +14,6 @@
                     <button id="focus-clear" title="{{ __('Clear focus') }}" style="display:none;font-size:14px;background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
                     <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
                 </div>
-                {{-- GBIF occurrence lookup --}}
-                <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
-                    <input type="text" id="gbif-input" placeholder="{{ __('GBIF occurrence ID or URL...') }}"
-                        class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
-                    <button id="gbif-go" title="{{ __('Load occurrence') }}" style="font-size:11px;padding:2px 8px;background:#f0fdf4;border:1px solid #16a34a;border-radius:4px;color:#16a34a;cursor:pointer;white-space:nowrap;">GBIF →</button>
-                </div>
-                <p id="gbif-error" style="display:none;font-size:10px;color:#ef4444;margin-top:3px;"></p>
-
                 {{-- hidden country select kept for auto-detect --}}
                 <select id="country-select" style="display:none;" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
     <option value="">{{ __('All countries') }}</option>
@@ -1031,13 +1023,6 @@ function loadByGbifKey(key) {
     .catch(()=>{ document.getElementById('gbif-error').textContent = 'Failed to load occurrence.'; document.getElementById('gbif-error').style.display='block'; });
 }
 
-document.getElementById('gbif-go').addEventListener('click', function() {
-    var val = document.getElementById('gbif-input').value.trim();
-    if (val) loadByGbifKey(val);
-});
-document.getElementById('gbif-input').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { var val = this.value.trim(); if (val) loadByGbifKey(val); }
-});
 
 // ── Focus input ───────────────────────────────────────────────────────────
     window._georefFocus   = '{{ request("focus", "") }}';
