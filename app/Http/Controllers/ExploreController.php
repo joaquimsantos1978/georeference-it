@@ -43,16 +43,6 @@ class ExploreController extends Controller
             };
         }
 
-        $hasFilter = $request->filled('q') || $request->filled('country') || $request->filled('dataset_key') || $request->filled('status');
-
-        if (!$hasFilter) {
-            return view('explore', ['groups' => null, 'countries' => \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
-                return \Illuminate\Support\Facades\DB::table('locality_groups')
-                    ->select('country_code')->whereNotNull('country_code')
-                    ->where('occurrence_count', '>', 0)->distinct()->orderBy('country_code')->pluck('country_code');
-            })]);
-        }
-
         if ($request->filled('q')) {
             $q = $request->q;
             $groups = $query
