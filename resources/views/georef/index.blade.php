@@ -701,7 +701,7 @@ function loadNextGroup() {
     clearPanel();
     var parts = [];
     if (window._georefFocus) parts.push('focus=' + encodeURIComponent(window._georefFocus));
-    if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
+    // Country filter removed — freetext focus covers geographic scope
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>r.json())
     .then(data=>{
@@ -716,8 +716,7 @@ function loadNextGroup() {
             document.getElementById('occurrence-info').classList.remove('hidden');
             let msg;
             if (data.focus_no_results) {
-                const countryNote = window._georefCountry ? ' in ' + window._georefCountry : '';
-                msg = '<p style="color:#ef4444;font-size:11px">No localities found for "' + window._georefFocus + '"' + countryNote + '. Try a different spelling or clear the country filter.</p>';
+                msg = '<p style="color:#ef4444;font-size:11px">No localities found for "' + window._georefFocus + '". Try a different spelling.</p>';
             } else {
                 msg = '<p style="color:#9ca3af;font-size:11px">'+TXT.noOcc+'</p>';
             }
