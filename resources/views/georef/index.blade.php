@@ -1009,25 +1009,44 @@ if(urlGbifKey) {
 } else if(sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
     loadGroup(sessionHistory[historyIndex].id);
 } else {
-    // Wait for detect-location so country is known before first /next call
-    // Timeout of 1.5s so we don't block indefinitely if ip-api is slow
-    var _bootTimer = setTimeout(loadNextGroup, 1500);
-    fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
-        .then(r => r.json())
-        .then(function(loc) {
-            clearTimeout(_bootTimer);
-            if (loc && loc.country_code) {
-                window._georefCountry = loc.country_code;
-                var sel = document.getElementById('country-select');
-                if (sel) {
-                    for (var i = 0; i < sel.options.length; i++) {
-                        if (sel.options[i].value === loc.country_code) { sel.value = loc.country_code; break; }
-                    }
+    function applyLocationAndLoad(countryCode) {
+        if (countryCode) {
+            window._georefCountry = countryCode;
+            var sel = document.getElementById('country-select');
+            if (sel) {
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === countryCode) { sel.value = countryCode; break; }
                 }
             }
-            loadNextGroup();
-        })
-        .catch(function() { clearTimeout(_bootTimer); loadNextGroup(); });
+        }
+        loadNextGroup();
+    }
+
+    // Cache country in localStorage for 24h to avoid calling ip-api on every load
+    var cachedLoc = null;
+    try {
+        var raw = localStorage.getItem('georef_location');
+        if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed.ts && (Date.now() - parsed.ts) < 86400000) cachedLoc = parsed;
+        }
+    } catch(e) {}
+
+    if (cachedLoc) {
+        applyLocationAndLoad(cachedLoc.country_code);
+    } else {
+        var _bootTimer = setTimeout(function() { applyLocationAndLoad(null); }, 1500);
+        fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
+            .then(r => r.json())
+            .then(function(loc) {
+                clearTimeout(_bootTimer);
+                if (loc && loc.country_code) {
+                    try { localStorage.setItem('georef_location', JSON.stringify({country_code: loc.country_code, ts: Date.now()})); } catch(e) {}
+                }
+                applyLocationAndLoad(loc && loc.country_code ? loc.country_code : null);
+            })
+            .catch(function() { clearTimeout(_bootTimer); applyLocationAndLoad(null); });
+    }
 }
 
 function loadByGbifKey(key) {
