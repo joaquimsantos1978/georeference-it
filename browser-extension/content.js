@@ -1,5 +1,5 @@
 (() => {
-  const API = 'https://georeference.it/api/occurrences/';
+  const API = 'https://georeference.it/api/v1/occurrences/';
   const GEOREF_BASE = 'https://georeference.it';
 
   function getGbifKey() {
@@ -108,14 +108,11 @@
 
     if (document.getElementById('georef-panel')) return;
 
-    let data;
-    try {
-      const res = await fetch(API + key, { headers: { Accept: 'application/json' } });
-      if (!res.ok) return;
-      data = await res.json();
-    } catch (e) {
-      return;
-    }
+    // Fetch via background worker to bypass GBIF's Content Security Policy
+    const { data } = await new Promise(resolve =>
+      chrome.runtime.sendMessage({ type: 'fetch_occurrence', key }, resolve)
+    );
+    if (!data) return;
 
     const html = buildPanel(data);
     if (!inject(html)) {
