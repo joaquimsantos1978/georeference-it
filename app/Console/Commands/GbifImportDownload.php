@@ -14,7 +14,8 @@ class GbifImportDownload extends Command
                             {key : The GBIF download key}
                             {--file= : Path to an already-downloaded zip (skips polling and download)}
                             {--skip-staging : Skip LOAD DATA INFILE (re-use staging table already populated)}
-                            {--skip-cleanup : Keep gbif_staging populated after import}';
+                            {--skip-cleanup : Keep gbif_staging populated after import}
+                            {--multimedia-only= : Path to multimedia.txt — skip everything else and only import multimedia}';
 
     protected $description = 'Poll, download, and import a GBIF DWCA download into occurrences';
 
@@ -30,6 +31,16 @@ class GbifImportDownload extends Command
 
         $key     = $this->argument('key');
         $zipPath = $this->option('file');
+
+        // Multimedia-only mode
+        if ($multimediaOnly = $this->option('multimedia-only')) {
+            if (!file_exists($multimediaOnly)) {
+                $this->error("File not found: {$multimediaOnly}");
+                return self::FAILURE;
+            }
+            $this->importMultimedia($multimediaOnly);
+            return self::SUCCESS;
+        }
 
         // Step 1: poll + download
         if (!$this->option('skip-staging')) {
