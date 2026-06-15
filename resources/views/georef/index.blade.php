@@ -513,10 +513,14 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         var lng = parseFloat(document.getElementById('lng-input').value);
         if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
             placeMarker(lat, lng);
+            map.flyTo([lat, lng], map.getZoom() < 8 ? 8 : map.getZoom());
         }
     }
-    document.getElementById('lat-input').addEventListener('change', syncMarkerFromInputs);
-    document.getElementById('lng-input').addEventListener('change', syncMarkerFromInputs);
+    ['lat-input','lng-input'].forEach(function(id) {
+        var el = document.getElementById(id);
+        el.addEventListener('blur', syncMarkerFromInputs);
+        el.addEventListener('keydown', function(e) { if (e.key === 'Enter') syncMarkerFromInputs(); });
+    });
 
     document.getElementById('uncertainty-input').addEventListener('input', function() {
         setUncertainty(parseInt(this.value) || 1000);
