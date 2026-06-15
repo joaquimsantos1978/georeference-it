@@ -17,8 +17,11 @@ class GbifCheckConsistency extends Command
 
     public function handle(GbifService $gbif): int
     {
+        // Groups where at least some occurrences are georeferenced by GBIF
+        // (occurrence_count > ungeoreferenced_count means not all are ungeoreferenced)
         $query = LocalityGroup::query()
-            ->whereHas('occurrences', fn($q) => $q->where('georef_status', 'gbif_georeferenced'));
+            ->whereRaw('occurrence_count > ungeoreferenced_count')
+            ->where('occurrence_count', '>', 0);
 
         if (!$this->option('recheck')) {
             $query->where('consistency_status', 'unchecked');
@@ -28,15 +31,8 @@ class GbifCheckConsistency extends Command
             $query->where('country_code', strtoupper($country));
         }
 
-        $total = $query->count();
-
-        if ($total === 0) {
-            $this->info('No groups to check.');
-            return self::SUCCESS;
-        }
-
         $limit = (int) $this->option('limit');
-        $this->info("Groups to check: {$total}" . ($limit ? " (first {$limit})" : ''));
+        $this->info('Starting consistency check' . ($limit ? " (first {$limit} groups)" : '') . '...');
 
         $processed   = 0;
         $consistent  = 0;
