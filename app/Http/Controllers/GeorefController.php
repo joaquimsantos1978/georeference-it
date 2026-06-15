@@ -117,15 +117,18 @@ public function next(Request $request)
 
         // Try georef first (preferred outcome for most users), then validate
         if ($isFocusScope) {
-            // For focus: avoid whereHas (correlated subquery too slow on large FULLTEXT results)
-            $group = LocalityGroup::where('occurrence_count', '>', 0)
+            // For focus: get top 50 by occurrence_count, pick one randomly in PHP
+            // (avoids ORDER BY RAND() on potentially huge FULLTEXT result sets)
+            $candidates = LocalityGroup::where('occurrence_count', '>', 0)
                 ->whereRaw(
                     'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
                     [$focus]
                 )
                 ->when($country, fn($q) => $q->where('country_code', $country))
                 ->orderByDesc('occurrence_count')
-                ->first();
+                ->limit(50)
+                ->get();
+            $group = $candidates->isNotEmpty() ? $candidates->random() : null;
         } else {
             if ($wantsGeoref) {
                 $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
