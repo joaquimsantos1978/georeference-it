@@ -60,12 +60,14 @@ class ExploreController extends Controller
                 ->withQueryString();
         }
 
-        $countries = LocalityGroup::selectRaw('country_code, COUNT(*) as c')
-            ->where('occurrence_count', '>', 0)
-            ->whereNotNull('country_code')
-            ->groupBy('country_code')
-            ->orderBy('country_code')
-            ->pluck('country_code');
+        $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 3600, function () {
+            return LocalityGroup::selectRaw('country_code, COUNT(*) as c')
+                ->where('occurrence_count', '>', 0)
+                ->whereNotNull('country_code')
+                ->groupBy('country_code')
+                ->orderBy('country_code')
+                ->pluck('country_code');
+        });
 
         return view('explore', compact('groups', 'countries'));
     }

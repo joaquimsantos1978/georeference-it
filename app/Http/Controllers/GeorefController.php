@@ -338,14 +338,15 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
         return response()->json([]);
     }
 
-    $results = LocalityGroup::where(function ($query) use ($q) {
-            $query->where('verbatim_locality', 'like', "%{$q}%")
-                  ->orWhere('municipality',    'like', "%{$q}%")
-                  ->orWhere('county',          'like', "%{$q}%")
-                  ->orWhere('locality_string', 'like', "%{$q}%");
-        })
+    $results = LocalityGroup::whereRaw(
+            'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+            [$q]
+        )
         ->where('occurrence_count', '>', 0)
-        ->orderByRaw('(validated_count + pending_count) DESC')
+        ->orderByRaw(
+            'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
+            [$q]
+        )
         ->limit(8)
         ->get(['id', 'verbatim_locality', 'municipality', 'county',
                'state_province', 'country_code', 'occurrence_count',
