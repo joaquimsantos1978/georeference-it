@@ -13,13 +13,10 @@ class ExploreController extends Controller
 
         if ($request->filled('q')) {
             $q = $request->q;
-            $query->where(function ($qb) use ($q) {
-                $qb->where('verbatim_locality', 'like', "%{$q}%")
-                   ->orWhere('municipality', 'like', "%{$q}%")
-                   ->orWhere('county', 'like', "%{$q}%")
-                   ->orWhere('state_province', 'like', "%{$q}%")
-                   ->orWhere('locality_string', 'like', "%{$q}%");
-            });
+            $query->whereRaw(
+                'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+                ['"' . str_replace('"', '', $q) . '"*']
+            );
         }
 
         if ($request->filled('country')) {
