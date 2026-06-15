@@ -19,7 +19,7 @@ class ExploreController extends Controller
         if ($request->filled('q')) {
             $q = $request->q;
             $query->whereRaw(
-                'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+                'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
                 [$q]
             );
         }
@@ -52,7 +52,7 @@ class ExploreController extends Controller
             $q = $request->q;
             $groups = $query
                 ->orderByRaw(
-                    'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
+                    'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
                     [$q]
                 )
                 ->simplePaginate(50)

@@ -98,7 +98,7 @@ public function next(Request $request)
     $scopes = [];
     if ($focus !== '') {
         $scopes[] = fn($q) => $q->whereRaw(
-            'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+            'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
             [$focus]
         )->when($country, fn($q2) => $q2->where('country_code', $country));
     }
@@ -130,7 +130,7 @@ public function next(Request $request)
         if ($isFocusScope) {
             // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
             $focusMatch = fn($q) => $q->whereRaw(
-                'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+                'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
                 [$focus]
             )->when($country, fn($q2) => $q2->where('country_code', $country));
 
@@ -387,12 +387,12 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
     }
 
     $results = LocalityGroup::whereRaw(
-            'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+            'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
             [$q]
         )
         ->where('occurrence_count', '>', 0)
         ->orderByRaw(
-            'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
+            'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
             [$q]
         )
         ->limit(8)
