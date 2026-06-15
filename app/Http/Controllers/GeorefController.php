@@ -21,6 +21,7 @@ class GeorefController extends Controller
     private function groupData(LocalityGroup $group): array
     {
         $occurrences = Occurrence::where('locality_group_id', $group->id)
+            ->limit(500)
             ->get([
                 'id', 'gbif_occurrence_key', 'catalog_number', 'institution_code',
                 'collection_code', 'scientific_name', 'georef_status', 'media',
@@ -143,6 +144,7 @@ public function next(Request $request)
             if ($wantsGeoref) {
                 // TODO: switch to ungeoreferenced_count > 0 after backfill completes
                 $georefCandidates = LocalityGroup::where('occurrence_count', '>', 0)
+                    ->where('occurrence_count', '<', 10000)
                     ->tap($scope)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->orderByDesc('occurrence_count')
