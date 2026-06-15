@@ -78,7 +78,10 @@ public function next(Request $request)
     $focus         = trim($request->get('focus', ''));
     $country       = strtoupper(trim($request->get('country', ''))) ?: null;
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
-    $exclude       = array_filter(array_map('intval', explode(',', $request->get('exclude', ''))));
+
+    // Session-based exclusion list per focus term (persists across skip calls)
+    $focusKey  = 'georef_seen_' . md5($focus ?: '__no_focus__');
+    $seenIds   = session($focusKey, []);
 
     // Build reusable locality-scope constraints in order of specificity:
     // 1. focus text match, 2. last served state_province (geographic coherence), 3. country, 4. any
@@ -118,22 +121,28 @@ public function next(Request $request)
 
         // Try georef first (preferred outcome for most users), then validate
         if ($isFocusScope) {
-            // For focus: get top 50 by occurrence_count (excluding seen), pick randomly in PHP
+            // Get top 50 unseen matches, pick randomly in PHP (avoids ORDER BY RAND on huge sets)
             $candidates = LocalityGroup::where('occurrence_count', '>', 0)
                 ->whereRaw(
                     'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
                     [$focus]
                 )
-                ->when($exclude, fn($q) => $q->whereNotIn('id', $exclude))
+                ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                 ->orderByDesc('occurrence_count')
                 ->limit(50)
                 ->get();
             $group = $candidates->isNotEmpty() ? $candidates->random() : null;
+
+            if (!$group) {
+                // Focus exhausted — fall through to country/province scopes with a flag
+                session()->forget($focusKey); // reset so user can revisit later
+                continue; // keep iterating remaining scopes
+            }
         } else {
             if ($wantsGeoref) {
                 $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
                     ->tap($scope)
-                    ->when($exclude, fn($q) => $q->whereNotIn('id', $exclude))
+                    ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->inRandomOrder()
                     ->first();
             }
@@ -141,7 +150,7 @@ public function next(Request $request)
             if (!$group && $wantsValidate) {
                 $group = LocalityGroup::where('pending_count', '>', 0)
                     ->tap($scope)
-                    ->when($exclude, fn($q) => $q->whereNotIn('id', $exclude))
+                    ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->whereHas('suggestions', function ($q) use ($userId) {
                         $q->where('status', 'pending')
                           ->where(fn($q2) => $q2->whereNull('user_id')->orWhere('user_id', '!=', $userId))
@@ -153,19 +162,16 @@ public function next(Request $request)
         }
 
         if ($group) break;
-
-        // If focus scope found nothing, don't silently fall through — return empty with a message
-        if ($isFocusScope ?? false) {
-            return response()->json(['group' => null, 'focus_no_results' => true]);
-        }
     }
 
     if (!$group) {
         return response()->json(['group' => null]);
     }
 
-    // Remember county + province for geographic coherence on next call
+    // Remember this group as seen (per focus term) and store geographic coherence
+    $seenIds[] = $group->id;
     session([
+        $focusKey              => $seenIds,
         'georef_last_province' => $group->state_province,
         'georef_last_county'   => $group->county,
     ]);
