@@ -31,8 +31,9 @@ class GbifCreateAutoSuggestions extends Command
         $this->info('Starting auto-suggest (processing in batches)...');
 
         while (true) {
-            // Fetch a batch of groups with no suggestions yet (pending_count=0 as fast pre-filter)
+            // Only groups that have ungeoreferenced occurrences AND no suggestion yet
             $groups = LocalityGroup::where('id', '>', $lastId)
+                ->where('ungeoreferenced_count', '>', 0)
                 ->where('pending_count', 0)
                 ->where('validated_count', 0)
                 ->when($country, fn($q) => $q->where('country_code', $country))
