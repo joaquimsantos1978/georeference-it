@@ -508,6 +508,16 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         });
     }
 
+    function syncMarkerFromInputs() {
+        var lat = parseFloat(document.getElementById('lat-input').value);
+        var lng = parseFloat(document.getElementById('lng-input').value);
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            placeMarker(lat, lng);
+        }
+    }
+    document.getElementById('lat-input').addEventListener('change', syncMarkerFromInputs);
+    document.getElementById('lng-input').addEventListener('change', syncMarkerFromInputs);
+
     document.getElementById('uncertainty-input').addEventListener('input', function() {
         setUncertainty(parseInt(this.value) || 1000);
     });
