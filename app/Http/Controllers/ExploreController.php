@@ -43,11 +43,22 @@ class ExploreController extends Controller
             };
         }
 
-        $groups = $query
-            ->orderByRaw('(pending_count + validated_count) DESC')
-            ->orderByDesc('occurrence_count')
-            ->paginate(50)
-            ->withQueryString();
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $groups = $query
+                ->orderByRaw(
+                    'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
+                    [$q]
+                )
+                ->paginate(50)
+                ->withQueryString();
+        } else {
+            $groups = $query
+                ->orderByRaw('(pending_count + validated_count) DESC')
+                ->orderByDesc('occurrence_count')
+                ->paginate(50)
+                ->withQueryString();
+        }
 
         $countries = LocalityGroup::selectRaw('country_code, COUNT(*) as c')
             ->where('occurrence_count', '>', 0)
