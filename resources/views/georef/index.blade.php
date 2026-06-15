@@ -817,10 +817,24 @@ function updateHistoryNav() {
             if (s.cluster_occurrence_ids && s.cluster_occurrence_ids.length > 0) {
                 const color = clusterColors[i % clusterColors.length];
                 s.cluster_occurrence_ids.forEach(function(oid) {
-                    occClusterColor[oid] = color;
+                    // Only assign if not already set (first suggestion wins per occurrence)
+                    if (!occClusterColor[oid]) occClusterColor[oid] = color;
                 });
             }
         });
+        // Fallback: match occurrences to suggestions by GBIF coordinates
+        if (suggestions.length > 1) {
+            occurrences.forEach(function(o) {
+                if (o.gbif_decimal_latitude && o.gbif_decimal_longitude) {
+                    suggestions.forEach(function(s, i) {
+                        if (Math.abs(o.gbif_decimal_latitude - s.decimal_latitude) < 0.01 &&
+                            Math.abs(o.gbif_decimal_longitude - s.decimal_longitude) < 0.01) {
+                            occClusterColor[o.id] = clusterColors[i % clusterColors.length];
+                        }
+                    });
+                }
+            });
+        }
 
         document.getElementById('occurrences-list').innerHTML=occurrences.map(function(o){
             const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
