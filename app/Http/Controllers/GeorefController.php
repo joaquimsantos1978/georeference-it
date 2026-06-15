@@ -141,13 +141,8 @@ public function next(Request $request)
             }
         } else {
             if ($wantsGeoref) {
-                // Use ungeoreferenced_count index — avoids correlated subquery on 43M occurrences.
-                // Falls back to occurrence_count proxy until backfill completes.
-                $georefCandidates = LocalityGroup::where(
-                        fn($q) => $q->where('ungeoreferenced_count', '>', 0)
-                            ->orWhere(fn($q2) => $q2->where('occurrence_count', '>', 0)
-                                ->where('pending_count', 0)->where('validated_count', 0))
-                    )
+                // TODO: switch to ungeoreferenced_count > 0 after backfill completes
+                $georefCandidates = LocalityGroup::where('occurrence_count', '>', 0)
                     ->tap($scope)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->orderByDesc('occurrence_count')
