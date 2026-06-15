@@ -141,24 +141,30 @@ public function next(Request $request)
             }
         } else {
             if ($wantsGeoref) {
-                $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
+                // Use ungeoreferenced_count index — avoids correlated subquery on 43M occurrences.
+                // Falls back to occurrence_count proxy until backfill completes.
+                $georefCandidates = LocalityGroup::where(
+                        fn($q) => $q->where('ungeoreferenced_count', '>', 0)
+                            ->orWhere(fn($q2) => $q2->where('occurrence_count', '>', 0)
+                                ->where('pending_count', 0)->where('validated_count', 0))
+                    )
                     ->tap($scope)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                    ->inRandomOrder()
-                    ->first();
+                    ->orderByDesc('occurrence_count')
+                    ->limit(50)
+                    ->get();
+                $group = $georefCandidates->isNotEmpty() ? $georefCandidates->random() : null;
             }
 
             if (!$group && $wantsValidate) {
-                $group = LocalityGroup::where('pending_count', '>', 0)
+                // pending_count index is fast; skip per-user suggestion filter to avoid whereHas.
+                $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
                     ->tap($scope)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                    ->whereHas('suggestions', function ($q) use ($userId) {
-                        $q->where('status', 'pending')
-                          ->where(fn($q2) => $q2->whereNull('user_id')->orWhere('user_id', '!=', $userId))
-                          ->whereDoesntHave('validations', fn($q3) => $q3->where('user_id', $userId));
-                    })
-                    ->inRandomOrder()
-                    ->first();
+                    ->orderByDesc('pending_count')
+                    ->limit(50)
+                    ->get();
+                $group = $validateCandidates->isNotEmpty() ? $validateCandidates->random() : null;
             }
         }
 

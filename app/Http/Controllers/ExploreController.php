@@ -9,6 +9,11 @@ class ExploreController extends Controller
 {
     public function index(Request $request)
     {
+        // Block bot crawlers hitting absurd page numbers (causes full-table OFFSET scan)
+        if ((int) $request->get('page', 1) > 5000) {
+            abort(404);
+        }
+
         $query = LocalityGroup::query()->where('occurrence_count', '>', 0);
 
         if ($request->filled('q')) {
@@ -34,10 +39,10 @@ class ExploreController extends Controller
 
         if ($request->filled('status')) {
             match ($request->status) {
-                'ungeoreferenced' => $query->whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced')),
+                'ungeoreferenced' => $query->where('ungeoreferenced_count', '>', 0),
                 'has_suggestion'  => $query->where('pending_count', '>', 0),
                 'validated'       => $query->where('validated_count', '>', 0),
-                'georeferenced'   => $query->whereHas('occurrences', fn($q) => $q->whereIn('georef_status', ['gbif_georeferenced', 'validated', 'gbif_reviewed'])),
+                'georeferenced'   => $query->whereRaw('occurrence_count > ungeoreferenced_count'),
                 'inconsistent'    => $query->where('consistency_status', 'inconsistent'),
                 default           => null,
             };
