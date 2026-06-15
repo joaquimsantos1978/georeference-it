@@ -715,6 +715,7 @@ function loadNextGroup() {
     clearPanel();
     var parts = [];
     if (window._georefFocus) parts.push('focus=' + encodeURIComponent(window._georefFocus));
+    if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
     if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>r.json())
@@ -1008,7 +1009,25 @@ if(urlGbifKey) {
 } else if(sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
     loadGroup(sessionHistory[historyIndex].id);
 } else {
-    loadNextGroup();
+    // Wait for detect-location so country is known before first /next call
+    // Timeout of 1.5s so we don't block indefinitely if ip-api is slow
+    var _bootTimer = setTimeout(loadNextGroup, 1500);
+    fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
+        .then(r => r.json())
+        .then(function(loc) {
+            clearTimeout(_bootTimer);
+            if (loc && loc.country_code) {
+                window._georefCountry = loc.country_code;
+                var sel = document.getElementById('country-select');
+                if (sel) {
+                    for (var i = 0; i < sel.options.length; i++) {
+                        if (sel.options[i].value === loc.country_code) { sel.value = loc.country_code; break; }
+                    }
+                }
+            }
+            loadNextGroup();
+        })
+        .catch(function() { clearTimeout(_bootTimer); loadNextGroup(); });
 }
 
 function loadByGbifKey(key) {
@@ -1063,19 +1082,6 @@ function loadByGbifKey(key) {
         loadNextGroup();
     });
 
-    fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
-    .then(r => r.json())
-    .then(function(loc) {
-        if (loc && loc.country_code) {
-            window._georefCountry = loc.country_code;
-            var sel = document.getElementById('country-select');
-            if (sel) {
-                for (var i = 0; i < sel.options.length; i++) {
-                    if (sel.options[i].value === loc.country_code) { sel.value = loc.country_code; break; }
-                }
-            }
-        }
-    });
 
         var commentSubmit=document.getElementById('comment-submit');
     if(commentSubmit){
