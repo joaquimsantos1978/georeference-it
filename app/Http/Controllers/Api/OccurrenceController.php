@@ -148,6 +148,17 @@ class OccurrenceController extends Controller
         return array_merge($node, array_filter($record, fn($v) => $v !== null));
     }
 
+    private function divergesFromGbif(Occurrence $o, array $georef): bool
+    {
+        if ($o->gbif_decimal_latitude === null) return false;
+        if ($georef['lat'] === null) return false;
+        if ($georef['sources'] === 'GBIF') return false;
+
+        $latDiff = abs((float) $georef['lat'] - (float) $o->gbif_decimal_latitude);
+        $lngDiff = abs((float) $georef['lng'] - (float) $o->gbif_decimal_longitude);
+        return $latDiff > 0.0001 || $lngDiff > 0.0001;
+    }
+
     private function format(Occurrence $o): array
     {
         $georef = $this->resolveGeoref($o);
@@ -188,6 +199,10 @@ class OccurrenceController extends Controller
             // Non-DwC platform metadata (omitted from JSON-LD nodes)
             'georef_status'                  => $o->georef_status,
             'localityGroupID'                => $o->locality_group_id,
+            'georef_url'                     => $o->locality_group_id
+                ? rtrim(config('app.url'), '/') . '/georef?group=' . $o->locality_group_id
+                : null,
+            'diverges_from_gbif'             => $this->divergesFromGbif($o, $georef),
         ];
     }
 

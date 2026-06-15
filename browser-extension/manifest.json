@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "georeference.it",
+  "version": "1.0.0",
+  "description": "Shows georeference.it data on GBIF occurrence pages.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.gbif.org/*",
+    "https://georeference.it/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.gbif.org/occurrence/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "extension@georeference.it",
+      "strict_min_version": "109.0"
+    }
+  }
+}
