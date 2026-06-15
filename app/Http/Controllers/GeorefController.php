@@ -121,7 +121,6 @@ public function next(Request $request)
         // Try georef first (preferred outcome for most users), then validate
         if ($isFocusScope) {
             // Get top 50 unseen matches, pick randomly in PHP (avoids ORDER BY RAND on huge sets)
-            // TODO: restore strict work filter (pending/ungeoreferenced/inconsistent) after backfill
             $candidates = LocalityGroup::where('occurrence_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
                 ->when(!$userId, fn($q) => $q->where('pending_count', 0))
@@ -133,6 +132,15 @@ public function next(Request $request)
                 ->orderByDesc('occurrence_count')
                 ->limit(50)
                 ->get();
+            // Filter to only groups that actually have ungeoreferenced occurrences (one batch query)
+            if ($candidates->isNotEmpty()) {
+                $withWork = \Illuminate\Support\Facades\DB::table('occurrences')
+                    ->whereIn('locality_group_id', $candidates->pluck('id'))
+                    ->where('georef_status', 'ungeoreferenced')
+                    ->distinct()->pluck('locality_group_id')->flip();
+                $candidates = $candidates->filter(fn($g) => isset($withWork[$g->id])
+                    || ($userId && $g->pending_count > 0));
+            }
             $group = $candidates->isNotEmpty() ? $candidates->random() : null;
 
             if (!$group) {
@@ -142,7 +150,6 @@ public function next(Request $request)
             }
         } else {
             if ($wantsGeoref) {
-                // TODO: switch to ungeoreferenced_count > 0 after backfill completes
                 $georefCandidates = LocalityGroup::where('occurrence_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
                     ->when(!$userId, fn($q) => $q->where('pending_count', 0))
@@ -151,6 +158,13 @@ public function next(Request $request)
                     ->orderByDesc('occurrence_count')
                     ->limit(50)
                     ->get();
+                if ($georefCandidates->isNotEmpty()) {
+                    $withWork = \Illuminate\Support\Facades\DB::table('occurrences')
+                        ->whereIn('locality_group_id', $georefCandidates->pluck('id'))
+                        ->where('georef_status', 'ungeoreferenced')
+                        ->distinct()->pluck('locality_group_id')->flip();
+                    $georefCandidates = $georefCandidates->filter(fn($g) => isset($withWork[$g->id]));
+                }
                 $group = $georefCandidates->isNotEmpty() ? $georefCandidates->random() : null;
             }
 

@@ -721,10 +721,6 @@ function loadNextGroup() {
         hideOverlay();
         document.getElementById('occurrence-loading').classList.add('hidden');
         if(data.group){
-            // Auto-skip groups with no work: no ungeoreferenced occurrences and no pending suggestions
-            var hasUngeoref = data.occurrences && data.occurrences.some(function(o){ return o.georef_status === 'ungeoreferenced'; });
-            var hasSuggestions = data.suggestions && data.suggestions.length > 0;
-            if(!hasUngeoref && !hasSuggestions){ loadNextGroup(); return; }
             addToHistory(data.group);
             currentGroup=data.group;
             renderGroup(data.group,data.occurrences,data.suggestions,data.comments);
