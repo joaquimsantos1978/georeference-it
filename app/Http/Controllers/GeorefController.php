@@ -121,10 +121,9 @@ public function next(Request $request)
         // Try georef first (preferred outcome for most users), then validate
         if ($isFocusScope) {
             // Get top 50 unseen matches, pick randomly in PHP (avoids ORDER BY RAND on huge sets)
+            // TODO: restore strict work filter (pending/ungeoreferenced/inconsistent) after backfill
             $candidates = LocalityGroup::where('occurrence_count', '>', 0)
-                ->where(fn($q) => $q->where('pending_count', '>', 0)
-                    ->orWhere('ungeoreferenced_count', '>', 0)
-                    ->orWhere('consistency_status', 'inconsistent'))
+                ->where('occurrence_count', '<', 10000)
                 ->whereRaw(
                     'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
                     [$focus]
