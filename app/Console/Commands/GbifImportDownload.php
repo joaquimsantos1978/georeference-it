@@ -485,8 +485,25 @@ class GbifImportDownload extends Command
             return;
         }
 
-        // Group media items by gbifID, keep only StillImage entries
-        $byOccurrence = [];
+        // Stream multimedia.txt line by line — file can be 20GB+, never load into memory
+        $chunk       = [];
+        $processed   = 0;
+        $currentId   = null;
+        $currentItems = [];
+
+        $flushCurrent = function () use (&$chunk, &$currentId, &$currentItems, &$processed) {
+            if ($currentId && $currentItems) {
+                $chunk[$currentId] = $currentItems;
+                $processed++;
+                if (count($chunk) >= 500) {
+                    $this->updateMediaChunk($chunk);
+                    $chunk = [];
+                }
+            }
+            $currentId    = null;
+            $currentItems = [];
+        };
+
         while (($row = fgetcsv($fh, 0, "\t")) !== false) {
             $gbifId = trim($row[$idxGbifId] ?? '');
             $type   = trim($row[$idxType] ?? '');
@@ -496,37 +513,27 @@ class GbifImportDownload extends Command
             $identifier = trim($row[$idxIdentifier] ?? '');
             if (!$identifier) continue;
 
-            $byOccurrence[$gbifId][] = array_filter([
+            if ($gbifId !== $currentId) {
+                $flushCurrent();
+                $currentId = $gbifId;
+            }
+            $currentItems[] = array_filter([
                 'type'       => $type ?: 'StillImage',
                 'format'     => trim($row[$idxFormat] ?? ''),
                 'identifier' => $identifier,
                 'title'      => trim($row[$idxTitle] ?? ''),
                 'license'    => trim($row[$idxLicense] ?? ''),
             ]);
+
+            if ($processed % 10000 === 0 && $processed > 0) {
+                $this->line("  {$processed} processed...");
+            }
         }
+        $flushCurrent();
+        if ($chunk) $this->updateMediaChunk($chunk);
         fclose($fh);
 
-        $this->info('  Found media for ' . count($byOccurrence) . ' occurrences. Updating...');
-
-        $bar = $this->output->createProgressBar(count($byOccurrence));
-        $bar->start();
-
-        $chunk = [];
-        foreach ($byOccurrence as $gbifId => $items) {
-            $chunk[$gbifId] = $items;
-            if (count($chunk) >= 500) {
-                $this->updateMediaChunk($chunk);
-                $chunk = [];
-            }
-            $bar->advance();
-        }
-        if ($chunk) {
-            $this->updateMediaChunk($chunk);
-        }
-
-        $bar->finish();
-        $this->newLine();
-        $this->info('  Multimedia import done.');
+        $this->info("  Multimedia import done. {$processed} occurrences updated.");
     }
 
     private function updateMediaChunk(array $chunk): void
