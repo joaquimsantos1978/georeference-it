@@ -118,9 +118,12 @@ public function next(Request $request)
         // Try georef first (preferred outcome for most users), then validate
         if ($isFocusScope) {
             // For focus: avoid whereHas (correlated subquery too slow on large FULLTEXT results)
-            // Just find any locality matching the text with work available
             $group = LocalityGroup::where('occurrence_count', '>', 0)
-                ->tap($scope)
+                ->whereRaw(
+                    'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+                    [$focus]
+                )
+                ->when($country, fn($q) => $q->where('country_code', $country))
                 ->orderByDesc('occurrence_count')
                 ->first();
         } else {
