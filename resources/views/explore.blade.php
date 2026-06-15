@@ -52,7 +52,7 @@
             </div>
         </form>
 
-        <p class="text-xs text-gray-400">{{ number_format($groups->total()) }} {{ __('locality groups') }}</p>
+        <p class="text-xs text-gray-400">{{ number_format($groups->count()) }}{{ $groups->hasMorePages() ? '+' : '' }} {{ __('locality groups') }}</p>
 
         {{-- Table --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
