@@ -701,7 +701,8 @@ function loadNextGroup() {
     clearPanel();
     var parts = [];
     if (window._georefFocus) parts.push('focus=' + encodeURIComponent(window._georefFocus));
-    // Country filter removed — freetext focus covers geographic scope
+    var seenIds = sessionHistory.map(function(g){ return g.id; }).slice(-50);
+    if (seenIds.length) parts.push('exclude=' + seenIds.join(','));
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>r.json())
     .then(data=>{

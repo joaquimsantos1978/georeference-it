@@ -78,6 +78,7 @@ public function next(Request $request)
     $focus         = trim($request->get('focus', ''));
     $country       = strtoupper(trim($request->get('country', ''))) ?: null;
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
+    $exclude       = array_filter(array_map('intval', explode(',', $request->get('exclude', ''))));
 
     // Build reusable locality-scope constraints in order of specificity:
     // 1. focus text match, 2. last served state_province (geographic coherence), 3. country, 4. any
@@ -117,14 +118,13 @@ public function next(Request $request)
 
         // Try georef first (preferred outcome for most users), then validate
         if ($isFocusScope) {
-            // For focus: get top 50 by occurrence_count, pick one randomly in PHP
-            // (avoids ORDER BY RAND() on potentially huge FULLTEXT result sets)
+            // For focus: get top 50 by occurrence_count (excluding seen), pick randomly in PHP
             $candidates = LocalityGroup::where('occurrence_count', '>', 0)
                 ->whereRaw(
                     'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
                     [$focus]
                 )
-                ->when($country, fn($q) => $q->where('country_code', $country))
+                ->when($exclude, fn($q) => $q->whereNotIn('id', $exclude))
                 ->orderByDesc('occurrence_count')
                 ->limit(50)
                 ->get();
@@ -133,6 +133,7 @@ public function next(Request $request)
             if ($wantsGeoref) {
                 $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
                     ->tap($scope)
+                    ->when($exclude, fn($q) => $q->whereNotIn('id', $exclude))
                     ->inRandomOrder()
                     ->first();
             }
@@ -140,6 +141,7 @@ public function next(Request $request)
             if (!$group && $wantsValidate) {
                 $group = LocalityGroup::where('pending_count', '>', 0)
                     ->tap($scope)
+                    ->when($exclude, fn($q) => $q->whereNotIn('id', $exclude))
                     ->whereHas('suggestions', function ($q) use ($userId) {
                         $q->where('status', 'pending')
                           ->where(fn($q2) => $q2->whereNull('user_id')->orWhere('user_id', '!=', $userId))
