@@ -116,23 +116,26 @@ public function next(Request $request)
         $wantsGeoref   = $isFocusScope || in_array($preferredTask, ['georef', 'both']);
 
         // Try georef first (preferred outcome for most users), then validate
+        // For focus scope, skip ORDER BY RAND() — too slow on large FULLTEXT results
         if ($wantsGeoref) {
-            $group = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
-                ->tap($scope)
-                ->inRandomOrder()
-                ->first();
+            $q = LocalityGroup::whereHas('occurrences', fn($q) => $q->where('georef_status', 'ungeoreferenced'))
+                ->tap($scope);
+            $group = $isFocusScope
+                ? $q->orderByDesc('occurrence_count')->first()
+                : $q->inRandomOrder()->first();
         }
 
         if (!$group && $wantsValidate) {
-            $group = LocalityGroup::where('pending_count', '>', 0)
+            $q = LocalityGroup::where('pending_count', '>', 0)
                 ->tap($scope)
                 ->whereHas('suggestions', function ($q) use ($userId) {
                     $q->where('status', 'pending')
                       ->where(fn($q2) => $q2->whereNull('user_id')->orWhere('user_id', '!=', $userId))
                       ->whereDoesntHave('validations', fn($q3) => $q3->where('user_id', $userId));
-                })
-                ->inRandomOrder()
-                ->first();
+                });
+            $group = $isFocusScope
+                ? $q->orderByDesc('occurrence_count')->first()
+                : $q->inRandomOrder()->first();
         }
 
         if ($group) break;
