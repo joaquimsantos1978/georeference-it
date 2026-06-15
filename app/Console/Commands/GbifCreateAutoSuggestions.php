@@ -22,39 +22,40 @@ class GbifCreateAutoSuggestions extends Command
         $limit   = (int) $this->option('limit');
         $batch   = (int) $this->option('batch');
 
-        // Get eligible group IDs via JOIN on occurrences table (avoids correlated subqueries on 43M groups)
-        // Logic: groups that have at least one gbif_georeferenced occurrence AND no existing suggestion
-        $idQuery = DB::table('occurrences as o')
-            ->select('o.locality_group_id')
-            ->leftJoin('georef_suggestions as gs', 'gs.locality_group_id', '=', 'o.locality_group_id')
-            ->where('o.georef_status', 'gbif_georeferenced')
-            ->whereNotNull('o.locality_group_id')
-            ->whereNull('gs.id')
-            ->when($country, fn($q) => $q->join('locality_groups as lg', 'lg.id', '=', 'o.locality_group_id')
-                ->where('lg.country_code', $country))
-            ->distinct();
-
-        $total = (clone $idQuery)->count('o.locality_group_id');
-
-        if ($total === 0) {
-            $this->info('No eligible groups found.');
-            return self::SUCCESS;
-        }
-
-        $this->info("Eligible groups: {$total}" . ($limit ? " (processing first {$limit})" : ''));
-
+        // Process using cursor over locality_groups, skipping those with suggestions
+        // Filter by pending_count=0 (fast index scan) then check occurrences only for candidates
         $processed = 0;
         $created   = 0;
-        $offset    = 0;
+        $lastId    = 0;
+
+        $this->info('Starting auto-suggest (processing in batches)...');
 
         while (true) {
-            $ids = (clone $idQuery)->offset($offset)->limit($batch)->pluck('o.locality_group_id');
+            // Fetch a batch of groups with no suggestions yet (pending_count=0 as fast pre-filter)
+            $groups = LocalityGroup::where('id', '>', $lastId)
+                ->where('pending_count', 0)
+                ->where('validated_count', 0)
+                ->when($country, fn($q) => $q->where('country_code', $country))
+                ->orderBy('id')
+                ->limit($batch)
+                ->get();
 
-            if ($ids->isEmpty()) break;
+            if ($groups->isEmpty()) break;
 
-            $groups = LocalityGroup::whereIn('id', $ids)->get();
+            $lastId = $groups->last()->id;
+
+            // Get group IDs that have gbif_georeferenced occurrences (one JOIN per batch, not per row)
+            $eligibleIds = DB::table('occurrences')
+                ->select('locality_group_id')
+                ->whereIn('locality_group_id', $groups->pluck('id'))
+                ->where('georef_status', 'gbif_georeferenced')
+                ->distinct()
+                ->pluck('locality_group_id')
+                ->flip();
 
             foreach ($groups as $group) {
+                if (!isset($eligibleIds[$group->id])) continue;
+
                 $before = $group->suggestions()->count();
                 $gbif->createAutoSuggestions($group);
                 $after  = $group->fresh()->suggestions()->count();
@@ -63,7 +64,7 @@ class GbifCreateAutoSuggestions extends Command
                 $processed++;
 
                 if ($processed % 500 === 0) {
-                    $this->line("  {$processed} processed, {$created} with new suggestions...");
+                    $this->line("  {$processed} processed, {$created} with new suggestions... (last id: {$lastId})");
                 }
 
                 if ($limit > 0 && $processed >= $limit) {
@@ -71,8 +72,6 @@ class GbifCreateAutoSuggestions extends Command
                     return self::SUCCESS;
                 }
             }
-
-            $offset += $batch;
         }
 
         $this->info("Done. Processed {$processed} groups, created suggestions for {$created}.");
