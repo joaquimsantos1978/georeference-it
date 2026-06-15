@@ -52,6 +52,13 @@
             </div>
         </form>
 
+        @if($groups === null)
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-16 text-center text-gray-400">
+            <p class="text-base mb-1">{{ __('Search or select a country to browse localities.') }}</p>
+            <p class="text-xs">{{ __('The database contains over 43 million locality groups from around the world.') }}</p>
+        </div>
+        @else
+
         <p class="text-xs text-gray-400">{{ number_format($groups->total()) }} {{ __('locality groups') }}</p>
 
         {{-- Table --}}
@@ -115,5 +122,6 @@
         </div>
 
         {{ $groups->links() }}
+        @endif
     </div>
 </x-layouts.app>
