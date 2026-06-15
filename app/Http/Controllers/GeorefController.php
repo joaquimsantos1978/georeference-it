@@ -82,6 +82,14 @@ public function next(Request $request)
     $focusKey  = 'georef_seen_' . md5($focus ?: '__no_focus__');
     $seenIds   = session($focusKey, []);
 
+    // Exclude the group the user just acted on (may have been loaded directly, not via /next)
+    if ($excludeId = (int) $request->get('exclude')) {
+        if (!in_array($excludeId, $seenIds)) {
+            $seenIds[] = $excludeId;
+            session([$focusKey => $seenIds]);
+        }
+    }
+
     // Build reusable locality-scope constraints in order of specificity:
     // 1. focus text match, 2. last served state_province (geographic coherence), 3. country, 4. any
     $lastProvince = session('georef_last_province');

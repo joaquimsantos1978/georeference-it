@@ -715,6 +715,7 @@ function loadNextGroup() {
     clearPanel();
     var parts = [];
     if (window._georefFocus) parts.push('focus=' + encodeURIComponent(window._georefFocus));
+    if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>r.json())
     .then(data=>{
