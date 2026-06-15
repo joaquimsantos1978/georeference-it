@@ -242,7 +242,7 @@ public function next(Request $request)
             ->whereIn('georef_status', ['ungeoreferenced'])
             ->update(['georef_status' => 'has_suggestion']);
 
-        $group->increment('pending_count');
+        $group->recalculateCounters();
 
         if (auth()->check()) {
             $this->applyVote($suggestion, auth()->user(), 'agree');
@@ -449,7 +449,7 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
             ->where('georef_status', 'has_suggestion')
             ->update(['georef_status' => 'ungeoreferenced']);
 
-        $suggestion->localityGroup->update(['pending_count' => 0]);
+        $suggestion->localityGroup->recalculateCounters();
     }
 
     private function validateSuggestion(GeorefSuggestion $suggestion): void
@@ -474,8 +474,7 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
             $suggestion->localityGroup->update(['consistency_status' => 'resolved']);
         }
 
-        $suggestion->localityGroup->decrement('pending_count');
-        $suggestion->localityGroup->increment('validated_count');
+        $suggestion->localityGroup->recalculateCounters();
 
         if ($suggestion->user_id) {
             $submitter = $suggestion->user;
