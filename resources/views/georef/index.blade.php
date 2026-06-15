@@ -967,10 +967,18 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     }
     document.getElementById('submit-btn').addEventListener('click',function(){
         if(!currentGroup)return;
+        var btn=this;
+        btn.disabled=true;
+        btn.innerHTML='<svg class="animate-spin inline w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>{{ __("Submitting...") }}';
         var excl=Array.from(document.querySelectorAll('.occurrence-checkbox:not(:checked)')).map(function(c){return c.value;});
         fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
             body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl})})
-        .then(r=>r.json()).then(d=>{if(d.success)loadNextGroup();});
+        .then(r=>r.json()).then(d=>{
+            btn.innerHTML='{{ __("Submit") }}';
+            if(d.success)loadNextGroup();
+            else btn.disabled=false;
+        })
+        .catch(function(){ btn.innerHTML='{{ __("Submit") }}'; btn.disabled=false; });
     });
 document.getElementById('skip-btn').addEventListener('click', loadNextGroup);
 document.getElementById('hist-prev').addEventListener('click', function(e) {
