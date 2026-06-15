@@ -1,133 +1,104 @@
 (() => {
-  const API = 'https://georeference.it/api/v1/occurrences/';
-  const GEOREF_BASE = 'https://georeference.it';
-
   function getGbifKey() {
     const m = location.pathname.match(/\/occurrence\/(\d+)/);
     return m ? m[1] : null;
   }
 
-  function statusLabel(status) {
+  function statusConfig(status) {
     return {
-      'ungeoreferenced':  { text: 'Needs georeferencing', color: '#dc2626', bg: '#fef2f2' },
-      'has_suggestion':   { text: 'Has suggestion (pending validation)', color: '#d97706', bg: '#fffbeb' },
-      'conflicted':       { text: 'Conflicted suggestions', color: '#7c3aed', bg: '#f5f3ff' },
-      'validated':        { text: 'Validated', color: '#16a34a', bg: '#f0fdf4' },
-      'gbif_georeferenced':{ text: 'Georeferenced by GBIF', color: '#2563eb', bg: '#eff6ff' },
-      'gbif_reviewed':    { text: 'GBIF georeference reviewed', color: '#16a34a', bg: '#f0fdf4' },
-    }[status] || { text: status, color: '#6b7280', bg: '#f9fafb' };
+      'ungeoreferenced':   { pill: 'Needs georeferencing', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+      'has_suggestion':    { pill: 'Suggestion pending',   color: '#d97706', bg: '#fffbeb', border: '#fcd34d' },
+      'conflicted':        { pill: 'Conflicted',           color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
+      'validated':         { pill: 'Validated ✓',          color: '#166534', bg: '#f0fdf4', border: '#86efac' },
+      'gbif_georeferenced':{ pill: 'GBIF georef',          color: '#1d4ed8', bg: '#eff6ff', border: '#93c5fd' },
+      'gbif_reviewed':     { pill: 'Reviewed ✓',           color: '#166534', bg: '#f0fdf4', border: '#86efac' },
+    }[status] || { pill: status, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
   }
 
-  function coordStr(lat, lng, unc) {
-    if (lat == null) return '—';
-    let s = `${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}`;
-    if (unc) s += ` ±${unc}m`;
-    return s;
-  }
-
-  function buildPanel(data) {
-    const status = statusLabel(data.georef_status);
-    const hasGeorefCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
-    const hasGbifCoords   = data.decimalLatitude != null && data.georeferenceSources === 'GBIF'
-                         || data.georef_status === 'gbif_georeferenced';
-
-    let coordsHtml = '';
-    if (hasGeorefCoords) {
-      coordsHtml = `
-        <div style="margin-top:8px;font-size:12px">
-          <div style="color:#6b7280;margin-bottom:2px">Suggested coordinates</div>
-          <div style="font-family:monospace;font-size:11px">${coordStr(data.decimalLatitude, data.decimalLongitude, data.coordinateUncertaintyInMeters)}</div>
-          ${data.georeferencedBy ? `<div style="color:#9ca3af;font-size:10px;margin-top:2px">by ${data.georeferencedBy}</div>` : ''}
-        </div>`;
-      if (data.diverges_from_gbif) {
-        coordsHtml += `
-          <div style="margin-top:6px;padding:6px 8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;font-size:11px;color:#c2410c">
-            ⚠ Differs from GBIF coordinates
-          </div>`;
-      }
-    }
-
-    const actionLabel = data.georef_status === 'ungeoreferenced' ? 'Georeference this specimen' : 'View / suggest correction';
+  function buildBadge(data) {
+    const s = statusConfig(data.georef_status);
+    const actionLabel = data.georef_status === 'ungeoreferenced' ? 'Georeference →' : 'View on georeference.it →';
+    const showCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
+    const divergeWarn = data.diverges_from_gbif
+      ? `<div style="margin-top:6px;font-size:10px;color:#c2410c;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:4px 6px">⚠ Differs from GBIF coordinates</div>`
+      : '';
 
     return `
-      <div id="georef-panel" style="
-        margin: 16px 0;
-        border: 1px solid #d1fae5;
-        border-radius: 8px;
-        background: #fff;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      <div id="georef-badge" style="
+        position:fixed;bottom:24px;right:24px;z-index:2147483647;
+        width:220px;
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        border-radius:10px;overflow:hidden;
+        box-shadow:0 4px 16px rgba(0,0,0,0.18);
+        border:1px solid #d1fae5;
       ">
-        <div style="background:#166534;padding:8px 12px;display:flex;align-items:center;gap:8px">
-          <span style="color:#fff;font-weight:600;font-size:13px">georeference.it</span>
+        <div style="background:#166534;padding:7px 10px;display:flex;align-items:center;justify-content:space-between">
+          <span style="color:#fff;font-weight:700;font-size:12px;letter-spacing:.3px">georeference.it</span>
+          <button onclick="document.getElementById('georef-badge').style.display='none'"
+            style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;padding:0;opacity:.7">✕</button>
         </div>
-        <div style="padding:12px">
+        <div style="background:#fff;padding:10px">
           <span style="
-            display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500;
-            color:${status.color};background:${status.bg};border:1px solid ${status.color}40;
-          ">${status.text}</span>
-          ${coordsHtml}
-          ${data.georef_url ? `
-          <div style="margin-top:10px">
-            <a href="${data.georef_url}" target="_blank" style="
-              display:inline-block;padding:5px 12px;background:#166534;color:#fff;
-              border-radius:6px;font-size:12px;font-weight:500;text-decoration:none;
-            ">${actionLabel} →</a>
+            display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;
+            color:${s.color};background:${s.bg};border:1px solid ${s.border};
+          ">${s.pill}</span>
+          ${showCoords ? `
+          <div style="margin-top:7px;font-size:10px;color:#6b7280">Suggested coordinates</div>
+          <div style="font-family:monospace;font-size:10px;color:#111;margin-top:1px">
+            ${parseFloat(data.decimalLatitude).toFixed(5)}, ${parseFloat(data.decimalLongitude).toFixed(5)}
+            ${data.coordinateUncertaintyInMeters ? ` ±${data.coordinateUncertaintyInMeters}m` : ''}
           </div>` : ''}
+          ${divergeWarn}
+          ${data.georef_url ? `
+          <a href="${data.georef_url}" target="_blank" style="
+            display:block;margin-top:9px;text-align:center;
+            padding:5px 0;background:#166534;color:#fff;
+            border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;
+          ">${actionLabel}</a>` : ''}
         </div>
       </div>`;
   }
 
-  function inject(html) {
-    // Try to insert after the map/coordinates section on the GBIF page
-    const targets = [
-      '.map-container',
-      '[data-testid="occurrence-section-location"]',
-      '.occurrence-detail-header',
-      'article',
-    ];
-    for (const sel of targets) {
-      const el = document.querySelector(sel);
-      if (el) {
-        const div = document.createElement('div');
-        div.innerHTML = html;
-        el.parentNode.insertBefore(div.firstElementChild, el.nextSibling);
-        return true;
-      }
-    }
-    return false;
-  }
+  let _running = false;
+  let _lastKey = null;
 
   async function run() {
     const key = getGbifKey();
-    if (!key) return;
+    if (!key || _running || key === _lastKey) return;
+    _running = true;
+    _lastKey = key;
 
-    // Wait for GBIF page to finish rendering
-    await new Promise(r => setTimeout(r, 1500));
+    document.getElementById('georef-badge')?.remove();
 
-    if (document.getElementById('georef-panel')) return;
+    // Wait for Angular to finish rendering the page
+    await new Promise(r => setTimeout(r, 2000));
 
-    // Fetch via background worker to bypass GBIF's Content Security Policy
-    const { data } = await new Promise(resolve =>
+    const response = await new Promise(resolve =>
       chrome.runtime.sendMessage({ type: 'fetch_occurrence', key }, resolve)
     );
-    if (!data) return;
+    const data = response?.data;
+    if (!data) { _running = false; return; }
 
-    const html = buildPanel(data);
-    if (!inject(html)) {
-      // Fallback: prepend to body
-      const div = document.createElement('div');
-      div.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;max-width:320px';
-      div.innerHTML = html;
-      document.body.appendChild(div);
-    }
+    // Don't show badge for occurrences not in our system
+    if (!data.localityGroupID) { _running = false; return; }
+
+    const div = document.createElement('div');
+    div.innerHTML = buildBadge(data);
+    document.body.appendChild(div.firstElementChild);
+
+    _running = false;
   }
 
-  // Run on load and on SPA navigation (GBIF is a React SPA)
   run();
-  const observer = new MutationObserver(() => {
-    if (!document.getElementById('georef-panel') && getGbifKey()) run();
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+
+  // Handle SPA navigation (Angular changes the URL without full page reload)
+  let _prevPath = location.pathname;
+  setInterval(() => {
+    if (location.pathname !== _prevPath) {
+      _prevPath = location.pathname;
+      _lastKey = null;
+      _running = false;
+      run();
+    }
+  }, 500);
 })();
