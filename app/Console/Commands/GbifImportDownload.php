@@ -437,26 +437,29 @@ class GbifImportDownload extends Command
                 SELECT locality_group_id,
                     COUNT(*) AS total,
                     SUM(georef_status IN ('has_suggestion', 'conflicted')) AS pending,
-                    SUM(georef_status = 'validated') AS validated
+                    SUM(georef_status = 'validated') AS validated,
+                    SUM(georef_status = 'ungeoreferenced') AS ungeoreferenced
                 FROM occurrences
                 WHERE locality_group_id IS NOT NULL
                 GROUP BY locality_group_id
             ) c ON c.locality_group_id = lg.id
             SET
-                lg.occurrence_count = c.total,
-                lg.pending_count    = c.pending,
-                lg.validated_count  = c.validated,
-                lg.updated_at       = NOW()
+                lg.occurrence_count       = c.total,
+                lg.pending_count          = c.pending,
+                lg.validated_count        = c.validated,
+                lg.ungeoreferenced_count  = c.ungeoreferenced,
+                lg.updated_at             = NOW()
         ");
 
         // Zero out groups whose occurrences all moved to other groups
         DB::statement("
             UPDATE locality_groups lg
             LEFT JOIN occurrences o ON o.locality_group_id = lg.id
-            SET lg.occurrence_count = 0,
-                lg.pending_count    = 0,
-                lg.validated_count  = 0,
-                lg.updated_at       = NOW()
+            SET lg.occurrence_count      = 0,
+                lg.pending_count         = 0,
+                lg.validated_count       = 0,
+                lg.ungeoreferenced_count = 0,
+                lg.updated_at            = NOW()
             WHERE o.id IS NULL
               AND lg.occurrence_count > 0
         ");

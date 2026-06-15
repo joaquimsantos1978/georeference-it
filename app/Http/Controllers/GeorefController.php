@@ -123,7 +123,9 @@ public function next(Request $request)
         if ($isFocusScope) {
             // Get top 50 unseen matches, pick randomly in PHP (avoids ORDER BY RAND on huge sets)
             $candidates = LocalityGroup::where('occurrence_count', '>', 0)
-                ->where(fn($q) => $q->where('pending_count', '>', 0)->orWhere('validated_count', 0))
+                ->where(fn($q) => $q->where('pending_count', '>', 0)
+                    ->orWhere('ungeoreferenced_count', '>', 0)
+                    ->orWhere('consistency_status', 'inconsistent'))
                 ->whereRaw(
                     'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
                     [$focus]
