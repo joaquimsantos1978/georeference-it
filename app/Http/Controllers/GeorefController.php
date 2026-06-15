@@ -124,6 +124,7 @@ public function next(Request $request)
             // TODO: restore strict work filter (pending/ungeoreferenced/inconsistent) after backfill
             $candidates = LocalityGroup::where('occurrence_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
+                ->when(!$userId, fn($q) => $q->where('pending_count', 0))
                 ->whereRaw(
                     'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
                     [$focus]
@@ -144,6 +145,7 @@ public function next(Request $request)
                 // TODO: switch to ungeoreferenced_count > 0 after backfill completes
                 $georefCandidates = LocalityGroup::where('occurrence_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
+                    ->when(!$userId, fn($q) => $q->where('pending_count', 0))
                     ->tap($scope)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->orderByDesc('occurrence_count')
