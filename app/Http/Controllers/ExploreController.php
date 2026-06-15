@@ -50,12 +50,12 @@ class ExploreController extends Controller
                     'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
                     [$q]
                 )
-                ->paginate(50)
+                ->simplePaginate(50)
                 ->withQueryString();
         } else {
             $groups = $query
                 ->orderByDesc('occurrence_count')
-                ->paginate(50)
+                ->simplePaginate(50)
                 ->withQueryString();
         }
 
