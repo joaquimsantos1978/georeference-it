@@ -86,11 +86,9 @@ public function next(Request $request)
 
     $scopes = [];
     if ($focus !== '') {
-        $scopes[] = fn($q) => $q->where(fn($q2) =>
-            $q2->where('verbatim_locality', 'like', "%{$focus}%")
-               ->orWhere('municipality',    'like', "%{$focus}%")
-               ->orWhere('county',          'like', "%{$focus}%")
-               ->orWhere('state_province',  'like', "%{$focus}%")
+        $scopes[] = fn($q) => $q->whereRaw(
+            'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
+            [$focus]
         )->when($country, fn($q2) => $q2->where('country_code', $country));
     }
     if ($lastCounty) {
@@ -138,6 +136,11 @@ public function next(Request $request)
         }
 
         if ($group) break;
+
+        // If focus scope found nothing, don't silently fall through — return empty with a message
+        if ($isFocusScope ?? false) {
+            return response()->json(['group' => null, 'focus_no_results' => true]);
+        }
     }
 
     if (!$group) {
