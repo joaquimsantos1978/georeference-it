@@ -60,11 +60,12 @@ class ExploreController extends Controller
                 ->withQueryString();
         }
 
-        $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 3600, function () {
-            return LocalityGroup::selectRaw('country_code, COUNT(*) as c')
-                ->where('occurrence_count', '>', 0)
+        $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
+            return \Illuminate\Support\Facades\DB::table('locality_groups')
+                ->select('country_code')
                 ->whereNotNull('country_code')
-                ->groupBy('country_code')
+                ->where('occurrence_count', '>', 0)
+                ->distinct()
                 ->orderBy('country_code')
                 ->pluck('country_code');
         });
