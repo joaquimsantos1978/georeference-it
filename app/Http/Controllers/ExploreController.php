@@ -15,7 +15,7 @@ class ExploreController extends Controller
             $q = $request->q;
             $query->whereRaw(
                 'MATCH(verbatim_locality, municipality, county, state_province, locality_string) AGAINST(? IN BOOLEAN MODE)',
-                ['"' . str_replace('"', '', $q) . '"*']
+                [$q]
             );
         }
 
