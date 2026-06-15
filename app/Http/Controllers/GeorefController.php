@@ -40,9 +40,7 @@ class GeorefController extends Controller
             ->map(function ($s) use ($allGeorefIds) {
                 $excludedIds = $s->exclusions->pluck('occurrence_id')->all();
                 // Occurrences in this cluster = all georef occurrences minus the excluded ones
-                $clusterIds = count($excludedIds) > 0
-                    ? array_values(array_diff($allGeorefIds, $excludedIds))
-                    : [];
+                $clusterIds = array_values(array_diff($allGeorefIds, $excludedIds));
 
                 return [
                     'id'                       => $s->id,
