@@ -15,47 +15,89 @@
     }[status] || { pill: status, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
   }
 
-  function buildBadge(data) {
+  // Convert lat/lng to pixel offset within a 256x256 tile at given zoom
+  function latLngToTilePixel(lat, lng, zoom, tileX, tileY) {
+    const n = Math.pow(2, zoom);
+    const xFrac = (lng + 180) / 360 * n - tileX;
+    const latRad = lat * Math.PI / 180;
+    const yFrac = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n - tileY;
+    return { px: Math.round(xFrac * 256), py: Math.round(yFrac * 256) };
+  }
+
+  function buildMapSection(dataUrl, lat, lng, tileX, tileY, zoom, osmUrl) {
+    const { px, py } = latLngToTilePixel(parseFloat(lat), parseFloat(lng), zoom, tileX, tileY);
+    // Crop a 260x130 window centred on the marker
+    const offX = Math.max(0, Math.min(px - 130, 256 - 260));
+    const offY = Math.max(0, Math.min(py - 65, 256 - 130));
+    const markerX = px - offX;
+    const markerY = py - offY;
+
+    return `
+      <a href="${osmUrl}" target="_blank" style="display:block;overflow:hidden;height:130px;position:relative;border-bottom:1px solid #e5e7eb;cursor:pointer">
+        <img src="${dataUrl}" width="256" height="256"
+          style="position:absolute;left:${-offX}px;top:${-offY}px;display:block;image-rendering:auto" />
+        <svg width="24" height="32" viewBox="0 0 24 32"
+          style="position:absolute;left:${markerX - 12}px;top:${markerY - 30}px;pointer-events:none"
+          xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20S24 21 24 12C24 5.4 18.6 0 12 0z" fill="#dc2626"/>
+          <circle cx="12" cy="12" r="5" fill="#fff"/>
+        </svg>
+      </a>`;
+  }
+
+  function buildBadge(data, mapHtml) {
     const s = statusConfig(data.georef_status);
-    const actionLabel = data.georef_status === 'ungeoreferenced' ? 'Georeference →' : 'View on georeference.it →';
-    const showCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
+    const hasCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
+    const isUngeoreferenced = data.georef_status === 'ungeoreferenced';
+    const actionLabel = isUngeoreferenced ? 'Georeference on georeference.it →' : 'View / correct on georeference.it →';
+
     const divergeWarn = data.diverges_from_gbif
-      ? `<div style="margin-top:6px;font-size:10px;color:#c2410c;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:4px 6px">⚠ Differs from GBIF coordinates</div>`
+      ? `<div style="margin:6px 10px 0;font-size:10px;color:#c2410c;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:4px 6px">⚠ Differs from GBIF coordinates</div>`
+      : '';
+
+    const coordsSection = hasCoords
+      ? `<div style="margin:8px 10px 0;font-size:10px;color:#6b7280">
+           Suggested coordinates
+           <div style="font-family:monospace;font-size:10.5px;color:#111;margin-top:2px">
+             ${parseFloat(data.decimalLatitude).toFixed(5)}, ${parseFloat(data.decimalLongitude).toFixed(5)}
+             ${data.coordinateUncertaintyInMeters ? `<span style="color:#6b7280"> ±${data.coordinateUncertaintyInMeters}m</span>` : ''}
+           </div>
+         </div>`
+      : '';
+
+    const linkSection = data.georef_url
+      ? `<a href="${data.georef_url}" target="_blank" style="
+            display:block;margin:10px;text-align:center;
+            padding:7px 0;background:#166534;color:#fff;
+            border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;
+          ">${actionLabel}</a>`
       : '';
 
     return `
       <div id="georef-badge" style="
         position:fixed;bottom:24px;right:24px;z-index:2147483647;
-        width:220px;
+        width:260px;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         border-radius:10px;overflow:hidden;
-        box-shadow:0 4px 16px rgba(0,0,0,0.18);
+        box-shadow:0 4px 20px rgba(0,0,0,0.22);
         border:1px solid #d1fae5;
+        background:#fff;
       ">
-        <div style="background:#166534;padding:7px 10px;display:flex;align-items:center;justify-content:space-between">
+        <div style="background:#166534;padding:8px 10px;display:flex;align-items:center;justify-content:space-between">
           <span style="color:#fff;font-weight:700;font-size:12px;letter-spacing:.3px">georeference.it</span>
           <button onclick="document.getElementById('georef-badge').style.display='none'"
-            style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;padding:0;opacity:.7">✕</button>
+            style="background:none;border:none;color:#fff;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:.7">✕</button>
         </div>
-        <div style="background:#fff;padding:10px">
+        ${mapHtml || ''}
+        <div style="padding:8px 10px 0">
           <span style="
-            display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;
+            display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;
             color:${s.color};background:${s.bg};border:1px solid ${s.border};
           ">${s.pill}</span>
-          ${showCoords ? `
-          <div style="margin-top:7px;font-size:10px;color:#6b7280">Suggested coordinates</div>
-          <div style="font-family:monospace;font-size:10px;color:#111;margin-top:1px">
-            ${parseFloat(data.decimalLatitude).toFixed(5)}, ${parseFloat(data.decimalLongitude).toFixed(5)}
-            ${data.coordinateUncertaintyInMeters ? ` ±${data.coordinateUncertaintyInMeters}m` : ''}
-          </div>` : ''}
-          ${divergeWarn}
-          ${data.georef_url ? `
-          <a href="${data.georef_url}" target="_blank" style="
-            display:block;margin-top:9px;text-align:center;
-            padding:5px 0;background:#166534;color:#fff;
-            border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;
-          ">${actionLabel}</a>` : ''}
         </div>
+        ${coordsSection}
+        ${divergeWarn}
+        ${linkSection}
       </div>`;
   }
 
@@ -70,7 +112,6 @@
 
     document.getElementById('georef-badge')?.remove();
 
-    // Wait for Angular to finish rendering the page
     await new Promise(r => setTimeout(r, 2000));
 
     const response = await new Promise(resolve =>
@@ -78,12 +119,28 @@
     );
     const data = response?.data;
     if (!data) { _running = false; return; }
-
-    // Don't show badge for occurrences not in our system
     if (!data.localityGroupID) { _running = false; return; }
 
+    let mapHtml = '';
+    if (data.decimalLatitude != null && data.georeferenceSources !== 'GBIF') {
+      const lat = parseFloat(data.decimalLatitude);
+      const lng = parseFloat(data.decimalLongitude);
+      const zoom = 12;
+      const tileX = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
+      const latRad = lat * Math.PI / 180;
+      const tileY = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, zoom));
+      const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=13/${lat}/${lng}`;
+
+      const tileResp = await new Promise(resolve =>
+        chrome.runtime.sendMessage({ type: 'fetch_map_tile', lat, lng }, resolve)
+      );
+      if (tileResp?.dataUrl) {
+        mapHtml = buildMapSection(tileResp.dataUrl, lat, lng, tileX, tileY, zoom, osmUrl);
+      }
+    }
+
     const div = document.createElement('div');
-    div.innerHTML = buildBadge(data);
+    div.innerHTML = buildBadge(data, mapHtml);
     document.body.appendChild(div.firstElementChild);
 
     _running = false;
@@ -91,7 +148,6 @@
 
   run();
 
-  // Handle SPA navigation (Angular changes the URL without full page reload)
   let _prevPath = location.pathname;
   setInterval(() => {
     if (location.pathname !== _prevPath) {
