@@ -714,9 +714,13 @@ function loadNextGroup() {
             updateUrl(data.group.id);
         } else {
             document.getElementById('occurrence-info').classList.remove('hidden');
-            const msg = data.focus_no_results
-                ? '<p style="color:#ef4444;font-size:11px">{{ __("No localities found for that search term. Try a different spelling.") }}</p>'
-                : '<p style="color:#9ca3af;font-size:11px">'+TXT.noOcc+'</p>';
+            let msg;
+            if (data.focus_no_results) {
+                const countryNote = window._georefCountry ? ' in ' + window._georefCountry : '';
+                msg = '<p style="color:#ef4444;font-size:11px">No localities found for "' + window._georefFocus + '"' + countryNote + '. Try a different spelling or clear the country filter.</p>';
+            } else {
+                msg = '<p style="color:#9ca3af;font-size:11px">'+TXT.noOcc+'</p>';
+            }
             document.getElementById('locality-fields').innerHTML=msg;
         }
     })
