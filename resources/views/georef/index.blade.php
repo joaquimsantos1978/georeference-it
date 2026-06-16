@@ -385,45 +385,62 @@
         <button id="area-search-btn" style="display:none"></button>
         <span id="area-hint" style="display:none"></span>
 
-        {{-- Mobile bottom tab bar --}}
-        <div id="mobile-tabs" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:white;border-top:1px solid #e5e7eb;padding:0;height:56px;flex-shrink:0;"
+        {{-- Mobile bottom bar --}}
+        <div id="mobile-tabs" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:white;border-top:1px solid #e5e7eb;height:52px;"
             class="dark:bg-gray-900 dark:border-gray-700">
-            <div style="display:flex;height:100%;">
-                <button id="mob-tab-info" onclick="mobileTab('info')"
-                    style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;font-weight:500;color:#6b7280;cursor:pointer;padding:4px;">
+            <div style="display:flex;align-items:center;height:100%;padding:0 8px;gap:8px;">
+
+                {{-- Scrolling locality text --}}
+                <div style="flex:1;min-width:0;overflow:hidden;height:100%;display:flex;align-items:center;">
+                    <div id="mob-locality-track" style="white-space:nowrap;font-size:11px;color:#6b7280;overflow:hidden;width:100%;">
+                        <span id="mob-locality-text" style="display:inline-block;">—</span>
+                    </div>
+                </div>
+
+                {{-- Location toggle button --}}
+                <button id="mob-btn-info" onclick="mobileToggle('info')"
+                    style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 6px;border-radius:8px;">
                     <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    Locality
+                    Location
                 </button>
-                <button id="mob-tab-map" onclick="mobileTab('map')"
-                    style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;font-weight:500;color:#16a34a;cursor:pointer;padding:4px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                    </svg>
-                    Map
-                </button>
-                <button id="mob-tab-suggest" onclick="mobileTab('suggest')"
-                    style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;font-weight:500;color:#6b7280;cursor:pointer;padding:4px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    Suggest
+
+                {{-- Georef toggle button (with suggestion badge) --}}
+                <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
+                    style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 6px;border-radius:8px;position:relative;">
+                    <span style="position:relative;display:inline-block;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
+                    </span>
+                    Georef
                 </button>
             </div>
         </div>
     </div>
 
     <style>
+    @keyframes mob-marquee {
+        0%   { transform: translateX(0); }
+        10%  { transform: translateX(0); }
+        90%  { transform: translateX(var(--mob-scroll-dist, 0px)); }
+        100% { transform: translateX(var(--mob-scroll-dist, 0px)); }
+    }
+    .mob-marquee-anim {
+        animation: mob-marquee 8s ease-in-out infinite alternate;
+    }
+
     @media (max-width: 768px) {
         #mobile-tabs { display:flex !important; }
 
-        #georef-wrap { flex-direction: column !important; padding-bottom: 56px; }
+        #georef-wrap { flex-direction: column !important; padding-bottom: 52px; }
 
         #left-panel {
             position: fixed !important;
-            bottom: 56px !important;
+            bottom: 52px !important;
             left: 0 !important;
             right: 0 !important;
             width: 100% !important;
@@ -450,7 +467,7 @@
 
         #right-panel {
             position: fixed !important;
-            bottom: 56px !important;
+            bottom: 52px !important;
             left: 0 !important;
             right: 0 !important;
             width: 100% !important;
@@ -480,7 +497,7 @@
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            bottom: 56px !important;
+            bottom: 52px !important;
             width: 100% !important;
             height: auto !important;
             z-index: 1 !important;
@@ -1050,6 +1067,7 @@ function updateHistoryNav() {
         }
 
         renderComments(comments||[]);
+        updateMobileBar(group, (suggestions||[]).length);
 
 if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
@@ -1280,22 +1298,66 @@ document.addEventListener('click', function() {
     if(list) list.style.display = 'none';
 });
 
-// ── Mobile tab switching ──────────────────────────────────────────────────────
-function mobileTab(tab) {
-    var left    = document.getElementById('left-panel');
-    var right   = document.getElementById('right-panel');
-    var tabInfo = document.getElementById('mob-tab-info');
-    var tabMap  = document.getElementById('mob-tab-map');
-    var tabSug  = document.getElementById('mob-tab-suggest');
+// ── Mobile panel toggles ──────────────────────────────────────────────────────
+function mobileToggle(panel) {
+    var left  = document.getElementById('left-panel');
+    var right = document.getElementById('right-panel');
+    var btnInfo = document.getElementById('mob-btn-info');
+    var btnSug  = document.getElementById('mob-btn-suggest');
     var active  = '#16a34a', inactive = '#6b7280';
 
-    left.classList.remove('mob-open');
-    right.classList.remove('mob-open');
-    [tabInfo, tabMap, tabSug].forEach(function(b) { b.style.color = inactive; });
+    if (panel === 'info') {
+        var opening = !left.classList.contains('mob-open');
+        left.classList.toggle('mob-open');
+        right.classList.remove('mob-open');
+        btnInfo.style.color = opening ? active : inactive;
+        btnSug.style.color  = inactive;
+        if (opening) map.invalidateSize();
+    } else {
+        var opening = !right.classList.contains('mob-open');
+        right.classList.toggle('mob-open');
+        left.classList.remove('mob-open');
+        btnSug.style.color  = opening ? active : inactive;
+        btnInfo.style.color = inactive;
+        if (opening) map.invalidateSize();
+    }
+}
 
-    if (tab === 'info')    { left.classList.add('mob-open');  tabInfo.style.color = active; }
-    if (tab === 'suggest') { right.classList.add('mob-open'); tabSug.style.color  = active; }
-    if (tab === 'map')     { tabMap.style.color = active; map.invalidateSize(); }
+function updateMobileBar(group, suggestionCount) {
+    if (window.innerWidth > 768) return;
+    // Build locality summary string
+    var parts = [];
+    if (group.verbatim_locality) parts.push(group.verbatim_locality);
+    else {
+        if (group.municipality)   parts.push(group.municipality);
+        else if (group.county)    parts.push(group.county);
+        if (group.state_province) parts.push(group.state_province);
+    }
+    if (group.country_code) parts.push(group.country_code);
+    var text = parts.join(', ') || '—';
+
+    var el    = document.getElementById('mob-locality-text');
+    var track = document.getElementById('mob-locality-track');
+    el.textContent = text;
+    el.classList.remove('mob-marquee-anim');
+
+    // Measure overflow and animate if needed
+    requestAnimationFrame(function() {
+        var overflow = el.scrollWidth - track.clientWidth;
+        if (overflow > 10) {
+            el.style.setProperty('--mob-scroll-dist', '-' + overflow + 'px');
+            el.classList.add('mob-marquee-anim');
+        }
+    });
+
+    // Suggestion badge
+    var badge = document.getElementById('mob-sugg-badge');
+    if (suggestionCount > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent   = suggestionCount > 9 ? '9+' : suggestionCount;
+    } else {
+        badge.style.display = 'none';
+    }
 }
 
 function deleteSuggestion(id) {
