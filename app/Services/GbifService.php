@@ -280,9 +280,16 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             );
 
             // Record which occurrences belong to OTHER clusters (to flag on validation)
+            // Use insertOrIgnore to handle race conditions when parallel processes
+            // check the same group simultaneously.
             $outsideIds = array_diff($allIds, $clusterIds);
-            foreach ($outsideIds as $occurrenceId) {
-                $suggestion->exclusions()->create(['occurrence_id' => $occurrenceId]);
+            if ($outsideIds) {
+                $suggestion->exclusions()->insertOrIgnore(
+                    array_map(fn($id) => [
+                        'suggestion_id' => $suggestion->id,
+                        'occurrence_id' => $id,
+                    ], array_values($outsideIds))
+                );
             }
         }
 
