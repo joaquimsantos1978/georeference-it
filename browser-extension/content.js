@@ -192,10 +192,9 @@
   let _running = false;
   let _lastKey = null;
 
-  function savePos(left, top)       { sessionStorage.setItem('georef_pos',  JSON.stringify({ left, top })); }
-  function saveSize(width, height)  { sessionStorage.setItem('georef_size', JSON.stringify({ width, height })); }
-  function loadPos()                { try { return JSON.parse(sessionStorage.getItem('georef_pos'));  } catch { return null; } }
-  function loadSize()               { try { return JSON.parse(sessionStorage.getItem('georef_size')); } catch { return null; } }
+  function savePos(left, top)      { chrome.storage.local.set({ georef_pos:  { left, top } }); }
+  function saveSize(width, height) { chrome.storage.local.set({ georef_size: { width, height } }); }
+  function loadPrefs()             { return new Promise(r => chrome.storage.local.get(['georef_pos', 'georef_size'], r)); }
 
   async function run() {
     const key = getGbifKey();
@@ -219,8 +218,7 @@
     const div = document.createElement('div');
     div.innerHTML = buildBadge(data);
     const badge = div.firstElementChild;
-    const pos  = loadPos();
-    const size = loadSize();
+    const { georef_pos: pos, georef_size: size } = await loadPrefs();
     if (pos) {
       badge.style.left   = pos.left + 'px';
       badge.style.top    = pos.top  + 'px';
