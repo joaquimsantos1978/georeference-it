@@ -386,7 +386,7 @@
         <span id="area-hint" style="display:none"></span>
 
         {{-- Mobile floating Skip/Submit bar (above tab bar) --}}
-        <div id="mob-action-bar" style="display:none;position:fixed;bottom:52px;left:0;right:0;z-index:49;padding:8px 12px;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;gap:8px;flex-direction:row;"
+        <div id="mob-action-bar" style="display:none;position:fixed;bottom:52px;left:0;right:0;z-index:200;padding:8px 12px;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;gap:8px;flex-direction:row;"
             class="dark:bg-gray-900/90 dark:border-gray-700">
             <button id="mob-skip-btn" onclick="loadNextGroup()"
                 style="flex:1;font-size:13px;padding:10px 0;border:1px solid #d1d5db;border-radius:10px;background:white;color:#374151;font-weight:500;cursor:pointer;">
@@ -472,8 +472,9 @@
             transform: translateY(100%) !important;
             transition: transform 0.3s cubic-bezier(.4,0,.2,1) !important;
             box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
+            pointer-events: none !important;
         }
-        #left-panel.mob-open { transform: translateY(0) !important; }
+        #left-panel.mob-open { transform: translateY(0) !important; pointer-events:auto !important; }
         #left-panel::before {
             content: '';
             display: block;
@@ -499,8 +500,9 @@
             transform: translateY(100%) !important;
             transition: transform 0.3s cubic-bezier(.4,0,.2,1) !important;
             box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
+            pointer-events: none !important;
         }
-        #right-panel.mob-open { transform: translateY(0) !important; }
+        #right-panel.mob-open { transform: translateY(0) !important; pointer-events:auto !important; }
         #right-panel::before {
             content: '';
             display: block;
