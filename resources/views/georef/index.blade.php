@@ -437,6 +437,8 @@
     </div>
 
     <style>
+    #mob-action-bar, #mobile-tabs { display:none; }
+
     @keyframes mob-marquee {
         0%   { transform: translateX(0); }
         10%  { transform: translateX(0); }
@@ -505,8 +507,6 @@
             margin: 8px auto 4px;
             flex-shrink: 0;
         }
-
-        #mob-action-bar { display:none; }
 
         #map {
             position: fixed !important;
@@ -1086,7 +1086,7 @@ function updateHistoryNav() {
 
         renderComments(comments||[]);
         updateMobileBar(group, (suggestions||[]).length);
-        var mab=document.getElementById('mob-action-bar'); if(mab) mab.style.display='flex';
+        var mab=document.getElementById('mob-action-bar'); if(mab && window.innerWidth<=768) mab.style.display='flex';
 
 if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
