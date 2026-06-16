@@ -36,9 +36,12 @@
         <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between text-xs text-gray-400">
             <span>georeference.it — {{ __('Crowdsourced georeferencing of natural history specimens') }}</span>
             <div class="flex gap-4">
-                <a href="{{ route('about') }}" class="hover:text-green-600">{{ __('About') }}</a>
+                <a href="{{ route('about') }}" class="hover:text-green-600">About</a>
+                <a href="{{ route('extension') }}" class="hover:text-green-600">Extension</a>
+                <a href="{{ route('api-docs') }}" class="hover:text-green-600">API</a>
+                <a href="{{ route('privacy') }}" class="hover:text-green-600">Privacy</a>
+                <a href="{{ route('terms') }}" class="hover:text-green-600">Terms</a>
                 <a href="https://github.com/joaquimsantos1978/georeference-it" target="_blank" class="hover:text-green-600">GitHub</a>
-                <a href="#" class="hover:text-green-600">{{ __('API') }}</a>
             </div>
         </div>
     </footer>
