@@ -253,7 +253,10 @@
 
         {{-- Map loading overlay --}}
         <div id="map-loading" style="display:none;position:absolute;inset:0;z-index:15;background:rgba(255,255,255,0.88);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:16px;pointer-events:none;">
-            <svg viewBox="0 0 180 160" width="200" height="178" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
+            <img src="/images/loading-search.gif" alt="" width="200" style="display:block;">
+            <span style="font-size:13px;color:#6b7280;font-weight:500;letter-spacing:.02em;">Searching through 43 million localities…</span>
+        </div>
+        <div style="display:none">{{-- SVG fallback below, kept for reference --}}<svg viewBox="0 0 180 160" width="200" height="178" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;display:none;">
                 <style>
                     #ov-head  { animation: ov-shake 0.35s ease-in-out infinite alternate; transform-origin: 90px 52px; }
                     #ov-arml  { animation: ov-arml  0.6s ease-in-out infinite alternate; transform-origin: 78px 78px; }
@@ -348,9 +351,7 @@
                 <circle id="ov-d1" cx="82" cy="153" r="4" fill="#1f2937"/>
                 <circle id="ov-d2" cx="90" cy="153" r="4" fill="#1f2937"/>
                 <circle id="ov-d3" cx="98" cy="153" r="4" fill="#1f2937"/>
-            </svg>
-            <span style="font-size:13px;color:#6b7280;font-weight:500;letter-spacing:.02em;">Searching through 43 million localities…</span>
-        </div>
+            </svg></div>
 
         {{-- Floating history button (positioned over the map) --}}
         <div style="position:absolute;top:12px;left:272px;z-index:20;">
