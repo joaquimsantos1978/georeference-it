@@ -384,57 +384,57 @@
         <input type="text" id="area-search" style="display:none">
         <button id="area-search-btn" style="display:none"></button>
         <span id="area-hint" style="display:none"></span>
+    </div>{{-- end #georef-wrap --}}
 
-        {{-- Mobile floating Skip/Submit bar (above tab bar) --}}
-        <div id="mob-action-bar" style="display:none;position:fixed;bottom:52px;left:0;right:0;z-index:200;padding:8px 12px;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;gap:8px;flex-direction:row;"
-            class="dark:bg-gray-900/90 dark:border-gray-700">
-            <button id="mob-skip-btn" onclick="loadNextGroup()"
-                style="flex:1;font-size:13px;padding:10px 0;border:1px solid #d1d5db;border-radius:10px;background:white;color:#374151;font-weight:500;cursor:pointer;">
-                Skip
-            </button>
-            <button id="mob-submit-btn" onclick="document.getElementById('submit-btn').click()"
-                style="flex:1;font-size:13px;padding:10px 0;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;opacity:0.4;" disabled>
-                Submit
-            </button>
-        </div>
+    {{-- Mobile floating Skip/Submit bar — outside georef-wrap to avoid stacking context issues --}}
+    <div id="mob-action-bar" style="display:none;position:fixed;bottom:52px;left:0;right:0;z-index:200;padding:8px 12px;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;gap:8px;flex-direction:row;"
+        class="dark:bg-gray-900/90 dark:border-gray-700">
+        <button id="mob-skip-btn" onclick="loadNextGroup()"
+            style="flex:1;font-size:13px;padding:10px 0;border:1px solid #d1d5db;border-radius:10px;background:white;color:#374151;font-weight:500;cursor:pointer;">
+            Skip
+        </button>
+        <button id="mob-submit-btn" onclick="document.getElementById('submit-btn').click()"
+            style="flex:1;font-size:13px;padding:10px 0;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;opacity:0.4;" disabled>
+            Submit
+        </button>
+    </div>
 
-        {{-- Mobile bottom bar --}}
-        <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:50;background:white;border-top:1px solid #e5e7eb;height:52px;"
-            class="dark:bg-gray-900 dark:border-gray-700">
-            <div style="display:flex;align-items:center;height:100%;padding:0;">
+    {{-- Mobile bottom bar — outside georef-wrap --}}
+    <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:white;border-top:1px solid #e5e7eb;height:52px;"
+        class="dark:bg-gray-900 dark:border-gray-700">
+        <div style="display:flex;align-items:center;height:100%;padding:0;">
 
-                {{-- Scrolling locality text --}}
-                <div style="flex:1;min-width:0;overflow:hidden;padding:0 10px;">
-                    <div id="mob-locality-track" style="white-space:nowrap;font-size:11px;color:#6b7280;overflow:hidden;">
-                        <span id="mob-locality-text" style="display:inline-block;">—</span>
-                    </div>
-                </div>
-
-                {{-- Location + Georef toggle buttons, flush right --}}
-                <div style="display:flex;align-items:stretch;height:100%;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
-                    <button id="mob-btn-info" onclick="mobileToggle('info')"
-                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;width:72px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        Location
-                    </button>
-                    <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
-                    <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
-                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;width:72px;position:relative;">
-                        <span style="position:relative;display:inline-block;">
-                            <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
-                        </span>
-                        Georef
-                    </button>
+            {{-- Scrolling locality text --}}
+            <div style="flex:1;min-width:0;overflow:hidden;padding:0 10px;">
+                <div id="mob-locality-track" style="white-space:nowrap;font-size:11px;color:#6b7280;overflow:hidden;">
+                    <span id="mob-locality-text" style="display:inline-block;">—</span>
                 </div>
             </div>
+
+            {{-- Location + Georef toggle buttons, flush right --}}
+            <div style="display:flex;align-items:stretch;height:100%;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
+                <button id="mob-btn-info" onclick="mobileToggle('info')"
+                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;width:72px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Location
+                </button>
+                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+                <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
+                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;width:72px;position:relative;">
+                    <span style="position:relative;display:inline-block;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
+                    </span>
+                    Georef
+                </button>
+            </div>
         </div>
-    </div>
+    </div>{{-- end #mobile-tabs --}}
 
     <style>
     /* Hidden on desktop, shown on mobile via media query */
