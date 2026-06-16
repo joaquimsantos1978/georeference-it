@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [GeorefController::class, 'index'])->name('home');
 
 Route::get('/about', fn() => view('about'))->name('about');
+Route::get('/how-it-works', fn() => view('how-it-works'))->name('how-it-works');
 Route::get('/extension', fn() => view('extension'))->name('extension');
 Route::get('/privacy', fn() => view('privacy'))->name('privacy');
 Route::get('/terms', fn() => view('terms'))->name('terms');

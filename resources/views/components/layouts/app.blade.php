@@ -37,6 +37,7 @@
             <span>georeference.it — {{ __('Crowdsourced georeferencing of natural history specimens') }}</span>
             <div class="flex gap-4">
                 <a href="{{ route('about') }}" class="hover:text-green-600">About</a>
+                <a href="{{ route('how-it-works') }}" class="hover:text-green-600">How it works</a>
                 <a href="{{ route('extension') }}" class="hover:text-green-600">Extension</a>
                 <a href="{{ route('api-docs') }}" class="hover:text-green-600">API</a>
                 <a href="{{ route('privacy') }}" class="hover:text-green-600">Privacy</a>
