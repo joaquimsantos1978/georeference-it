@@ -393,7 +393,7 @@
 
             {{-- Skip + Submit buttons (left) --}}
             <div id="mob-action-bar" style="display:none;align-items:stretch;flex-shrink:0;border-right:1px solid #e5e7eb;" class="dark:border-gray-700">
-                <button id="mob-skip-btn" onclick="loadNextGroup()"
+                <button id="mob-skip-btn" onclick="mobSkip()"
                     style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:500;color:#6b7280;cursor:pointer;padding:0 14px;height:100%;">
                     Skip
                 </button>
@@ -405,12 +405,16 @@
                 <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
             </div>
 
-            {{-- Scrolling locality text --}}
-            <div style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;padding:0 10px;">
-                <div id="mob-locality-track" style="white-space:nowrap;font-size:11px;color:#6b7280;overflow:hidden;width:100%;">
-                    <span id="mob-locality-text" style="display:inline-block;">—</span>
-                </div>
-            </div>
+            {{-- Locality text (tappable → opens Location panel) --}}
+            <button onclick="mobileToggle('info')" style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;padding:0 10px;border:none;background:none;cursor:pointer;text-align:left;">
+                <span id="mob-locality-text" style="font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;">—</span>
+                <span id="mob-locality-spinner" style="display:none;flex-shrink:0;margin-left:6px;">
+                    <svg style="width:14px;height:14px;animation:spin 0.8s linear infinite;color:#9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                        <path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </span>
+            </button>
 
             {{-- Location + Georef toggle buttons (right) --}}
             <div style="display:flex;align-items:stretch;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
@@ -1353,7 +1357,6 @@ function mobileToggle(panel) {
 }
 
 function updateMobileBar(group, suggestionCount) {
-    if (window.innerWidth > 768) return;
     // Build full locality string from all available fields
     var parts = [];
     if (group.verbatim_locality) parts.push(group.verbatim_locality);
@@ -1365,28 +1368,30 @@ function updateMobileBar(group, suggestionCount) {
     if (group.country_code)      parts.push(group.country_code);
     var text = parts.join(', ') || '—';
 
-    var el    = document.getElementById('mob-locality-text');
-    var track = document.getElementById('mob-locality-track');
-    el.textContent = text;
-    el.classList.remove('mob-marquee-anim');
+    var el = document.getElementById('mob-locality-text');
+    if (el) el.textContent = text;
 
-    // Measure overflow and animate if needed
-    requestAnimationFrame(function() {
-        var overflow = el.scrollWidth - track.clientWidth;
-        if (overflow > 10) {
-            el.style.setProperty('--mob-scroll-dist', '-' + overflow + 'px');
-            el.classList.add('mob-marquee-anim');
-        }
-    });
+    var spinner = document.getElementById('mob-locality-spinner');
+    if (spinner) spinner.style.display = 'none';
 
     // Suggestion badge
     var badge = document.getElementById('mob-sugg-badge');
-    if (suggestionCount > 0) {
-        badge.style.display = 'inline-block';
-        badge.textContent   = suggestionCount > 9 ? '9+' : suggestionCount;
-    } else {
-        badge.style.display = 'none';
+    if (badge) {
+        if (suggestionCount > 0) {
+            badge.style.display = 'inline-block';
+            badge.textContent   = suggestionCount > 9 ? '9+' : suggestionCount;
+        } else {
+            badge.style.display = 'none';
+        }
     }
+}
+
+function mobSkip() {
+    var el = document.getElementById('mob-locality-text');
+    if (el) el.textContent = '';
+    var spinner = document.getElementById('mob-locality-spinner');
+    if (spinner) spinner.style.display = 'inline-flex';
+    loadNextGroup();
 }
 
 function deleteSuggestion(id) {
