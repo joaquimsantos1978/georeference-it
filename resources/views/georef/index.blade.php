@@ -388,7 +388,7 @@
         {{-- Mobile bottom bar --}}
         <div id="mobile-tabs" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:white;border-top:1px solid #e5e7eb;height:52px;"
             class="dark:bg-gray-900 dark:border-gray-700">
-            <div style="display:flex;align-items:center;height:100%;padding:0 8px;gap:8px;">
+            <div style="display:flex;align-items:center;height:100%;padding:0 0 0 8px;gap:8px;">
 
                 {{-- Scrolling locality text --}}
                 <div style="flex:1;min-width:0;overflow:hidden;height:100%;display:flex;align-items:center;">
