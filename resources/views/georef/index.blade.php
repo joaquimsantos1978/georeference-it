@@ -385,13 +385,26 @@
         <button id="area-search-btn" style="display:none"></button>
         <span id="area-hint" style="display:none"></span>
 
+        {{-- Mobile floating Skip/Submit bar (above tab bar) --}}
+        <div id="mob-action-bar" style="display:none;position:fixed;bottom:52px;left:0;right:0;z-index:49;padding:8px 12px;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;gap:8px;flex-direction:row;"
+            class="dark:bg-gray-900/90 dark:border-gray-700">
+            <button id="mob-skip-btn" onclick="document.getElementById('skip-btn').click()"
+                style="flex:1;font-size:13px;padding:10px 0;border:1px solid #d1d5db;border-radius:10px;background:white;color:#374151;font-weight:500;cursor:pointer;">
+                Skip
+            </button>
+            <button id="mob-submit-btn" onclick="document.getElementById('submit-btn').click()"
+                style="flex:1;font-size:13px;padding:10px 0;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;opacity:0.4;" disabled>
+                Submit
+            </button>
+        </div>
+
         {{-- Mobile bottom bar --}}
         <div id="mobile-tabs" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:white;border-top:1px solid #e5e7eb;height:52px;"
             class="dark:bg-gray-900 dark:border-gray-700">
-            <div style="display:flex;align-items:center;height:100%;padding:0 0 0 8px;gap:8px;">
+            <div style="display:flex;align-items:stretch;height:100%;padding:0;">
 
                 {{-- Scrolling locality text --}}
-                <div style="flex:1;min-width:0;overflow:hidden;height:100%;display:flex;align-items:center;">
+                <div style="flex:1;min-width:0;overflow:hidden;height:100%;display:flex;align-items:center;padding:0 8px;">
                     <div id="mob-locality-track" style="white-space:nowrap;font-size:11px;color:#6b7280;overflow:hidden;width:100%;">
                         <span id="mob-locality-text" style="display:inline-block;">—</span>
                     </div>
@@ -492,6 +505,8 @@
             margin: 8px auto 4px;
             flex-shrink: 0;
         }
+
+        #mob-action-bar { display:none; }
 
         #map {
             position: fixed !important;
@@ -624,6 +639,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         document.getElementById('uncertainty-display').textContent = unc.toLocaleString() + 'm';
         document.getElementById('uncertainty-slider').value = Math.min(unc, 500000);
         document.getElementById('submit-btn').disabled = false;
+        var ms = document.getElementById('mob-submit-btn'); if(ms){ms.disabled=false;ms.style.opacity='1';}
 
         marker.on('drag', e => {
             const p = e.target.getLatLng();
@@ -825,6 +841,7 @@ function clearPanel() {
     if(window._nominatimPolygon){map.removeLayer(window._nominatimPolygon);window._nominatimPolygon=null;}
     clearSuggestionLayers(); closeImgViewer();
     document.getElementById('submit-btn').disabled=true;
+    var ms=document.getElementById('mob-submit-btn'); if(ms){ms.disabled=true;ms.style.opacity='0.4';}
     document.getElementById('lat-input').value=''; document.getElementById('lng-input').value='';
     document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
     document.getElementById('occurrence-loading').classList.remove('hidden');
@@ -1069,6 +1086,7 @@ function updateHistoryNav() {
 
         renderComments(comments||[]);
         updateMobileBar(group, (suggestions||[]).length);
+        var mab=document.getElementById('mob-action-bar'); if(mab) mab.style.display='flex';
 
 if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
