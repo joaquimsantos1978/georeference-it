@@ -57,9 +57,9 @@
         border:1px solid #d1fae5;
         background:#fff;
       ">
-        <div style="background:#166534;padding:8px 10px;display:flex;align-items:center;justify-content:space-between">
-          <span style="color:#fff;font-weight:700;font-size:12px;letter-spacing:.3px">georeference.it</span>
-          <button onclick="document.getElementById('georef-badge').style.display='none'"
+        <div id="georef-badge-header" style="background:#166534;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none">
+          <span style="color:#fff;font-weight:700;font-size:12px;letter-spacing:.3px">⠿ georeference.it</span>
+          <button id="georef-badge-close"
             style="background:none;border:none;color:#fff;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:.7">✕</button>
         </div>
         ${mapSection}
@@ -73,6 +73,45 @@
         ${divergeWarn}
         ${linkSection}
       </div>`;
+  }
+
+  function makeDraggable(badge) {
+    const header = badge.querySelector('#georef-badge-header');
+    let startX, startY, startRight, startBottom;
+
+    header.addEventListener('mousedown', e => {
+      if (e.target.id === 'georef-badge-close') return;
+      e.preventDefault();
+      header.style.cursor = 'grabbing';
+
+      // Convert right/bottom to left/top for easier drag math
+      const rect = badge.getBoundingClientRect();
+      badge.style.left = rect.left + 'px';
+      badge.style.top = rect.top + 'px';
+      badge.style.right = 'auto';
+      badge.style.bottom = 'auto';
+
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+
+      function onMove(e) {
+        badge.style.left = (e.clientX - startX) + 'px';
+        badge.style.top  = (e.clientY - startY) + 'px';
+      }
+
+      function onUp() {
+        header.style.cursor = 'grab';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    badge.querySelector('#georef-badge-close').addEventListener('click', () => {
+      badge.style.display = 'none';
+    });
   }
 
   function initMap(lat, lng) {
@@ -117,7 +156,10 @@
 
     const div = document.createElement('div');
     div.innerHTML = buildBadge(data);
-    document.body.appendChild(div.firstElementChild);
+    const badge = div.firstElementChild;
+    document.body.appendChild(badge);
+
+    makeDraggable(badge);
 
     const hasCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
     if (hasCoords) {
@@ -127,10 +169,15 @@
     _running = false;
   }
 
-  run();
-
   let _prevPath = location.pathname;
   setInterval(() => {
+    const key = getGbifKey();
+    if (!key) {
+      document.getElementById('georef-badge')?.remove();
+      _lastKey = null;
+      _running = false;
+      return;
+    }
     if (location.pathname !== _prevPath) {
       _prevPath = location.pathname;
       _lastKey = null;
@@ -138,4 +185,6 @@
       run();
     }
   }, 500);
+
+  run();
 })();
