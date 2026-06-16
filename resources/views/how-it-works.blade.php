@@ -182,20 +182,30 @@
         <section class="space-y-4">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Status labels</h2>
             <div class="grid sm:grid-cols-2 gap-3">
-                @foreach([
-                    ['Ungeoreferenced',   '#dc2626', '#fef2f2', '#fca5a5', 'No coordinates exist for this locality group in GBIF or georeference.it.'],
-                    ['Suggestion pending','#d97706', '#fffbeb', '#fcd34d', 'A georeferencing suggestion has been submitted and is awaiting validation.'],
-                    ['Conflicted',        '#7c3aed', '#f5f3ff', '#c4b5fd', 'Two or more competing suggestions exist. The community needs to resolve the disagreement.'],
-                    ['Validated',         '#166534', '#f0fdf4', '#86efac', 'A suggestion has accumulated enough validation votes and is the platform\'s accepted georeferencing.'],
-                    ['GBIF georef',       '#1d4ed8', '#eff6ff', '#93c5fd', 'GBIF already has coordinates for this group from the data publisher. May still need review.'],
-                    ['Reviewed',          '#166534', '#f0fdf4', '#86efac', 'GBIF\'s coordinates have been reviewed and confirmed correct by the community.'],
-                ] as [$label, $color, $bg, $border, $desc])
                 <div class="flex gap-3 items-start p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <span class="flex-shrink-0 mt-0.5 px-2 py-0.5 rounded-full text-xs font-semibold border"
-                          style="color:{{ $color }};background:{{ $bg }};border-color:{{ $border }}">{{ $label }}</span>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $desc }}</p>
+                    <span class="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap" style="color:#dc2626;background:#fef2f2;border-color:#fca5a5">Ungeoreferenced</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">No coordinates exist for this locality group in GBIF or georeference.it.</p>
                 </div>
-                @endforeach
+                <div class="flex gap-3 items-start p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <span class="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap" style="color:#d97706;background:#fffbeb;border-color:#fcd34d">Suggestion pending</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">A georeferencing suggestion has been submitted and is awaiting validation.</p>
+                </div>
+                <div class="flex gap-3 items-start p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <span class="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap" style="color:#7c3aed;background:#f5f3ff;border-color:#c4b5fd">Conflicted</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Two or more competing suggestions exist. The community needs to resolve the disagreement.</p>
+                </div>
+                <div class="flex gap-3 items-start p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <span class="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap" style="color:#166534;background:#f0fdf4;border-color:#86efac">Validated ✓</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">A suggestion has accumulated enough validation votes and is the platform's accepted georeferencing.</p>
+                </div>
+                <div class="flex gap-3 items-start p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <span class="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap" style="color:#1d4ed8;background:#eff6ff;border-color:#93c5fd">GBIF georef</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">GBIF already has coordinates for this group from the data publisher. May still need review.</p>
+                </div>
+                <div class="flex gap-3 items-start p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <span class="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap" style="color:#166534;background:#f0fdf4;border-color:#86efac">Reviewed ✓</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">GBIF's coordinates have been reviewed and confirmed correct by the community.</p>
+                </div>
             </div>
         </section>
 

@@ -49,4 +49,12 @@
             </x-primary-button>
         </div>
     </form>
+
+    <div class="mt-4">
+        <a href="{{ route('auth.social.redirect', 'orcid') }}"
+           class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+            <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-4 h-4 mr-2">
+            {{ __('Register with ORCID') }}
+        </a>
+    </div>
 </x-guest-layout>
