@@ -397,27 +397,28 @@
                     </div>
                 </div>
 
-                {{-- Location toggle button --}}
-                <button id="mob-btn-info" onclick="mobileToggle('info')"
-                    style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 6px;border-radius:8px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Location
-                </button>
-
-                {{-- Georef toggle button (with suggestion badge) --}}
-                <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
-                    style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 6px;border-radius:8px;position:relative;">
-                    <span style="position:relative;display:inline-block;">
+                {{-- Location + Georef toggle buttons, right-aligned with separator --}}
+                <div style="flex-shrink:0;display:flex;align-items:stretch;border-left:1px solid #e5e7eb;margin-left:4px;" class="dark:border-gray-700">
+                    <button id="mob-btn-info" onclick="mobileToggle('info')"
+                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 10px;">
                         <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
-                    </span>
-                    Georef
-                </button>
+                        Location
+                    </button>
+                    <div style="width:1px;background:#e5e7eb;margin:8px 0;" class="dark:bg-gray-700"></div>
+                    <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
+                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 10px;position:relative;">
+                        <span style="position:relative;display:inline-block;">
+                            <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
+                        </span>
+                        Georef
+                    </button>
+                </div>
             </div>
         </div>
     </div>
