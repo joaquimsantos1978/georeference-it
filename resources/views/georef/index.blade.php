@@ -252,68 +252,104 @@
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
         {{-- Map loading overlay --}}
-        <div id="map-loading" style="display:none;position:absolute;inset:0;z-index:15;background:rgba(255,255,255,0.85);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:20px;pointer-events:none;">
-            <svg viewBox="0 0 140 130" width="180" height="167" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
+        <div id="map-loading" style="display:none;position:absolute;inset:0;z-index:15;background:rgba(255,255,255,0.88);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:16px;pointer-events:none;">
+            <svg viewBox="0 0 180 160" width="200" height="178" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
                 <style>
-                    #sl-arm  { animation: sl-scan 2s ease-in-out infinite; transform-origin: 68px 62px; }
-                    #sl-body { animation: sl-bob  1.4s ease-in-out infinite alternate; transform-origin: 70px 70px; }
-                    #sl-p1   { animation: sl-tilt 1.6s ease-in-out infinite alternate;     transform-origin: 32px 95px; }
-                    #sl-p2   { animation: sl-tilt 1.6s .25s ease-in-out infinite alternate-reverse; transform-origin: 56px 93px; }
-                    #sl-p3   { animation: sl-tilt 1.6s .5s  ease-in-out infinite alternate; transform-origin: 80px 95px; }
-                    #sl-p4   { animation: sl-tilt 1.6s .1s  ease-in-out infinite alternate-reverse; transform-origin: 104px 95px; }
-                    #sl-d1   { animation: sl-dot 1.2s 0s   ease-in-out infinite; }
-                    #sl-d2   { animation: sl-dot 1.2s .4s  ease-in-out infinite; }
-                    #sl-d3   { animation: sl-dot 1.2s .8s  ease-in-out infinite; }
-                    @keyframes sl-scan { 0%,100%{transform:rotate(-22deg)} 50%{transform:rotate(22deg)} }
-                    @keyframes sl-bob  { from{transform:translateY(0)} to{transform:translateY(-5px)} }
-                    @keyframes sl-tilt { from{transform:rotate(-4deg)} to{transform:rotate(4deg)} }
-                    @keyframes sl-dot  { 0%,100%{opacity:.15} 50%{opacity:1} }
+                    #ov-head  { animation: ov-shake 0.35s ease-in-out infinite alternate; transform-origin: 90px 52px; }
+                    #ov-arml  { animation: ov-arml  0.6s ease-in-out infinite alternate; transform-origin: 78px 78px; }
+                    #ov-armr  { animation: ov-armr  0.6s ease-in-out infinite alternate; transform-origin: 102px 78px; }
+                    #ov-sw1   { animation: ov-sw 1s  0s   ease-in-out infinite; }
+                    #ov-sw2   { animation: ov-sw 1s  .33s ease-in-out infinite; }
+                    #ov-sw3   { animation: ov-sw 1s  .66s ease-in-out infinite; }
+                    #ov-fp1   { animation: ov-fly 1.8s 0s   ease-in-out infinite; transform-origin: 30px 80px; }
+                    #ov-fp2   { animation: ov-fly 2.1s 0.3s ease-in-out infinite; transform-origin: 150px 70px; }
+                    #ov-fp3   { animation: ov-fly 1.6s 0.7s ease-in-out infinite; transform-origin: 55px 60px; }
+                    #ov-fp4   { animation: ov-fly 2.3s 0.1s ease-in-out infinite; transform-origin: 130px 85px; }
+                    #ov-d1    { animation: ov-dot 1.2s 0s   ease-in-out infinite; }
+                    #ov-d2    { animation: ov-dot 1.2s .4s  ease-in-out infinite; }
+                    #ov-d3    { animation: ov-dot 1.2s .8s  ease-in-out infinite; }
+                    @keyframes ov-shake { from{transform:rotate(-8deg)} to{transform:rotate(8deg)} }
+                    @keyframes ov-arml  { from{transform:rotate(-25deg)} to{transform:rotate(-5deg)} }
+                    @keyframes ov-armr  { from{transform:rotate(5deg)}  to{transform:rotate(25deg)} }
+                    @keyframes ov-sw    { 0%,100%{opacity:0;transform:translateY(0) scale(.6)} 40%{opacity:1} 80%{opacity:0;transform:translateY(-12px) scale(1)} }
+                    @keyframes ov-fly   { 0%,100%{transform:rotate(0deg) translateY(0)} 50%{transform:rotate(12deg) translateY(-8px)} }
+                    @keyframes ov-dot   { 0%,100%{opacity:.15} 50%{opacity:1} }
                 </style>
 
-                {{-- desk line --}}
-                <line x1="12" y1="100" x2="128" y2="100" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                {{-- pile of papers (bottom) --}}
+                {{-- back stack left --}}
+                <rect x="8"  y="118" width="44" height="30" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(-12,30,133)"/>
+                <rect x="12" y="116" width="44" height="30" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(-6,34,131)"/>
+                <rect x="14" y="114" width="44" height="30" rx="2" fill="white" stroke="#1f2937" stroke-width="2"/>
+                {{-- back stack right --}}
+                <rect x="124" y="118" width="44" height="30" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(12,146,133)"/>
+                <rect x="122" y="116" width="44" height="30" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(6,144,131)"/>
+                <rect x="120" y="114" width="44" height="30" rx="2" fill="white" stroke="#1f2937" stroke-width="2"/>
+                {{-- center pile --}}
+                <rect x="62" y="120" width="56" height="28" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(-4,90,134)"/>
+                <rect x="60" y="118" width="60" height="28" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(3,90,132)"/>
+                <rect x="58" y="115" width="64" height="32" rx="2" fill="white" stroke="#1f2937" stroke-width="2"/>
+                {{-- lines on front papers --}}
+                <line x1="65" y1="122" x2="115" y2="122" stroke="#d1d5db" stroke-width="1.5"/>
+                <line x1="65" y1="128" x2="110" y2="128" stroke="#d1d5db" stroke-width="1.5"/>
+                <line x1="65" y1="134" x2="115" y2="134" stroke="#d1d5db" stroke-width="1.5"/>
+                <line x1="65" y1="140" x2="108" y2="140" stroke="#d1d5db" stroke-width="1.5"/>
 
-                {{-- papers --}}
-                <g id="sl-p1"><rect x="18" y="76" width="24" height="24" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="22" y1="83" x2="38" y2="83" stroke="#1f2937" stroke-width="1.2"/><line x1="22" y1="88" x2="36" y2="88" stroke="#1f2937" stroke-width="1.2"/><line x1="22" y1="93" x2="38" y2="93" stroke="#1f2937" stroke-width="1.2"/></g>
-                <g id="sl-p2"><rect x="44" y="72" width="24" height="28" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="48" y1="79" x2="64" y2="79" stroke="#1f2937" stroke-width="1.2"/><line x1="48" y1="84" x2="62" y2="84" stroke="#1f2937" stroke-width="1.2"/><line x1="48" y1="89" x2="64" y2="89" stroke="#1f2937" stroke-width="1.2"/><line x1="48" y1="94" x2="62" y2="94" stroke="#1f2937" stroke-width="1.2"/></g>
-                <g id="sl-p3"><rect x="70" y="76" width="24" height="24" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="74" y1="83" x2="90" y2="83" stroke="#1f2937" stroke-width="1.2"/><line x1="74" y1="88" x2="88" y2="88" stroke="#1f2937" stroke-width="1.2"/><line x1="74" y1="93" x2="90" y2="93" stroke="#1f2937" stroke-width="1.2"/></g>
-                <g id="sl-p4"><rect x="96" y="79" width="20" height="21" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="99" y1="85" x2="113" y2="85" stroke="#1f2937" stroke-width="1.2"/><line x1="99" y1="90" x2="111" y2="90" stroke="#1f2937" stroke-width="1.2"/><line x1="99" y1="95" x2="113" y2="95" stroke="#1f2937" stroke-width="1.2"/></g>
+                {{-- flying papers --}}
+                <g id="ov-fp1"><rect x="14" y="66" width="36" height="28" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(-20,32,80)"/><line x1="18" y1="75" x2="44" y2="71" stroke="#d1d5db" stroke-width="1.2"/><line x1="18" y1="81" x2="42" y2="77" stroke="#d1d5db" stroke-width="1.2"/><line x1="18" y1="87" x2="44" y2="83" stroke="#d1d5db" stroke-width="1.2"/></g>
+                <g id="ov-fp2"><rect x="126" y="56" width="36" height="28" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(18,144,70)"/><line x1="130" y1="66" x2="156" y2="63" stroke="#d1d5db" stroke-width="1.2"/><line x1="130" y1="72" x2="154" y2="69" stroke="#d1d5db" stroke-width="1.2"/><line x1="130" y1="78" x2="156" y2="75" stroke="#d1d5db" stroke-width="1.2"/></g>
+                <g id="ov-fp3"><rect x="46" y="44" width="30" height="24" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(-8,61,56)"/><line x1="50" y1="52" x2="72" y2="51" stroke="#d1d5db" stroke-width="1.2"/><line x1="50" y1="58" x2="70" y2="57" stroke="#d1d5db" stroke-width="1.2"/></g>
+                <g id="ov-fp4"><rect x="104" y="48" width="30" height="24" rx="2" fill="white" stroke="#1f2937" stroke-width="2" transform="rotate(10,119,60)"/><line x1="108" y1="56" x2="130" y2="58" stroke="#d1d5db" stroke-width="1.2"/><line x1="108" y1="62" x2="128" y2="64" stroke="#d1d5db" stroke-width="1.2"/></g>
 
-                {{-- body --}}
-                <g id="sl-body">
-                    {{-- legs --}}
-                    <line x1="64" y1="88" x2="60" y2="100" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
-                    <line x1="76" y1="88" x2="80" y2="100" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
-                    {{-- torso --}}
-                    <rect x="60" y="68" width="20" height="22" rx="5" fill="none" stroke="#1f2937" stroke-width="2.5"/>
-                    {{-- right arm (down) --}}
-                    <line x1="80" y1="74" x2="90" y2="82" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
-                    {{-- head --}}
-                    <circle cx="70" cy="55" r="13" fill="none" stroke="#1f2937" stroke-width="2.5"/>
-                    {{-- eyes --}}
-                    <circle cx="65" cy="54" r="1.8" fill="#1f2937"/>
-                    <circle cx="75" cy="54" r="1.8" fill="#1f2937"/>
-                    {{-- smile --}}
-                    <path d="M65 60 Q70 64 75 60" fill="none" stroke="#1f2937" stroke-width="1.8" stroke-linecap="round"/>
-                    {{-- hat brim --}}
-                    <line x1="55" y1="44" x2="85" y2="44" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
-                    {{-- hat top --}}
-                    <rect x="61" y="30" width="18" height="15" rx="2" fill="none" stroke="#1f2937" stroke-width="2.5"/>
+                {{-- torso (buried in papers) --}}
+                <rect x="78" y="88" width="24" height="32" rx="6" fill="white" stroke="#1f2937" stroke-width="2.5"/>
+
+                {{-- left arm raised --}}
+                <g id="ov-arml">
+                    <line x1="78" y1="94" x2="54" y2="72" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                    {{-- hand --}}
+                    <line x1="54" y1="72" x2="48" y2="65" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="54" y1="72" x2="51" y2="63" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="54" y1="72" x2="56" y2="63" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="54" y1="72" x2="61" y2="65" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
                 </g>
 
-                {{-- arm + magnifying glass --}}
-                <g id="sl-arm">
-                    <line x1="60" y1="74" x2="44" y2="60" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
-                    <circle cx="36" cy="52" r="10" fill="none" stroke="#1f2937" stroke-width="2.5"/>
-                    <line x1="43" y1="59" x2="50" y2="66" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                {{-- right arm raised --}}
+                <g id="ov-armr">
+                    <line x1="102" y1="94" x2="126" y2="72" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                    {{-- hand --}}
+                    <line x1="126" y1="72" x2="132" y2="65" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="126" y1="72" x2="129" y2="63" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="126" y1="72" x2="124" y2="63" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="126" y1="72" x2="119" y2="65" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
                 </g>
+
+                {{-- head --}}
+                <g id="ov-head">
+                    <circle cx="90" cy="64" r="16" fill="white" stroke="#1f2937" stroke-width="2.5"/>
+                    {{-- wide panic eyes --}}
+                    <circle cx="83" cy="62" r="4.5" fill="white" stroke="#1f2937" stroke-width="2"/>
+                    <circle cx="97" cy="62" r="4.5" fill="white" stroke="#1f2937" stroke-width="2"/>
+                    <circle cx="84" cy="63" r="2" fill="#1f2937"/>
+                    <circle cx="98" cy="63" r="2" fill="#1f2937"/>
+                    {{-- panic mouth --}}
+                    <path d="M83 72 Q90 68 97 72" fill="none" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    {{-- eyebrows worried --}}
+                    <line x1="79" y1="56" x2="87" y2="58" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="93" y1="58" x2="101" y2="56" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>
+                </g>
+
+                {{-- sweat drops --}}
+                <path id="ov-sw1" d="M107 44 Q109 40 111 44 Q111 48 107 44Z" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                <path id="ov-sw2" d="M115 52 Q117 48 119 52 Q119 56 115 52Z" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                <path id="ov-sw3" d="M104 36 Q106 32 108 36 Q108 40 104 36Z" fill="none" stroke="#1f2937" stroke-width="1.5"/>
 
                 {{-- dots --}}
-                <circle id="sl-d1" cx="60" cy="120" r="4" fill="#1f2937"/>
-                <circle id="sl-d2" cx="70" cy="120" r="4" fill="#1f2937"/>
-                <circle id="sl-d3" cx="80" cy="120" r="4" fill="#1f2937"/>
+                <circle id="ov-d1" cx="82" cy="153" r="4" fill="#1f2937"/>
+                <circle id="ov-d2" cx="90" cy="153" r="4" fill="#1f2937"/>
+                <circle id="ov-d3" cx="98" cy="153" r="4" fill="#1f2937"/>
             </svg>
-            <span style="font-size:13px;color:#6b7280;font-weight:500;letter-spacing:.02em;">Searching localities…</span>
+            <span style="font-size:13px;color:#6b7280;font-weight:500;letter-spacing:.02em;">Searching through 43 million localities…</span>
         </div>
 
         {{-- Floating history button (positioned over the map) --}}
