@@ -134,11 +134,11 @@ public function next(Request $request)
                 [$focus]
             )->when($country, fn($q2) => $q2->where('country_code', $country));
 
+            // No ORDER BY — fulltext index is used directly; we random() the results anyway
             $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
                 ->tap($focusMatch)
                 ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                ->orderByDesc('occurrence_count')
                 ->limit(50)
                 ->get();
 
@@ -147,7 +147,6 @@ public function next(Request $request)
                     ->where('occurrence_count', '<', 10000)
                     ->tap($focusMatch)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                    ->orderByDesc('occurrence_count')
                     ->limit(50)
                     ->get();
             }
