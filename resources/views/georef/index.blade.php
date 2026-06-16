@@ -251,6 +251,67 @@
         {{-- MAP --}}
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
+        {{-- Map loading overlay --}}
+        <div id="map-loading" style="display:none;position:absolute;inset:0;z-index:15;background:rgba(255,255,255,0.82);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:16px;pointer-events:none;">
+            <svg id="searcher-svg" viewBox="0 0 120 110" width="160" height="147" xmlns="http://www.w3.org/2000/svg">
+                <style>
+                    #searcher-body { animation: searcher-bob 1.2s ease-in-out infinite alternate; transform-origin: 60px 75px; }
+                    #searcher-lupe { animation: searcher-scan 2.4s ease-in-out infinite; transform-origin: 60px 55px; }
+                    #searcher-paper1 { animation: paper-flutter 1.8s ease-in-out infinite alternate; transform-origin: 30px 85px; }
+                    #searcher-paper2 { animation: paper-flutter 1.8s 0.3s ease-in-out infinite alternate-reverse; transform-origin: 55px 90px; }
+                    #searcher-paper3 { animation: paper-flutter 1.8s 0.6s ease-in-out infinite alternate; transform-origin: 80px 85px; }
+                    #dot1 { animation: dot-blink 1.2s 0s ease-in-out infinite; }
+                    #dot2 { animation: dot-blink 1.2s 0.4s ease-in-out infinite; }
+                    #dot3 { animation: dot-blink 1.2s 0.8s ease-in-out infinite; }
+                    @keyframes searcher-bob { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+                    @keyframes searcher-scan { 0%,100% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } }
+                    @keyframes paper-flutter { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+                    @keyframes dot-blink { 0%,100% { opacity:0.2; } 50% { opacity:1; } }
+                </style>
+
+                {{-- desk / folder base --}}
+                <rect x="10" y="80" width="100" height="8" rx="4" fill="#d1fae5"/>
+                <rect x="18" y="70" width="84" height="14" rx="3" fill="#6ee7b7"/>
+                <rect x="22" y="67" width="76" height="6" rx="2" fill="#34d399"/>
+
+                {{-- papers in folder --}}
+                <g id="searcher-paper1"><rect x="24" y="52" width="22" height="18" rx="2" fill="white" stroke="#d1d5db" stroke-width="1"/><line x1="27" y1="57" x2="43" y2="57" stroke="#e5e7eb" stroke-width="1.5"/><line x1="27" y1="61" x2="40" y2="61" stroke="#e5e7eb" stroke-width="1.5"/><line x1="27" y1="65" x2="43" y2="65" stroke="#e5e7eb" stroke-width="1.5"/></g>
+                <g id="searcher-paper2"><rect x="49" y="48" width="22" height="22" rx="2" fill="white" stroke="#d1d5db" stroke-width="1"/><line x1="52" y1="54" x2="68" y2="54" stroke="#e5e7eb" stroke-width="1.5"/><line x1="52" y1="58" x2="65" y2="58" stroke="#e5e7eb" stroke-width="1.5"/><line x1="52" y1="62" x2="68" y2="62" stroke="#e5e7eb" stroke-width="1.5"/><line x1="52" y1="66" x2="65" y2="66" stroke="#e5e7eb" stroke-width="1.5"/></g>
+                <g id="searcher-paper3"><rect x="74" y="52" width="22" height="18" rx="2" fill="white" stroke="#d1d5db" stroke-width="1"/><line x1="77" y1="57" x2="93" y2="57" stroke="#e5e7eb" stroke-width="1.5"/><line x1="77" y1="61" x2="90" y2="61" stroke="#e5e7eb" stroke-width="1.5"/><line x1="77" y1="65" x2="93" y2="65" stroke="#e5e7eb" stroke-width="1.5"/></g>
+
+                {{-- researcher body --}}
+                <g id="searcher-body">
+                    {{-- torso --}}
+                    <rect x="50" y="38" width="20" height="22" rx="6" fill="#16a34a"/>
+                    {{-- head --}}
+                    <circle cx="60" cy="30" r="11" fill="#fde68a"/>
+                    {{-- hat --}}
+                    <rect x="51" y="20" width="18" height="4" rx="2" fill="#374151"/>
+                    <rect x="54" y="14" width="12" height="8" rx="2" fill="#374151"/>
+                    {{-- eyes --}}
+                    <circle cx="56" cy="30" r="1.5" fill="#374151"/>
+                    <circle cx="64" cy="30" r="1.5" fill="#374151"/>
+                    {{-- left arm (holding lupe) --}}
+                    <line x1="50" y1="44" x2="38" y2="36" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+                    {{-- right arm --}}
+                    <line x1="70" y1="44" x2="80" y2="52" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+                </g>
+
+                {{-- magnifying glass --}}
+                <g id="searcher-lupe">
+                    <circle cx="32" cy="30" r="10" fill="none" stroke="#374151" stroke-width="3"/>
+                    <circle cx="32" cy="30" r="10" fill="rgba(147,197,253,0.25)"/>
+                    <line x1="39" y1="37" x2="46" y2="44" stroke="#374151" stroke-width="3" stroke-linecap="round"/>
+                </g>
+
+                {{-- loading dots --}}
+                <circle id="dot1" cx="52" cy="103" r="3.5" fill="#16a34a"/>
+                <circle id="dot2" cx="60" cy="103" r="3.5" fill="#16a34a"/>
+                <circle id="dot3" cx="68" cy="103" r="3.5" fill="#16a34a"/>
+            </svg>
+            <span style="font-size:13px;color:#6b7280;font-weight:500;">Searching localities…</span>
+        </div>
+
         {{-- Floating history button (positioned over the map) --}}
         <div style="position:absolute;top:12px;left:272px;z-index:20;">
             <div style="position:relative;display:inline-flex;align-items:center;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
@@ -527,6 +588,13 @@
             width: 100% !important;
             height: auto !important;
             z-index: 1 !important;
+        }
+
+        #map-loading {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important; right: 0 !important;
+            bottom: 52px !important;
+            z-index: 10 !important;
         }
 
         /* History button — reposition for mobile */
@@ -839,10 +907,14 @@ function buildLocalityString(g) {
 function showOverlay() {
     var o = document.getElementById('panel-overlay');
     if (o) { o.style.display = 'flex'; }
+    var m = document.getElementById('map-loading');
+    if (m) { m.style.display = 'flex'; }
 }
 function hideOverlay() {
     var o = document.getElementById('panel-overlay');
     if (o) { o.style.display = 'none'; }
+    var m = document.getElementById('map-loading');
+    if (m) { m.style.display = 'none'; }
 }
 
 function clearPanel() {
