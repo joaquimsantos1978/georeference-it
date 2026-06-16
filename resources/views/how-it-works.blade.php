@@ -200,10 +200,6 @@
                     <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border leading-5" style="color:#1d4ed8;background:#eff6ff;border-color:#93c5fd">GBIF georef</span>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">GBIF already has coordinates for this group from the data publisher. May still need review.</p>
                 </div>
-                <div class="p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-1.5">
-                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border leading-5" style="color:#166534;background:#f0fdf4;border-color:#86efac">Reviewed ✓</span>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">GBIF's coordinates have been reviewed and confirmed correct by the community.</p>
-                </div>
             </div>
         </section>
 

@@ -11,7 +11,6 @@
       'conflicted':        { pill: 'Conflicted',           color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
       'validated':         { pill: 'Validated ✓',          color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
       'gbif_georeferenced':{ pill: 'GBIF georef',          color: '#1d4ed8', bg: '#eff6ff', border: '#93c5fd' },
-      'gbif_reviewed':     { pill: 'Reviewed ✓',           color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
     }[status] || { pill: status, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
   }
 

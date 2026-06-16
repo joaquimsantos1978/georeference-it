@@ -470,15 +470,14 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
             ->whereNotIn('id', $excludedIds)
             ->update(['georef_status' => 'validated']);
 
-        // For consistency-check suggestions, the excluded occurrences are from
-        // competing clusters — flag them as needing correction by their publisher.
+        // For consistency-check suggestions, mark the excluded (losing-cluster)
+        // occurrences as validated too — the correct coordinates are now known
+        // for this locality; discrepancies with GBIF are the publisher's concern.
         if ($suggestion->georeference_sources === 'GBIF_CONSISTENCY_CHECK' && !empty($excludedIds)) {
             $suggestion->localityGroup->occurrences()
                 ->whereIn('id', $excludedIds)
-                ->where('georef_status', 'gbif_georeferenced')
-                ->update(['georef_status' => 'gbif_reviewed']);
+                ->update(['georef_status' => 'validated']);
 
-            // Mark the group as resolved
             $suggestion->localityGroup->update(['consistency_status' => 'resolved']);
         }
 

@@ -13,7 +13,6 @@ class OccurrenceController extends Controller
 {
     private const VERIFICATION_STATUS = [
         'validated'          => 'verified by contributor',
-        'gbif_reviewed'      => 'verified by data custodian',
         'has_suggestion'     => 'requires verification',
         'conflicted'         => 'requires verification',
         'gbif_georeferenced' => 'requires verification',
