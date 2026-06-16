@@ -9,9 +9,9 @@
       'ungeoreferenced':   { pill: 'Needs georeferencing', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
       'has_suggestion':    { pill: 'Suggestion pending',   color: '#d97706', bg: '#fffbeb', border: '#fcd34d' },
       'conflicted':        { pill: 'Conflicted',           color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
-      'validated':         { pill: 'Validated ✓',          color: '#166534', bg: '#f0fdf4', border: '#86efac' },
+      'validated':         { pill: 'Validated ✓',          color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
       'gbif_georeferenced':{ pill: 'GBIF georef',          color: '#1d4ed8', bg: '#eff6ff', border: '#93c5fd' },
-      'gbif_reviewed':     { pill: 'Reviewed ✓',           color: '#166534', bg: '#f0fdf4', border: '#86efac' },
+      'gbif_reviewed':     { pill: 'Reviewed ✓',           color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
     }[status] || { pill: status, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
   }
 
@@ -63,7 +63,7 @@
     const linkSection = data.georef_url
       ? `<a href="${data.georef_url}" target="_blank" style="
             display:block;margin:10px;text-align:center;flex-shrink:0;
-            padding:7px 0;background:#166534;color:#fff;
+            padding:7px 0;background:#16a34a;color:#fff;
             border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;
           ">${actionLabel}</a>`
       : '';
@@ -79,7 +79,7 @@
         border:1px solid #d1fae5;
         background:#fff;
       ">
-        <div id="georef-badge-header" style="background:#166534;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none;flex-shrink:0">
+        <div id="georef-badge-header" style="background:#16a34a;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none;flex-shrink:0">
           <span style="color:#fff;font-weight:700;font-size:12px;letter-spacing:.3px">⠿ georeference.it</span>
           <button id="georef-badge-close"
             style="background:none;border:none;color:#fff;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:.7">✕</button>
