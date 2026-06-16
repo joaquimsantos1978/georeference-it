@@ -117,6 +117,67 @@
             </p>
         </section>
 
+        {{-- System auto-suggestions --}}
+        <section class="space-y-4">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">System auto-suggestions</h2>
+            <p class="text-gray-600 dark:text-gray-300">
+                Many locality groups contain a mix of records: some already have GBIF coordinates
+                (georeferenced by the collection), others do not. When a group has at least one
+                georeferenced occurrence, georeference.it automatically creates a system suggestion
+                using those existing coordinates as a starting point.
+            </p>
+            <p class="text-gray-600 dark:text-gray-300">
+                These auto-suggestions are marked as coming from <em>georeference.it system</em>
+                and carry lower weight than human contributions. They serve as a useful baseline —
+                a pre-filled suggestion that contributors can accept, refine, or replace based on
+                their own assessment of the locality description.
+            </p>
+            <p class="text-gray-600 dark:text-gray-300">
+                Auto-suggestions are only created when no human suggestion already exists for the
+                group, so they never override community work.
+            </p>
+        </section>
+
+        {{-- User levels --}}
+        <section class="space-y-4">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Contributor levels and vote weight</h2>
+            <p class="text-gray-600 dark:text-gray-300">
+                Not all validation votes carry the same weight. Contributors earn experience by
+                having their suggestions validated by others. As their track record grows, their
+                votes carry more weight — reflecting the community's trust in their judgement.
+            </p>
+            <p class="text-gray-600 dark:text-gray-300">
+                A suggestion becomes <strong>validated</strong> when its total accumulated vote
+                weight reaches <strong>{{ $validationThreshold }} points</strong>.
+                Current contributor levels:
+            </p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <thead class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs uppercase">
+                        <tr>
+                            <th class="px-4 py-3">Level</th>
+                            <th class="px-4 py-3">Minimum validated contributions</th>
+                            <th class="px-4 py-3">Vote weight</th>
+                            <th class="px-4 py-3">Validations needed to pass a suggestion</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach($levels as $level)
+                        <tr class="bg-white dark:bg-gray-900">
+                            <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ $level->name }}</td>
+                            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ $level->min_validated == 0 ? 'None' : $level->min_validated }}</td>
+                            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ $level->vote_weight }}</td>
+                            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ ceil($validationThreshold / $level->vote_weight) }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-400 dark:text-gray-500">
+                Levels and thresholds are reviewed periodically as the community grows.
+            </p>
+        </section>
+
         {{-- Quality levels --}}
         <section class="space-y-4">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Status labels</h2>

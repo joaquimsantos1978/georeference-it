@@ -31,7 +31,7 @@
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
                 <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ __('API access') }}</h3>
                 <p class="text-sm text-gray-500">{{ __('Publishers can download validated georeferencing data via our API to enrich their GBIF datasets.') }}</p>
-                <a href="#" class="text-sm text-green-600 hover:underline mt-2 block">{{ __('API docs') }} →</a>
+                <a href="{{ route('api-docs') }}" class="text-sm text-green-600 hover:underline mt-2 block">{{ __('API docs') }} →</a>
             </div>
         </div>
 
