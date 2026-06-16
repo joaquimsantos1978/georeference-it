@@ -14,7 +14,8 @@
   "content_scripts": [
     {
       "matches": ["https://www.gbif.org/occurrence/*"],
-      "js": ["content.js"],
+      "js": ["leaflet.js", "content.js"],
+      "css": ["leaflet.css"],
       "run_at": "document_idle"
     }
   ],

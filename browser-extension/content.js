@@ -15,11 +15,6 @@
     }[status] || { pill: status, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
   }
 
-  function buildMapSection(lat, lng) {
-    const mapUrl = chrome.runtime.getURL('map.html') + `?lat=${lat}&lng=${lng}`;
-    return `<iframe src="${mapUrl}" style="width:100%;height:160px;border:0;border-bottom:1px solid #e5e7eb;display:block" scrolling="no"></iframe>`;
-  }
-
   function buildBadge(data) {
     const s = statusConfig(data.georef_status);
     const hasCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
@@ -31,7 +26,7 @@
       : '';
 
     const mapSection = hasCoords
-      ? buildMapSection(parseFloat(data.decimalLatitude), parseFloat(data.decimalLongitude))
+      ? `<div id="georef-map" style="width:100%;height:160px;border-bottom:1px solid #e5e7eb"></div>`
       : '';
 
     const coordsSection = hasCoords
@@ -80,6 +75,26 @@
       </div>`;
   }
 
+  function initMap(lat, lng) {
+    const container = document.getElementById('georef-map');
+    if (!container || typeof L === 'undefined') return;
+
+    const map = L.map(container, { zoomControl: true, attributionControl: false })
+      .setView([lat, lng], 13);
+
+    L.tileLayer('https://georeference.it/api/v1/tiles/{z}/{x}/{y}', {
+      maxZoom: 18,
+    }).addTo(map);
+
+    L.circleMarker([lat, lng], {
+      radius: 7,
+      color: '#dc2626',
+      fillColor: '#dc2626',
+      fillOpacity: 0.9,
+      weight: 2,
+    }).addTo(map);
+  }
+
   let _running = false;
   let _lastKey = null;
 
@@ -103,6 +118,11 @@
     const div = document.createElement('div');
     div.innerHTML = buildBadge(data);
     document.body.appendChild(div.firstElementChild);
+
+    const hasCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
+    if (hasCoords) {
+      initMap(parseFloat(data.decimalLatitude), parseFloat(data.decimalLongitude));
+    }
 
     _running = false;
   }
