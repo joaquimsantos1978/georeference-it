@@ -252,7 +252,7 @@
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
         {{-- Map loading overlay --}}
-        <div id="map-loading" style="display:none;position:absolute;inset:0;z-index:15;background:rgba(255,255,255,0.88);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:16px;pointer-events:none;">
+        <div id="map-loading" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:15;background:rgba(255,255,255,0.88);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:16px;pointer-events:none;">
             <img src="/images/loading-search.gif" alt="" width="200" style="display:block;">
             <span style="font-size:13px;color:#6b7280;font-weight:500;letter-spacing:.02em;">Searching through 43 million localities…</span>
         </div>
