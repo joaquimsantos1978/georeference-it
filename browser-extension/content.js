@@ -15,6 +15,27 @@
     }[status] || { pill: status, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
   }
 
+  function injectStyles() {
+    if (document.getElementById('georef-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'georef-styles';
+    style.textContent = `
+      #georef-badge .leaflet-control-zoom a {
+        width: 20px !important; height: 20px !important;
+        line-height: 20px !important; font-size: 13px !important;
+      }
+      #georef-badge .leaflet-control-zoom {
+        margin: 6px !important;
+      }
+      #georef-resize-handle {
+        position: absolute; bottom: 0; right: 0;
+        width: 14px; height: 14px; cursor: nwse-resize;
+        background: linear-gradient(135deg, transparent 50%, #9ca3af 50%, #9ca3af 60%, transparent 60%, transparent 70%, #9ca3af 70%, #9ca3af 80%, transparent 80%);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function buildBadge(data) {
     const s = statusConfig(data.georef_status);
     const hasCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
@@ -26,11 +47,11 @@
       : '';
 
     const mapSection = hasCoords
-      ? `<div id="georef-map" style="width:100%;height:160px;border-bottom:1px solid #e5e7eb"></div>`
+      ? `<div id="georef-map" style="flex:1;min-height:120px;border-bottom:1px solid #e5e7eb"></div>`
       : '';
 
     const coordsSection = hasCoords
-      ? `<div style="margin:8px 10px 0;font-size:10px;color:#6b7280">
+      ? `<div style="margin:8px 10px 0;font-size:10px;color:#6b7280;flex-shrink:0">
            Suggested coordinates
            <div style="font-family:monospace;font-size:10.5px;color:#111;margin-top:2px">
              ${parseFloat(data.decimalLatitude).toFixed(5)}, ${parseFloat(data.decimalLongitude).toFixed(5)}
@@ -41,7 +62,7 @@
 
     const linkSection = data.georef_url
       ? `<a href="${data.georef_url}" target="_blank" style="
-            display:block;margin:10px;text-align:center;
+            display:block;margin:10px;text-align:center;flex-shrink:0;
             padding:7px 0;background:#166534;color:#fff;
             border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;
           ">${actionLabel}</a>`
@@ -50,20 +71,21 @@
     return `
       <div id="georef-badge" style="
         position:fixed;bottom:24px;right:24px;z-index:2147483647;
-        width:260px;
+        width:260px;min-width:200px;min-height:80px;
+        display:flex;flex-direction:column;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         border-radius:10px;overflow:hidden;
         box-shadow:0 4px 20px rgba(0,0,0,0.22);
         border:1px solid #d1fae5;
         background:#fff;
       ">
-        <div id="georef-badge-header" style="background:#166534;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none">
+        <div id="georef-badge-header" style="background:#166534;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none;flex-shrink:0">
           <span style="color:#fff;font-weight:700;font-size:12px;letter-spacing:.3px">⠿ georeference.it</span>
           <button id="georef-badge-close"
             style="background:none;border:none;color:#fff;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:.7">✕</button>
         </div>
         ${mapSection}
-        <div style="padding:8px 10px 0">
+        <div style="padding:8px 10px 0;flex-shrink:0">
           <span style="
             display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;
             color:${s.color};background:${s.bg};border:1px solid ${s.border};
@@ -72,39 +94,36 @@
         ${coordsSection}
         ${divergeWarn}
         ${linkSection}
+        <div id="georef-resize-handle"></div>
       </div>`;
   }
 
   function makeDraggable(badge) {
     const header = badge.querySelector('#georef-badge-header');
-    let startX, startY, startRight, startBottom;
 
     header.addEventListener('mousedown', e => {
       if (e.target.id === 'georef-badge-close') return;
       e.preventDefault();
       header.style.cursor = 'grabbing';
 
-      // Convert right/bottom to left/top for easier drag math
       const rect = badge.getBoundingClientRect();
-      badge.style.left = rect.left + 'px';
-      badge.style.top = rect.top + 'px';
-      badge.style.right = 'auto';
+      badge.style.left   = rect.left + 'px';
+      badge.style.top    = rect.top + 'px';
+      badge.style.right  = 'auto';
       badge.style.bottom = 'auto';
 
-      startX = e.clientX - rect.left;
-      startY = e.clientY - rect.top;
+      const startX = e.clientX - rect.left;
+      const startY = e.clientY - rect.top;
 
       function onMove(e) {
         badge.style.left = (e.clientX - startX) + 'px';
         badge.style.top  = (e.clientY - startY) + 'px';
       }
-
       function onUp() {
         header.style.cursor = 'grab';
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
       }
-
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     });
@@ -114,9 +133,39 @@
     });
   }
 
+  function makeResizable(badge, getMap) {
+    const handle = badge.querySelector('#georef-resize-handle');
+
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = badge.getBoundingClientRect();
+      const startX  = e.clientX;
+      const startY  = e.clientY;
+      const startW  = rect.width;
+      const startH  = rect.height;
+
+      function onMove(e) {
+        const newW = Math.max(200, startW + (e.clientX - startX));
+        const newH = Math.max(80,  startH + (e.clientY - startY));
+        badge.style.width  = newW + 'px';
+        badge.style.height = newH + 'px';
+        const map = getMap();
+        if (map) map.invalidateSize();
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
   function initMap(lat, lng) {
     const container = document.getElementById('georef-map');
-    if (!container || typeof L === 'undefined') return;
+    if (!container || typeof L === 'undefined') return null;
 
     const map = L.map(container, { zoomControl: true, attributionControl: false })
       .setView([lat, lng], 13);
@@ -132,6 +181,8 @@
       fillOpacity: 0.9,
       weight: 2,
     }).addTo(map);
+
+    return map;
   }
 
   let _running = false;
@@ -154,6 +205,8 @@
     if (!data) { _running = false; return; }
     if (!data.localityGroupID) { _running = false; return; }
 
+    injectStyles();
+
     const div = document.createElement('div');
     div.innerHTML = buildBadge(data);
     const badge = div.firstElementChild;
@@ -162,9 +215,12 @@
     makeDraggable(badge);
 
     const hasCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
+    let leafletMap = null;
     if (hasCoords) {
-      initMap(parseFloat(data.decimalLatitude), parseFloat(data.decimalLongitude));
+      leafletMap = initMap(parseFloat(data.decimalLatitude), parseFloat(data.decimalLongitude));
     }
+
+    makeResizable(badge, () => leafletMap);
 
     _running = false;
   }
