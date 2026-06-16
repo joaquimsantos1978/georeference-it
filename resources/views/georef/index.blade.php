@@ -397,18 +397,18 @@
                     </div>
                 </div>
 
-                {{-- Location + Georef toggle buttons, right-aligned with separator --}}
-                <div style="flex-shrink:0;display:flex;align-items:stretch;border-left:1px solid #e5e7eb;margin-left:4px;" class="dark:border-gray-700">
+                {{-- Location + Georef toggle buttons, right-aligned with full-height separators --}}
+                <div style="flex-shrink:0;display:flex;align-self:stretch;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
                     <button id="mob-btn-info" onclick="mobileToggle('info')"
-                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 10px;">
+                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 12px;">
                         <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                         Location
                     </button>
-                    <div style="width:1px;background:#e5e7eb;margin:8px 0;" class="dark:bg-gray-700"></div>
+                    <div style="width:1px;background:#e5e7eb;align-self:stretch;" class="dark:bg-gray-700"></div>
                     <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
-                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 10px;position:relative;">
+                        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;padding:4px 12px;position:relative;">
                         <span style="position:relative;display:inline-block;">
                             <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
@@ -1147,7 +1147,8 @@ if(urlGbifKey) {
 } else if(sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
     loadGroup(sessionHistory[historyIndex].id);
 } else {
-    function applyLocationAndLoad(countryCode) {
+    function applyLocationAndLoad(loc) {
+        var countryCode = loc && loc.country_code ? loc.country_code : null;
         if (countryCode) {
             window._georefCountry = countryCode;
             var sel = document.getElementById('country-select');
@@ -1157,10 +1158,13 @@ if(urlGbifKey) {
                 }
             }
         }
+        if (loc && loc.lat && loc.lon) {
+            map.setView([loc.lat, loc.lon], 6);
+        }
         loadNextGroup();
     }
 
-    // Cache country in localStorage for 24h to avoid calling ip-api on every load
+    // Cache country+coords in localStorage for 24h
     var cachedLoc = null;
     try {
         var raw = localStorage.getItem('georef_location');
@@ -1171,7 +1175,7 @@ if(urlGbifKey) {
     } catch(e) {}
 
     if (cachedLoc) {
-        applyLocationAndLoad(cachedLoc.country_code);
+        applyLocationAndLoad(cachedLoc);
     } else {
         var _bootTimer = setTimeout(function() { applyLocationAndLoad(null); }, 1500);
         fetch(APP_URL + '/georef/detect-location', { headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'} })
@@ -1179,9 +1183,9 @@ if(urlGbifKey) {
             .then(function(loc) {
                 clearTimeout(_bootTimer);
                 if (loc && loc.country_code) {
-                    try { localStorage.setItem('georef_location', JSON.stringify({country_code: loc.country_code, ts: Date.now()})); } catch(e) {}
+                    try { localStorage.setItem('georef_location', JSON.stringify({country_code: loc.country_code, lat: loc.lat, lon: loc.lon, ts: Date.now()})); } catch(e) {}
                 }
-                applyLocationAndLoad(loc && loc.country_code ? loc.country_code : null);
+                applyLocationAndLoad(loc || null);
             })
             .catch(function() { clearTimeout(_bootTimer); applyLocationAndLoad(null); });
     }
@@ -1326,15 +1330,15 @@ function mobileToggle(panel) {
 
 function updateMobileBar(group, suggestionCount) {
     if (window.innerWidth > 768) return;
-    // Build locality summary string
+    // Build full locality string from all available fields
     var parts = [];
     if (group.verbatim_locality) parts.push(group.verbatim_locality);
-    else {
-        if (group.municipality)   parts.push(group.municipality);
-        else if (group.county)    parts.push(group.county);
-        if (group.state_province) parts.push(group.state_province);
-    }
-    if (group.country_code) parts.push(group.country_code);
+    if (group.municipality)      parts.push(group.municipality);
+    if (group.county)            parts.push(group.county);
+    if (group.state_province)    parts.push(group.state_province);
+    if (group.island)            parts.push(group.island);
+    if (group.water_body)        parts.push(group.water_body);
+    if (group.country_code)      parts.push(group.country_code);
     var text = parts.join(', ') || '—';
 
     var el    = document.getElementById('mob-locality-text');
