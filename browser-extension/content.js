@@ -120,7 +120,7 @@
         const top  = e.clientY - startY;
         badge.style.left = left + 'px';
         badge.style.top  = top  + 'px';
-        _savedPos = { left, top };
+        savePos(left, top);
       }
       function onUp() {
         header.style.cursor = 'grab';
@@ -154,7 +154,7 @@
         const newH = Math.max(80,  startH + (e.clientY - startY));
         badge.style.width  = newW + 'px';
         badge.style.height = newH + 'px';
-        _savedSize = { width: newW, height: newH };
+        saveSize(newW, newH);
         const map = getMap();
         if (map) map.invalidateSize();
       }
@@ -191,8 +191,11 @@
 
   let _running = false;
   let _lastKey = null;
-  let _savedPos  = null; // { left, top }
-  let _savedSize = null; // { width, height }
+
+  function savePos(left, top)       { sessionStorage.setItem('georef_pos',  JSON.stringify({ left, top })); }
+  function saveSize(width, height)  { sessionStorage.setItem('georef_size', JSON.stringify({ width, height })); }
+  function loadPos()                { try { return JSON.parse(sessionStorage.getItem('georef_pos'));  } catch { return null; } }
+  function loadSize()               { try { return JSON.parse(sessionStorage.getItem('georef_size')); } catch { return null; } }
 
   async function run() {
     const key = getGbifKey();
@@ -216,15 +219,17 @@
     const div = document.createElement('div');
     div.innerHTML = buildBadge(data);
     const badge = div.firstElementChild;
-    if (_savedPos) {
-      badge.style.left   = _savedPos.left + 'px';
-      badge.style.top    = _savedPos.top  + 'px';
+    const pos  = loadPos();
+    const size = loadSize();
+    if (pos) {
+      badge.style.left   = pos.left + 'px';
+      badge.style.top    = pos.top  + 'px';
       badge.style.right  = 'auto';
       badge.style.bottom = 'auto';
     }
-    if (_savedSize) {
-      badge.style.width  = _savedSize.width  + 'px';
-      badge.style.height = _savedSize.height + 'px';
+    if (size) {
+      badge.style.width  = size.width  + 'px';
+      badge.style.height = size.height + 'px';
     }
     document.body.appendChild(badge);
 
