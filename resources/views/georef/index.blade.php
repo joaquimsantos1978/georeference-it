@@ -252,64 +252,68 @@
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
         {{-- Map loading overlay --}}
-        <div id="map-loading" style="display:none;position:absolute;inset:0;z-index:15;background:rgba(255,255,255,0.82);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:16px;pointer-events:none;">
-            <svg id="searcher-svg" viewBox="0 0 120 110" width="160" height="147" xmlns="http://www.w3.org/2000/svg">
+        <div id="map-loading" style="display:none;position:absolute;inset:0;z-index:15;background:rgba(255,255,255,0.85);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:20px;pointer-events:none;">
+            <svg viewBox="0 0 140 130" width="180" height="167" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
                 <style>
-                    #searcher-body { animation: searcher-bob 1.2s ease-in-out infinite alternate; transform-origin: 60px 75px; }
-                    #searcher-lupe { animation: searcher-scan 2.4s ease-in-out infinite; transform-origin: 60px 55px; }
-                    #searcher-paper1 { animation: paper-flutter 1.8s ease-in-out infinite alternate; transform-origin: 30px 85px; }
-                    #searcher-paper2 { animation: paper-flutter 1.8s 0.3s ease-in-out infinite alternate-reverse; transform-origin: 55px 90px; }
-                    #searcher-paper3 { animation: paper-flutter 1.8s 0.6s ease-in-out infinite alternate; transform-origin: 80px 85px; }
-                    #dot1 { animation: dot-blink 1.2s 0s ease-in-out infinite; }
-                    #dot2 { animation: dot-blink 1.2s 0.4s ease-in-out infinite; }
-                    #dot3 { animation: dot-blink 1.2s 0.8s ease-in-out infinite; }
-                    @keyframes searcher-bob { from { transform: translateY(0); } to { transform: translateY(-4px); } }
-                    @keyframes searcher-scan { 0%,100% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } }
-                    @keyframes paper-flutter { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
-                    @keyframes dot-blink { 0%,100% { opacity:0.2; } 50% { opacity:1; } }
+                    #sl-arm  { animation: sl-scan 2s ease-in-out infinite; transform-origin: 68px 62px; }
+                    #sl-body { animation: sl-bob  1.4s ease-in-out infinite alternate; transform-origin: 70px 70px; }
+                    #sl-p1   { animation: sl-tilt 1.6s ease-in-out infinite alternate;     transform-origin: 32px 95px; }
+                    #sl-p2   { animation: sl-tilt 1.6s .25s ease-in-out infinite alternate-reverse; transform-origin: 56px 93px; }
+                    #sl-p3   { animation: sl-tilt 1.6s .5s  ease-in-out infinite alternate; transform-origin: 80px 95px; }
+                    #sl-p4   { animation: sl-tilt 1.6s .1s  ease-in-out infinite alternate-reverse; transform-origin: 104px 95px; }
+                    #sl-d1   { animation: sl-dot 1.2s 0s   ease-in-out infinite; }
+                    #sl-d2   { animation: sl-dot 1.2s .4s  ease-in-out infinite; }
+                    #sl-d3   { animation: sl-dot 1.2s .8s  ease-in-out infinite; }
+                    @keyframes sl-scan { 0%,100%{transform:rotate(-22deg)} 50%{transform:rotate(22deg)} }
+                    @keyframes sl-bob  { from{transform:translateY(0)} to{transform:translateY(-5px)} }
+                    @keyframes sl-tilt { from{transform:rotate(-4deg)} to{transform:rotate(4deg)} }
+                    @keyframes sl-dot  { 0%,100%{opacity:.15} 50%{opacity:1} }
                 </style>
 
-                {{-- desk / folder base --}}
-                <rect x="10" y="80" width="100" height="8" rx="4" fill="#d1fae5"/>
-                <rect x="18" y="70" width="84" height="14" rx="3" fill="#6ee7b7"/>
-                <rect x="22" y="67" width="76" height="6" rx="2" fill="#34d399"/>
+                {{-- desk line --}}
+                <line x1="12" y1="100" x2="128" y2="100" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
 
-                {{-- papers in folder --}}
-                <g id="searcher-paper1"><rect x="24" y="52" width="22" height="18" rx="2" fill="white" stroke="#d1d5db" stroke-width="1"/><line x1="27" y1="57" x2="43" y2="57" stroke="#e5e7eb" stroke-width="1.5"/><line x1="27" y1="61" x2="40" y2="61" stroke="#e5e7eb" stroke-width="1.5"/><line x1="27" y1="65" x2="43" y2="65" stroke="#e5e7eb" stroke-width="1.5"/></g>
-                <g id="searcher-paper2"><rect x="49" y="48" width="22" height="22" rx="2" fill="white" stroke="#d1d5db" stroke-width="1"/><line x1="52" y1="54" x2="68" y2="54" stroke="#e5e7eb" stroke-width="1.5"/><line x1="52" y1="58" x2="65" y2="58" stroke="#e5e7eb" stroke-width="1.5"/><line x1="52" y1="62" x2="68" y2="62" stroke="#e5e7eb" stroke-width="1.5"/><line x1="52" y1="66" x2="65" y2="66" stroke="#e5e7eb" stroke-width="1.5"/></g>
-                <g id="searcher-paper3"><rect x="74" y="52" width="22" height="18" rx="2" fill="white" stroke="#d1d5db" stroke-width="1"/><line x1="77" y1="57" x2="93" y2="57" stroke="#e5e7eb" stroke-width="1.5"/><line x1="77" y1="61" x2="90" y2="61" stroke="#e5e7eb" stroke-width="1.5"/><line x1="77" y1="65" x2="93" y2="65" stroke="#e5e7eb" stroke-width="1.5"/></g>
+                {{-- papers --}}
+                <g id="sl-p1"><rect x="18" y="76" width="24" height="24" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="22" y1="83" x2="38" y2="83" stroke="#1f2937" stroke-width="1.2"/><line x1="22" y1="88" x2="36" y2="88" stroke="#1f2937" stroke-width="1.2"/><line x1="22" y1="93" x2="38" y2="93" stroke="#1f2937" stroke-width="1.2"/></g>
+                <g id="sl-p2"><rect x="44" y="72" width="24" height="28" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="48" y1="79" x2="64" y2="79" stroke="#1f2937" stroke-width="1.2"/><line x1="48" y1="84" x2="62" y2="84" stroke="#1f2937" stroke-width="1.2"/><line x1="48" y1="89" x2="64" y2="89" stroke="#1f2937" stroke-width="1.2"/><line x1="48" y1="94" x2="62" y2="94" stroke="#1f2937" stroke-width="1.2"/></g>
+                <g id="sl-p3"><rect x="70" y="76" width="24" height="24" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="74" y1="83" x2="90" y2="83" stroke="#1f2937" stroke-width="1.2"/><line x1="74" y1="88" x2="88" y2="88" stroke="#1f2937" stroke-width="1.2"/><line x1="74" y1="93" x2="90" y2="93" stroke="#1f2937" stroke-width="1.2"/></g>
+                <g id="sl-p4"><rect x="96" y="79" width="20" height="21" rx="2" fill="none" stroke="#1f2937" stroke-width="2"/><line x1="99" y1="85" x2="113" y2="85" stroke="#1f2937" stroke-width="1.2"/><line x1="99" y1="90" x2="111" y2="90" stroke="#1f2937" stroke-width="1.2"/><line x1="99" y1="95" x2="113" y2="95" stroke="#1f2937" stroke-width="1.2"/></g>
 
-                {{-- researcher body --}}
-                <g id="searcher-body">
+                {{-- body --}}
+                <g id="sl-body">
+                    {{-- legs --}}
+                    <line x1="64" y1="88" x2="60" y2="100" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="76" y1="88" x2="80" y2="100" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
                     {{-- torso --}}
-                    <rect x="50" y="38" width="20" height="22" rx="6" fill="#16a34a"/>
+                    <rect x="60" y="68" width="20" height="22" rx="5" fill="none" stroke="#1f2937" stroke-width="2.5"/>
+                    {{-- right arm (down) --}}
+                    <line x1="80" y1="74" x2="90" y2="82" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
                     {{-- head --}}
-                    <circle cx="60" cy="30" r="11" fill="#fde68a"/>
-                    {{-- hat --}}
-                    <rect x="51" y="20" width="18" height="4" rx="2" fill="#374151"/>
-                    <rect x="54" y="14" width="12" height="8" rx="2" fill="#374151"/>
+                    <circle cx="70" cy="55" r="13" fill="none" stroke="#1f2937" stroke-width="2.5"/>
                     {{-- eyes --}}
-                    <circle cx="56" cy="30" r="1.5" fill="#374151"/>
-                    <circle cx="64" cy="30" r="1.5" fill="#374151"/>
-                    {{-- left arm (holding lupe) --}}
-                    <line x1="50" y1="44" x2="38" y2="36" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
-                    {{-- right arm --}}
-                    <line x1="70" y1="44" x2="80" y2="52" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+                    <circle cx="65" cy="54" r="1.8" fill="#1f2937"/>
+                    <circle cx="75" cy="54" r="1.8" fill="#1f2937"/>
+                    {{-- smile --}}
+                    <path d="M65 60 Q70 64 75 60" fill="none" stroke="#1f2937" stroke-width="1.8" stroke-linecap="round"/>
+                    {{-- hat brim --}}
+                    <line x1="55" y1="44" x2="85" y2="44" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                    {{-- hat top --}}
+                    <rect x="61" y="30" width="18" height="15" rx="2" fill="none" stroke="#1f2937" stroke-width="2.5"/>
                 </g>
 
-                {{-- magnifying glass --}}
-                <g id="searcher-lupe">
-                    <circle cx="32" cy="30" r="10" fill="none" stroke="#374151" stroke-width="3"/>
-                    <circle cx="32" cy="30" r="10" fill="rgba(147,197,253,0.25)"/>
-                    <line x1="39" y1="37" x2="46" y2="44" stroke="#374151" stroke-width="3" stroke-linecap="round"/>
+                {{-- arm + magnifying glass --}}
+                <g id="sl-arm">
+                    <line x1="60" y1="74" x2="44" y2="60" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                    <circle cx="36" cy="52" r="10" fill="none" stroke="#1f2937" stroke-width="2.5"/>
+                    <line x1="43" y1="59" x2="50" y2="66" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
                 </g>
 
-                {{-- loading dots --}}
-                <circle id="dot1" cx="52" cy="103" r="3.5" fill="#16a34a"/>
-                <circle id="dot2" cx="60" cy="103" r="3.5" fill="#16a34a"/>
-                <circle id="dot3" cx="68" cy="103" r="3.5" fill="#16a34a"/>
+                {{-- dots --}}
+                <circle id="sl-d1" cx="60" cy="120" r="4" fill="#1f2937"/>
+                <circle id="sl-d2" cx="70" cy="120" r="4" fill="#1f2937"/>
+                <circle id="sl-d3" cx="80" cy="120" r="4" fill="#1f2937"/>
             </svg>
-            <span style="font-size:13px;color:#6b7280;font-weight:500;">Searching localities…</span>
+            <span style="font-size:13px;color:#6b7280;font-weight:500;letter-spacing:.02em;">Searching localities…</span>
         </div>
 
         {{-- Floating history button (positioned over the map) --}}
