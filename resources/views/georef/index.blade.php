@@ -384,7 +384,115 @@
         <input type="text" id="area-search" style="display:none">
         <button id="area-search-btn" style="display:none"></button>
         <span id="area-hint" style="display:none"></span>
+
+        {{-- Mobile bottom tab bar --}}
+        <div id="mobile-tabs" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:white;border-top:1px solid #e5e7eb;padding:0;height:56px;flex-shrink:0;"
+            class="dark:bg-gray-900 dark:border-gray-700">
+            <div style="display:flex;height:100%;">
+                <button id="mob-tab-info" onclick="mobileTab('info')"
+                    style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;font-weight:500;color:#6b7280;cursor:pointer;padding:4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Locality
+                </button>
+                <button id="mob-tab-map" onclick="mobileTab('map')"
+                    style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;font-weight:500;color:#16a34a;cursor:pointer;padding:4px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                    </svg>
+                    Map
+                </button>
+                <button id="mob-tab-suggest" onclick="mobileTab('suggest')"
+                    style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;font-weight:500;color:#6b7280;cursor:pointer;padding:4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Suggest
+                </button>
+            </div>
+        </div>
     </div>
+
+    <style>
+    @media (max-width: 768px) {
+        #mobile-tabs { display:flex !important; }
+
+        #georef-wrap { flex-direction: column !important; padding-bottom: 56px; }
+
+        #left-panel {
+            position: fixed !important;
+            bottom: 56px !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            height: 65vh !important;
+            max-height: 65vh !important;
+            border-right: none !important;
+            border-top: 2px solid #e5e7eb !important;
+            border-radius: 16px 16px 0 0 !important;
+            z-index: 40 !important;
+            transform: translateY(100%) !important;
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1) !important;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
+        }
+        #left-panel.mob-open { transform: translateY(0) !important; }
+        #left-panel::before {
+            content: '';
+            display: block;
+            width: 36px; height: 4px;
+            background: #d1d5db;
+            border-radius: 2px;
+            margin: 8px auto 4px;
+            flex-shrink: 0;
+        }
+
+        #right-panel {
+            position: fixed !important;
+            bottom: 56px !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            height: 75vh !important;
+            max-height: 75vh !important;
+            border-left: none !important;
+            border-top: 2px solid #e5e7eb !important;
+            border-radius: 16px 16px 0 0 !important;
+            z-index: 40 !important;
+            transform: translateY(100%) !important;
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1) !important;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
+        }
+        #right-panel.mob-open { transform: translateY(0) !important; }
+        #right-panel::before {
+            content: '';
+            display: block;
+            width: 36px; height: 4px;
+            background: #d1d5db;
+            border-radius: 2px;
+            margin: 8px auto 4px;
+            flex-shrink: 0;
+        }
+
+        #map {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 56px !important;
+            width: 100% !important;
+            height: auto !important;
+            z-index: 1 !important;
+        }
+
+        /* History button — reposition for mobile */
+        #georef-wrap > div[style*="left:272px"] {
+            left: 8px !important;
+            top: 8px !important;
+        }
+    }
+    </style>
 
     @push('scripts')
     <script>
@@ -805,13 +913,24 @@ function updateHistoryNav() {
         _currentOccurrences = occurrences;
         const ctrl = document.getElementById('occ-select-controls');
         if (occurrences.length > 1) ctrl.classList.remove('hidden'); else ctrl.classList.add('hidden');
-        const fields=['verbatim_locality','country','state_province','county','municipality','island','water_body'].filter(f=>group[f]);
-        document.getElementById('locality-fields').innerHTML=fields.map(f=>
-            '<div style="margin-bottom:5px">'+
-            '<div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;font-weight:500">'+f.replace(/_/g,' ')+'</div>'+
-            '<div style="font-size:12px;font-weight:500;line-height:1.3;word-break:break-word">'+group[f]+'</div>'+
-            '</div>'
-        ).join('');
+        const fieldDefs = [
+            {key:'verbatim_locality', label:'Locality'},
+            {key:'municipality',      label:'Municipality'},
+            {key:'county',            label:'County'},
+            {key:'state_province',    label:'State / Province'},
+            {key:'island',            label:'Island'},
+            {key:'island_group',      label:'Island group'},
+            {key:'water_body',        label:'Water body'},
+            {key:'country_code',      label:'Country'},
+        ];
+        document.getElementById('locality-fields').innerHTML=fieldDefs
+            .filter(d=>group[d.key])
+            .map(d=>
+                '<div style="margin-bottom:5px">'+
+                '<div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;font-weight:500">'+d.label+'</div>'+
+                '<div style="font-size:12px;font-weight:500;line-height:1.3;word-break:break-word">'+group[d.key]+'</div>'+
+                '</div>'
+            ).join('');
         document.getElementById('nominatim-input').value=buildLocalityString(group);
         document.getElementById('nominatim-results').innerHTML='';
 
@@ -1160,6 +1279,24 @@ document.addEventListener('click', function() {
     var list = document.getElementById('hist-list');
     if(list) list.style.display = 'none';
 });
+
+// ── Mobile tab switching ──────────────────────────────────────────────────────
+function mobileTab(tab) {
+    var left    = document.getElementById('left-panel');
+    var right   = document.getElementById('right-panel');
+    var tabInfo = document.getElementById('mob-tab-info');
+    var tabMap  = document.getElementById('mob-tab-map');
+    var tabSug  = document.getElementById('mob-tab-suggest');
+    var active  = '#16a34a', inactive = '#6b7280';
+
+    left.classList.remove('mob-open');
+    right.classList.remove('mob-open');
+    [tabInfo, tabMap, tabSug].forEach(function(b) { b.style.color = inactive; });
+
+    if (tab === 'info')    { left.classList.add('mob-open');  tabInfo.style.color = active; }
+    if (tab === 'suggest') { right.classList.add('mob-open'); tabSug.style.color  = active; }
+    if (tab === 'map')     { tabMap.style.color = active; map.invalidateSize(); }
+}
 
 function deleteSuggestion(id) {
     if (!confirm('{{ __("Delete your georeferencing suggestion? This cannot be undone.") }}')) return;
