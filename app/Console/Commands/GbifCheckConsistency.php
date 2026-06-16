@@ -11,6 +11,8 @@ class GbifCheckConsistency extends Command
     protected $signature = 'gbif:check-consistency
                             {--country= : Limit to a specific country code (e.g. PT)}
                             {--limit=0 : Stop after N groups (0 = all)}
+                            {--min-id=0 : Start from this locality_group id (inclusive)}
+                            {--max-id=0 : Stop at this locality_group id (inclusive, 0 = no limit)}
                             {--recheck : Re-check groups already marked consistent or inconsistent}';
 
     protected $description = 'Check consistency of existing georeferenced occurrences within each locality group';
@@ -29,6 +31,14 @@ class GbifCheckConsistency extends Command
 
         if ($country = $this->option('country')) {
             $query->where('country_code', strtoupper($country));
+        }
+
+        if ($minId = (int) $this->option('min-id')) {
+            $query->where('id', '>=', $minId);
+        }
+
+        if ($maxId = (int) $this->option('max-id')) {
+            $query->where('id', '<=', $maxId);
         }
 
         $limit = (int) $this->option('limit');
