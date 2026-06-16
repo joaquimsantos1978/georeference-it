@@ -386,33 +386,34 @@
         <span id="area-hint" style="display:none"></span>
     </div>{{-- end #georef-wrap --}}
 
-    {{-- Mobile floating Skip/Submit bar — outside georef-wrap to avoid stacking context issues --}}
-    <div id="mob-action-bar" style="display:none;position:fixed;bottom:52px;left:0;right:0;z-index:200;padding:8px 12px;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);border-top:1px solid #e5e7eb;gap:8px;flex-direction:row;"
-        class="dark:bg-gray-900/90 dark:border-gray-700">
-        <button id="mob-skip-btn" onclick="loadNextGroup()"
-            style="flex:1;font-size:13px;padding:10px 0;border:1px solid #d1d5db;border-radius:10px;background:white;color:#374151;font-weight:500;cursor:pointer;">
-            Skip
-        </button>
-        <button id="mob-submit-btn" onclick="document.getElementById('submit-btn').click()"
-            style="flex:1;font-size:13px;padding:10px 0;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;opacity:0.4;" disabled>
-            Submit
-        </button>
-    </div>
-
     {{-- Mobile bottom bar — outside georef-wrap --}}
     <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:white;border-top:1px solid #e5e7eb;height:52px;"
         class="dark:bg-gray-900 dark:border-gray-700">
-        <div style="display:flex;align-items:center;height:100%;padding:0;">
+        <div style="display:flex;align-items:stretch;height:100%;">
+
+            {{-- Skip + Submit buttons (left) --}}
+            <div id="mob-action-bar" style="display:none;align-items:stretch;flex-shrink:0;border-right:1px solid #e5e7eb;" class="dark:border-gray-700">
+                <button id="mob-skip-btn" onclick="loadNextGroup()"
+                    style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:500;color:#6b7280;cursor:pointer;padding:0 14px;height:100%;">
+                    Skip
+                </button>
+                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+                <button id="mob-submit-btn" onclick="document.getElementById('submit-btn').click()"
+                    style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:700;color:#16a34a;cursor:pointer;padding:0 14px;height:100%;opacity:0.35;" disabled>
+                    Submit
+                </button>
+                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+            </div>
 
             {{-- Scrolling locality text --}}
-            <div style="flex:1;min-width:0;overflow:hidden;padding:0 10px;">
-                <div id="mob-locality-track" style="white-space:nowrap;font-size:11px;color:#6b7280;overflow:hidden;">
+            <div style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;padding:0 10px;">
+                <div id="mob-locality-track" style="white-space:nowrap;font-size:11px;color:#6b7280;overflow:hidden;width:100%;">
                     <span id="mob-locality-text" style="display:inline-block;">—</span>
                 </div>
             </div>
 
-            {{-- Location + Georef toggle buttons, flush right --}}
-            <div style="display:flex;align-items:stretch;height:100%;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
+            {{-- Location + Georef toggle buttons (right) --}}
+            <div style="display:flex;align-items:stretch;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
                 <button id="mob-btn-info" onclick="mobileToggle('info')"
                     style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;width:72px;">
                     <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -438,8 +439,7 @@
 
     <style>
     /* Hidden on desktop, shown on mobile via media query */
-    #mob-action-bar  { display:none; }
-    #mobile-tabs     { display:none; }
+    #mobile-tabs { display:none; }
 
     @keyframes mob-marquee {
         0%   { transform: translateX(0); }
@@ -454,6 +454,7 @@
     @media (max-width: 768px) {
         #mobile-tabs { display:block !important; }
         #mob-action-bar.mob-loaded { display:flex !important; }
+        #mob-action-bar { display:none; }
 
         #georef-wrap { flex-direction: column !important; padding-bottom: 52px; }
 
