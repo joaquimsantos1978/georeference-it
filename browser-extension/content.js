@@ -167,21 +167,35 @@
     });
   }
 
-  function initMap(lat, lng) {
+  function initMap(lat, lng, uncertaintyM) {
     const container = document.getElementById('georef-map');
     if (!container || typeof L === 'undefined') return null;
 
+    const zoom = uncertaintyM
+      ? Math.max(3, Math.min(14, Math.round(14 - Math.log2(uncertaintyM / 100))))
+      : 13;
+
     const map = L.map(container, { zoomControl: true, attributionControl: false })
-      .setView([lat, lng], 13);
+      .setView([lat, lng], zoom);
 
     L.tileLayer('https://georeference.it/api/v1/tiles/{z}/{x}/{y}', {
       maxZoom: 18,
     }).addTo(map);
 
+    if (uncertaintyM) {
+      L.circle([lat, lng], {
+        radius: uncertaintyM,
+        color: '#16a34a',
+        fillColor: '#16a34a',
+        fillOpacity: 0.15,
+        weight: 2,
+      }).addTo(map);
+    }
+
     L.circleMarker([lat, lng], {
-      radius: 7,
-      color: '#dc2626',
-      fillColor: '#dc2626',
+      radius: 6,
+      color: '#16a34a',
+      fillColor: '#16a34a',
       fillOpacity: 0.9,
       weight: 2,
     }).addTo(map);
@@ -236,7 +250,11 @@
     const hasCoords = data.decimalLatitude != null && data.georeferenceSources !== 'GBIF';
     let leafletMap = null;
     if (hasCoords) {
-      leafletMap = initMap(parseFloat(data.decimalLatitude), parseFloat(data.decimalLongitude));
+      leafletMap = initMap(
+        parseFloat(data.decimalLatitude),
+        parseFloat(data.decimalLongitude),
+        data.coordinateUncertaintyInMeters ? parseFloat(data.coordinateUncertaintyInMeters) : null
+      );
     }
 
     makeResizable(badge, () => leafletMap);
