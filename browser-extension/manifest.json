@@ -18,7 +18,13 @@
       "run_at": "document_idle"
     }
   ],
-"browser_specific_settings": {
+  "web_accessible_resources": [
+    {
+      "resources": ["map.html", "leaflet.js", "leaflet.css"],
+      "matches": ["https://www.gbif.org/*"]
+    }
+  ],
+  "browser_specific_settings": {
     "gecko": {
       "id": "extension@georeference.it",
       "strict_min_version": "109.0"
