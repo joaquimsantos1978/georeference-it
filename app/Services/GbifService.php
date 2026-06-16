@@ -181,13 +181,13 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         return $isNewGroup ? $localityGroup : null;
     }
 
-    public function checkConsistency(LocalityGroup $group): string
+    public function checkConsistency(LocalityGroup $group, int $threshold = 5000, array &$pendingConsistentIds = []): string
     {
         // Skip groups without a specific locality name — country-only and province-only
         // groups aggregate unrelated records across large areas and cannot be meaningfully
         // clustered for consistency checking.
         if (!$group->verbatim_locality && !$group->municipality && !$group->county) {
-            $group->update(['consistency_status' => 'consistent']);
+            $pendingConsistentIds[] = $group->id;
             return 'consistent';
         }
 
@@ -200,7 +200,7 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m']);
 
         if ($georefOccurrences->count() < 2) {
-            $group->update(['consistency_status' => 'consistent']);
+            $pendingConsistentIds[] = $group->id;
             return 'consistent';
         }
 
@@ -214,7 +214,7 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         $clusters = $this->clusterByOverlap($points);
 
         if (count($clusters) === 1) {
-            $group->update(['consistency_status' => 'consistent']);
+            $pendingConsistentIds[] = $group->id;
             return 'consistent';
         }
 
@@ -233,9 +233,8 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             }
         }
 
-        $inconsistencyThresholdM = (int) PlatformSetting::get('inconsistency_distance_m', 5000);
-        if ($maxDist < $inconsistencyThresholdM) {
-            $group->update(['consistency_status' => 'consistent']);
+        if ($maxDist < $threshold) {
+            $pendingConsistentIds[] = $group->id;
             return 'consistent';
         }
 

@@ -34,13 +34,26 @@ class GbifCheckConsistency extends Command
         $limit = (int) $this->option('limit');
         $this->info('Starting consistency check' . ($limit ? " (first {$limit} groups)" : '') . '...');
 
-        $processed   = 0;
-        $consistent  = 0;
+        $processed    = 0;
+        $consistent   = 0;
         $inconsistent = 0;
 
-        $query->chunkById(200, function ($groups) use ($gbif, $limit, &$processed, &$consistent, &$inconsistent) {
+        // Load once — avoids a DB query per group inside checkConsistency
+        $threshold = (int) \App\Models\PlatformSetting::get('inconsistency_distance_m', 5000);
+
+        $pendingConsistentIds = [];
+
+        $flush = function () use (&$pendingConsistentIds) {
+            if ($pendingConsistentIds) {
+                LocalityGroup::whereIn('id', $pendingConsistentIds)
+                    ->update(['consistency_status' => 'consistent']);
+                $pendingConsistentIds = [];
+            }
+        };
+
+        $query->chunkById(500, function ($groups) use ($gbif, $threshold, $limit, $flush, &$processed, &$consistent, &$inconsistent, &$pendingConsistentIds) {
             foreach ($groups as $group) {
-                $result = $gbif->checkConsistency($group);
+                $result = $gbif->checkConsistency($group, $threshold, $pendingConsistentIds);
 
                 match ($result) {
                     'consistent'   => $consistent++,
@@ -50,15 +63,24 @@ class GbifCheckConsistency extends Command
 
                 $processed++;
 
+                if (count($pendingConsistentIds) >= 500) {
+                    $flush();
+                }
+
                 if ($processed % 500 === 0) {
                     $this->line("  {$processed} checked — consistent: {$consistent}, inconsistent: {$inconsistent}");
                 }
 
                 if ($limit > 0 && $processed >= $limit) {
+                    $flush();
                     return false;
                 }
             }
+
+            $flush();
         });
+
+        $flush();
 
         $this->info("Done. {$processed} groups checked.");
         $this->line("  Consistent:   {$consistent}");
