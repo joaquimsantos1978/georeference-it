@@ -5,7 +5,8 @@
   "description": "Shows georeference.it data on GBIF occurrence pages.",
   "permissions": ["storage"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
   "host_permissions": [
     "https://www.gbif.org/*",
