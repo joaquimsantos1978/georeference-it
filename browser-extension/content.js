@@ -116,8 +116,11 @@
       const startY = e.clientY - rect.top;
 
       function onMove(e) {
-        badge.style.left = (e.clientX - startX) + 'px';
-        badge.style.top  = (e.clientY - startY) + 'px';
+        const left = e.clientX - startX;
+        const top  = e.clientY - startY;
+        badge.style.left = left + 'px';
+        badge.style.top  = top  + 'px';
+        _savedPos = { left, top };
       }
       function onUp() {
         header.style.cursor = 'grab';
@@ -151,6 +154,7 @@
         const newH = Math.max(80,  startH + (e.clientY - startY));
         badge.style.width  = newW + 'px';
         badge.style.height = newH + 'px';
+        _savedSize = { width: newW, height: newH };
         const map = getMap();
         if (map) map.invalidateSize();
       }
@@ -187,6 +191,8 @@
 
   let _running = false;
   let _lastKey = null;
+  let _savedPos  = null; // { left, top }
+  let _savedSize = null; // { width, height }
 
   async function run() {
     const key = getGbifKey();
@@ -210,6 +216,16 @@
     const div = document.createElement('div');
     div.innerHTML = buildBadge(data);
     const badge = div.firstElementChild;
+    if (_savedPos) {
+      badge.style.left   = _savedPos.left + 'px';
+      badge.style.top    = _savedPos.top  + 'px';
+      badge.style.right  = 'auto';
+      badge.style.bottom = 'auto';
+    }
+    if (_savedSize) {
+      badge.style.width  = _savedSize.width  + 'px';
+      badge.style.height = _savedSize.height + 'px';
+    }
     document.body.appendChild(badge);
 
     makeDraggable(badge);
