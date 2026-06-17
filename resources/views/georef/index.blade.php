@@ -489,8 +489,8 @@
         <span id="area-hint" style="display:none"></span>
     </div>{{-- end #georef-wrap --}}
 
-    {{-- Help button (top-right of map) --}}
-    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;position:fixed;top:10px;right:52px;z-index:500;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
+    {{-- Help button injected into map by JS --}}
+    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;position:absolute;top:10px;right:10px;z-index:500;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
 
     {{-- Tutorial overlay --}}
     <div id="tut-overlay" style="display:none;position:fixed;inset:0;z-index:1000;">
@@ -1572,21 +1572,15 @@ document.getElementById('share-btn').addEventListener('click', function() {
             pos: 'right'
         },
         {
-            sel: '#map',
-            title: 'Place a point',
-            text: 'Click anywhere on the map to set the coordinates. Drag the point to adjust. The circle represents the coordinate uncertainty — drag its edge to resize it.',
-            pos: 'left'
-        },
-        {
             sel: '#nominatim-input',
             title: 'Location Search',
-            text: 'Type a place name and press Enter (or click 🔍) to search. Selecting a result automatically centres the map and places the marker — a great starting point when the locality name is clear.',
+            text: 'Type a place name and press Enter (or 🔍) to search OpenStreetMap. Selecting a result automatically centres the map and places the marker — a great starting point when the locality name is recognisable.',
             pos: 'left'
         },
         {
-            sel: '#existing-suggestions',
-            title: 'Existing Suggestions',
-            text: 'If someone has already submitted coordinates, you can agree with their suggestion (adding your vote) or submit a competing one if you disagree.',
+            sel: '#georef-form',
+            title: 'Place a point',
+            text: 'Click anywhere on the map to set the coordinates — they appear here automatically. Drag the marker to fine-tune. The circle is the coordinate uncertainty; drag its edge to resize it.',
             pos: 'left'
         },
         {
@@ -1594,6 +1588,12 @@ document.getElementById('share-btn').addEventListener('click', function() {
             title: 'Specimens',
             text: 'These are all the specimens that share this locality description. Check or uncheck them to include or exclude individual records from your georeference.',
             pos: 'right'
+        },
+        {
+            sel: '#existing-suggestions',
+            title: 'Existing Suggestions',
+            text: 'If someone has already submitted coordinates, you can agree with their suggestion (adding your vote) or submit a competing one if you disagree.',
+            pos: 'left'
         },
         {
             sel: '#remarks-input',
@@ -1682,14 +1682,17 @@ document.getElementById('share-btn').addEventListener('click', function() {
             spot.style.height = (r.height + pad * 2) + 'px';
             el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
-            var cw = 280, ch = 240, vw = window.innerWidth, vh = window.innerHeight;
+            var cw = 280, ch = 260, vw = window.innerWidth, vh = window.innerHeight;
             var cx, cy;
             if (step.pos === 'right' && r.right + cw + 20 < vw) {
                 cx = r.right + 14; cy = Math.min(r.top, vh - ch - 20);
             } else if (step.pos === 'left' && r.left - cw - 14 > 0) {
                 cx = r.left - cw - 14; cy = Math.min(r.top, vh - ch - 20);
             } else if (step.pos === 'top') {
-                cx = Math.max(10, r.left + r.width / 2 - cw / 2); cy = r.top - ch - 14;
+                cx = Math.max(10, Math.min(r.left + r.width / 2 - cw / 2, vw - cw - 10));
+                // prefer above; fall below if not enough room
+                cy = r.top - ch - 14;
+                if (cy < 10) cy = r.bottom + 14;
             } else {
                 cx = Math.max(10, Math.min(r.left + r.width / 2 - cw / 2, vw - cw - 10)); cy = r.bottom + 14;
             }
@@ -1701,7 +1704,10 @@ document.getElementById('share-btn').addEventListener('click', function() {
 
     // Show tutorial on first visit, after a short delay to let the page settle
     window.addEventListener('load', function() {
-        document.getElementById('tut-btn').style.display = 'block';
+        // Move Help button inside #map so it's anchored to the map top-right corner
+        var tutBtn = document.getElementById('tut-btn');
+        document.getElementById('map').appendChild(tutBtn);
+        tutBtn.style.display = 'block';
         try {
             if (!localStorage.getItem('georef_tutorial_done')) {
                 setTimeout(tutStart, 1200);
