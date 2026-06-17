@@ -1,32 +1,30 @@
 <x-layouts.app>
 <x-slot name="title">Datasets — georeference.it</x-slot>
 
-{{-- Hero --}}
-<div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-8 px-6 py-10" style="background:linear-gradient(135deg,#15803d,#14532d);color:#fff;">
-    <div class="max-w-5xl mx-auto">
-        <h1 style="font-size:1.875rem;font-weight:700;margin-bottom:0.5rem;">Datasets</h1>
-        <p style="color:#bbf7d0;font-size:0.875rem;max-width:36rem;">
-            {{ number_format($datasets->total()) }} datasets imported from
-            <a href="https://www.gbif.org" target="_blank" style="text-decoration:underline;color:#fff">GBIF</a>.
-            Browse, filter by title or publisher, query via API, or download as CSV.
-        </p>
-        <form method="GET" action="{{ route('datasets') }}" class="mt-5 flex flex-wrap gap-2">
-            <input type="text" name="q" value="{{ $q }}"
-                   placeholder="Search institution, collection, dataset title or publisher…"
-                   style="flex:1;min-width:200px;font-size:0.875rem;padding:0.5rem 1rem;border-radius:0.5rem;color:#111;background:#fff;border:none;outline:none;">
-            <input type="hidden" name="country" value="{{ $country }}">
-            <button type="submit"
-                    style="font-size:0.875rem;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.35);color:#fff;padding:0.5rem 1rem;border-radius:0.5rem;cursor:pointer;">
-                Search
-            </button>
-            @if($q || $country)
-            <a href="{{ route('datasets') }}" style="font-size:0.875rem;color:rgba(255,255,255,0.7);padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none;">Clear</a>
-            @endif
-        </form>
-    </div>
-</div>
+<div class="space-y-4 pb-16">
 
-<div class="max-w-5xl mx-auto pb-16">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">{{ __('Datasets') }}</h1>
+    </div>
+
+    <p class="text-sm text-gray-500">
+        {{ number_format($datasets->total()) }} datasets imported from
+        <a href="https://www.gbif.org" target="_blank" class="text-green-600 hover:underline">GBIF</a>.
+        Browse, filter by title or publisher, query via API, or download as CSV.
+    </p>
+
+    <form method="GET" action="{{ route('datasets') }}" class="flex flex-wrap gap-2 items-end">
+        <input type="hidden" name="country" value="{{ $country }}">
+        <div class="flex-1 min-w-[200px]">
+            <input type="text" name="q" value="{{ $q }}"
+                   placeholder="{{ __('Search institution, collection, dataset title or publisher...') }}"
+                   class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-green-500">
+        </div>
+        <button type="submit" class="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">{{ __('Search') }}</button>
+        @if($q || $country)
+        <a href="{{ route('datasets') }}" class="text-sm text-gray-500 hover:text-gray-700 px-2 py-2">{{ __('Clear') }}</a>
+        @endif
+    </form>
 
     {{-- Actions bar --}}
     <div class="flex items-center justify-between mb-4">

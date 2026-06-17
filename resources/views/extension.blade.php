@@ -1,7 +1,7 @@
 <x-layouts.app>
     <x-slot name="title">Browser Extension — georeference.it</x-slot>
 
-    <div class="max-w-3xl space-y-10">
+    <div class="max-w-3xl mx-auto space-y-8">
 
         <div class="space-y-3">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">georeference.it Browser Extension</h1>

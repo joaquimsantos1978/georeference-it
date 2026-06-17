@@ -1,7 +1,7 @@
 <x-layouts.app>
     <x-slot name="title">{{ __('About') }} — georeference.it</x-slot>
 
-    <div class="max-w-3xl space-y-8">
+    <div class="max-w-3xl mx-auto space-y-8">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ __('About georeference.it') }}</h1>
 
         <div class="prose dark:prose-invert max-w-none space-y-4 text-gray-600 dark:text-gray-300">

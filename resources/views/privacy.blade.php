@@ -1,7 +1,7 @@
 <x-layouts.app>
     <x-slot name="title">Privacy Policy — georeference.it</x-slot>
 
-    <div class="max-w-3xl space-y-8">
+    <div class="max-w-3xl mx-auto space-y-8">
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Privacy Policy</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Last updated: June 2026</p>

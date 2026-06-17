@@ -1,23 +1,20 @@
 <x-layouts.app>
 <x-slot name="title">API — georeference.it</x-slot>
 
-{{-- Hero --}}
-<div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-8 bg-gradient-to-br from-green-700 to-green-900 text-white px-6 py-10">
-    <div class="max-w-4xl mx-auto">
-        <div class="flex items-center gap-2 mb-3">
-            <span class="text-xs font-mono bg-white/20 px-2 py-0.5 rounded">v1</span>
-            <span class="text-xs bg-white/20 px-2 py-0.5 rounded">Public · No auth required</span>
-            <span class="text-xs bg-white/20 px-2 py-0.5 rounded">60 req/min</span>
-        </div>
-        <h1 class="text-3xl font-bold mb-2">georeference.it API</h1>
-        <p class="text-green-100 text-sm max-w-xl">Open REST API returning <a href="https://dwc.tdwg.org/terms/#location" target="_blank" class="underline hover:text-white">Darwin Core</a> occurrence data with community georeferences. No API key needed.</p>
-        <div class="mt-5 flex items-center gap-3 flex-wrap">
-            <code class="bg-black/30 text-green-200 font-mono text-sm px-4 py-2 rounded-lg">{{ url('/api/v1') }}</code>
-            <a href="{{ url('/api/v1/occurrences') }}" target="_blank"
-               class="text-xs bg-white/10 hover:bg-white/20 border border-white/20 text-white px-3 py-2 rounded-lg transition">
-                Try it → <span class="font-mono">/occurrences</span>
-            </a>
-        </div>
+<div class="max-w-4xl mx-auto space-y-4 mb-8">
+    <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-bold text-gray-900">georeference.it API</h1>
+        <span class="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">v1</span>
+        <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Public · No auth required</span>
+        <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">60 req/min</span>
+    </div>
+    <p class="text-sm text-gray-500 max-w-xl">Open REST API returning <a href="https://dwc.tdwg.org/terms/#location" target="_blank" class="text-green-600 hover:underline">Darwin Core</a> occurrence data with community georeferences. No API key needed.</p>
+    <div class="flex items-center gap-3 flex-wrap">
+        <code class="bg-gray-100 text-gray-700 font-mono text-sm px-4 py-2 rounded-lg">{{ url('/api/v1') }}</code>
+        <a href="{{ url('/api/v1/occurrences') }}" target="_blank"
+           class="text-xs border border-gray-300 text-gray-600 hover:border-green-500 hover:text-green-600 px-3 py-2 rounded-lg transition">
+            Try it → <span class="font-mono">/occurrences</span>
+        </a>
     </div>
 </div>
 
