@@ -490,7 +490,7 @@
     </div>{{-- end #georef-wrap --}}
 
     {{-- Help button injected into map by JS --}}
-    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;position:absolute;top:10px;right:10px;z-index:500;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
+    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;position:absolute;top:10px;right:10px;z-index:999;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
 
     {{-- Tutorial overlay --}}
     <div id="tut-overlay" style="display:none;position:fixed;inset:0;z-index:1000;">
@@ -1560,6 +1560,12 @@ document.getElementById('share-btn').addEventListener('click', function() {
     // ── Tutorial ──────────────────────────────────────────────────────────────
     var TUT_STEPS = [
         {
+            sel: '',
+            title: 'Welcome to Georeferencer!',
+            text: 'This quick tutorial walks you through the main tools. You can reopen it at any time by clicking the ? Help button in the top-right corner of the map.',
+            pos: 'bottom'
+        },
+        {
             sel: '#focus-input',
             title: 'Focus Area',
             text: 'Type a place name, region or country to narrow down which localities appear. Leave empty for a random global selection.',
@@ -1578,9 +1584,9 @@ document.getElementById('share-btn').addEventListener('click', function() {
             pos: 'left'
         },
         {
-            sel: '#georef-form',
+            sel: '#map',
             title: 'Place a point',
-            text: 'Click anywhere on the map to set the coordinates — they appear here automatically. Drag the marker to fine-tune. The circle is the coordinate uncertainty; drag its edge to resize it.',
+            text: 'Click anywhere on the map to drop a marker. Drag it to adjust. The coordinates fill in automatically on the right. The uncertainty circle shows the precision — drag its edge to resize it.',
             pos: 'left'
         },
         {
