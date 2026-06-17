@@ -1,8 +1,9 @@
 <nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-12 flex items-center z-30 relative">
     <div class="w-full px-4 flex items-center justify-between h-full">
         <div class="flex items-center gap-6">
-            <a href="{{ route('home') }}" class="text-base font-bold text-green-600 dark:text-green-400 tracking-tight hover:text-green-700">
-                georeference.it
+            <a href="{{ route('home') }}" class="flex items-center gap-2 hover:opacity-80">
+                <img src="{{ asset('images/logo.png') }}" alt="georeference.it" class="h-7 w-auto">
+                <span class="text-base font-bold text-green-600 dark:text-green-400 tracking-tight">georeference.it</span>
             </a>
             <div class="hidden sm:flex items-center gap-5">
                 <a href="{{ route('georef.index') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Georeference') }}</a>
