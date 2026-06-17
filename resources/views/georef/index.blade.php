@@ -7,7 +7,10 @@
 
             {{-- Focus area --}}
             <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
-                <label style="display:block;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ __('Focus area') }}</label>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <label style="font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">{{ __('Focus area') }}</label>
+                    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;font-size:10px;font-weight:600;color:#16a34a;background:none;border:1px solid #bbf7d0;border-radius:999px;padding:1px 8px;cursor:pointer;line-height:1.6;">? Help</button>
+                </div>
                 <div style="display:flex;align-items:center;gap:6px;">
                     <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
                         class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
@@ -507,12 +510,6 @@
             <button onclick="tutEnd()" style="display:block;width:100%;margin-top:10px;font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">Skip tutorial</button>
         </div>
     </div>
-
-    {{-- Tutorial trigger button (floating over map) --}}
-    <button id="tut-btn" onclick="tutStart()" title="Show tutorial"
-        style="display:none;position:fixed;bottom:70px;right:12px;z-index:400;width:36px;height:36px;border-radius:50%;background:white;border:1.5px solid #e5e7eb;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;font-size:16px;color:#6b7280;line-height:1;">
-        ?
-    </button>
 
     {{-- Mobile bottom bar — outside georef-wrap --}}
     <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:white;border-top:1px solid #e5e7eb;height:52px;"
@@ -1634,9 +1631,12 @@ document.getElementById('share-btn').addEventListener('click', function() {
         tutRender();
     }
 
+    function tutIsMobile() { return window.innerWidth <= 768; }
+
     function tutRender() {
-        var step = TUT_STEPS[_tutIdx];
-        var el = document.querySelector(step.sel);
+        var step  = TUT_STEPS[_tutIdx];
+        var el    = document.querySelector(step.sel);
+        var mobile = tutIsMobile();
 
         // update text
         document.getElementById('tut-step-label').textContent = 'Step ' + (_tutIdx + 1) + ' of ' + TUT_STEPS.length;
@@ -1645,55 +1645,49 @@ document.getElementById('share-btn').addEventListener('click', function() {
         document.getElementById('tut-prev').style.visibility = _tutIdx === 0 ? 'hidden' : 'visible';
         var nextBtn = document.getElementById('tut-next');
         nextBtn.textContent = _tutIdx === TUT_STEPS.length - 1 ? 'Done ✓' : 'Next →';
-        if (_tutIdx === TUT_STEPS.length - 1) {
-            nextBtn.onclick = tutEnd;
-        } else {
-            nextBtn.onclick = function() { tutStep(1); };
-        }
+        nextBtn.onclick = _tutIdx === TUT_STEPS.length - 1 ? tutEnd : function() { tutStep(1); };
 
         // dots
-        var dots = document.getElementById('tut-dots');
-        dots.innerHTML = TUT_STEPS.map(function(_, i) {
+        document.getElementById('tut-dots').innerHTML = TUT_STEPS.map(function(_, i) {
             return '<div style="width:6px;height:6px;border-radius:50%;background:' + (i === _tutIdx ? '#16a34a' : '#e5e7eb') + ';"></div>';
         }).join('');
 
-        // position spotlight
         var spot = document.getElementById('tut-spot');
         var card = document.getElementById('tut-card');
-        var pad  = 6;
 
-        if (!el) {
+        if (mobile || !el) {
+            // Mobile: no spotlight, card centered at bottom
             spot.style.display = 'none';
+            var vw = window.innerWidth, vh = window.innerHeight;
+            var cw = Math.min(300, vw - 24);
+            card.style.width  = cw + 'px';
+            card.style.left   = Math.round((vw - cw) / 2) + 'px';
+            card.style.top    = Math.round(vh * 0.3) + 'px';
         } else {
-            var r = el.getBoundingClientRect();
+            // Desktop: spotlight + positioned tooltip
+            var pad = 6;
+            var r   = el.getBoundingClientRect();
             spot.style.display = 'block';
-            spot.style.left    = (r.left - pad) + 'px';
-            spot.style.top     = (r.top  - pad) + 'px';
-            spot.style.width   = (r.width  + pad * 2) + 'px';
-            spot.style.height  = (r.height + pad * 2) + 'px';
+            spot.style.left   = (r.left - pad) + 'px';
+            spot.style.top    = (r.top  - pad) + 'px';
+            spot.style.width  = (r.width  + pad * 2) + 'px';
+            spot.style.height = (r.height + pad * 2) + 'px';
+            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
-            // position card
-            var cw = 280, ch = 220, vw = window.innerWidth, vh = window.innerHeight;
+            var cw = 280, ch = 240, vw = window.innerWidth, vh = window.innerHeight;
             var cx, cy;
             if (step.pos === 'right' && r.right + cw + 20 < vw) {
-                cx = r.right + 14;
-                cy = Math.min(r.top, vh - ch - 20);
+                cx = r.right + 14; cy = Math.min(r.top, vh - ch - 20);
             } else if (step.pos === 'left' && r.left - cw - 14 > 0) {
-                cx = r.left - cw - 14;
-                cy = Math.min(r.top, vh - ch - 20);
+                cx = r.left - cw - 14; cy = Math.min(r.top, vh - ch - 20);
             } else if (step.pos === 'top') {
-                cx = Math.max(10, r.left + r.width / 2 - cw / 2);
-                cy = r.top - ch - 14;
+                cx = Math.max(10, r.left + r.width / 2 - cw / 2); cy = r.top - ch - 14;
             } else {
-                cx = Math.max(10, Math.min(r.left + r.width / 2 - cw / 2, vw - cw - 10));
-                cy = r.bottom + 14;
+                cx = Math.max(10, Math.min(r.left + r.width / 2 - cw / 2, vw - cw - 10)); cy = r.bottom + 14;
             }
-            cy = Math.max(10, Math.min(cy, vh - ch - 10));
-            card.style.left = cx + 'px';
-            card.style.top  = cy + 'px';
-
-            // scroll element into view if needed
-            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            card.style.width = cw + 'px';
+            card.style.left  = cx + 'px';
+            card.style.top   = Math.max(10, Math.min(cy, vh - ch - 10)) + 'px';
         }
     }
 
