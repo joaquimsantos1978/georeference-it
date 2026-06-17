@@ -1649,7 +1649,7 @@ document.getElementById('share-btn').addEventListener('click', function() {
 
     function tutRender() {
         var step  = TUT_STEPS[_tutIdx];
-        var el    = document.querySelector(step.sel);
+        var el    = step.sel ? document.querySelector(step.sel) : null;
         var mobile = tutIsMobile();
 
         // update text
