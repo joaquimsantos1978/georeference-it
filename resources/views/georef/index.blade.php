@@ -756,7 +756,13 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         if (circle) { map.removeLayer(circle); circle = null; }
         if (radiusHandle) { map.removeLayer(radiusHandle); radiusHandle = null; }
 
-        marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        const logoIcon = L.icon({
+            iconUrl: '{{ asset('images/logo.png') }}',
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40],
+        });
+        marker = L.marker([lat, lng], { draggable: true, icon: logoIcon }).addTo(map);
         circle = L.circle([lat, lng], { radius: unc, color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.15, weight: 2 }).addTo(map);
 
         // Radius drag handle — white circle on the East edge of the circle
