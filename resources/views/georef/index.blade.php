@@ -668,6 +668,11 @@
             left: 8px !important;
             top: 8px !important;
         }
+
+        /* Help button — push below navbar on mobile */
+        #tut-btn {
+            top: 58px !important;
+        }
     }
     </style>
 
