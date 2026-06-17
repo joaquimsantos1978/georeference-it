@@ -1669,14 +1669,17 @@ document.getElementById('share-btn').addEventListener('click', function() {
         var spot = document.getElementById('tut-spot');
         var card = document.getElementById('tut-card');
 
+        var vw = window.innerWidth, vh = window.innerHeight;
         if (mobile || !el) {
-            // Mobile: no spotlight, card centered at bottom
-            spot.style.display = 'none';
-            var vw = window.innerWidth, vh = window.innerHeight;
+            // No spotlight — place spot off-screen so its box-shadow still dims the background
+            spot.style.display = 'block';
+            spot.style.left = '-9999px'; spot.style.top = '0';
+            spot.style.width = '1px';    spot.style.height = '1px';
+            // Card centered on screen
             var cw = Math.min(300, vw - 24);
-            card.style.width  = cw + 'px';
-            card.style.left   = Math.round((vw - cw) / 2) + 'px';
-            card.style.top    = Math.round(vh * 0.3) + 'px';
+            card.style.width = cw + 'px';
+            card.style.left  = Math.round((vw - cw) / 2) + 'px';
+            card.style.top   = Math.round(vh * 0.3) + 'px';
         } else {
             // Desktop: spotlight + positioned tooltip
             var pad = 6;
@@ -1688,7 +1691,7 @@ document.getElementById('share-btn').addEventListener('click', function() {
             spot.style.height = (r.height + pad * 2) + 'px';
             el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
-            var cw = 280, ch = 260, vw = window.innerWidth, vh = window.innerHeight;
+            var cw = 280, ch = 260;
             var cx, cy;
             if (step.pos === 'right' && r.right + cw + 20 < vw) {
                 cx = r.right + 14; cy = Math.min(r.top, vh - ch - 20);
