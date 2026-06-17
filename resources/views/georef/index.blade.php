@@ -490,7 +490,7 @@
     </div>{{-- end #georef-wrap --}}
 
     {{-- Help button injected into map by JS --}}
-    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;position:absolute;top:10px;right:10px;z-index:999;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
+    <button id="tut-btn" onclick="tutStart();event.stopPropagation();" title="{{ __('How to use') }}" style="display:none;position:absolute;top:10px;right:10px;z-index:999;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
 
     {{-- Tutorial overlay --}}
     <div id="tut-overlay" style="display:none;position:fixed;inset:0;z-index:1000;">
