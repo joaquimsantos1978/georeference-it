@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\CommentNotification;
 use App\Models\GeorefSuggestion;
 use App\Models\GeorefValidation;
 use App\Models\GeorefSuggestionExclusion;
@@ -9,7 +10,9 @@ use App\Models\LocalityGroup;
 use App\Models\LocalityGroupComment;
 use App\Models\Occurrence;
 use App\Models\PlatformSetting;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class GeorefController extends Controller
 {
@@ -322,11 +325,16 @@ public function next(Request $request)
             'body'              => 'required|string|max:1000',
         ]);
 
-        LocalityGroupComment::create([
+        $group = LocalityGroup::findOrFail($validated['locality_group_id']);
+
+        $newComment = LocalityGroupComment::create([
             'locality_group_id' => $validated['locality_group_id'],
             'user_id'           => auth()->id(),
             'body'              => $validated['body'],
         ]);
+        $newComment->setRelation('user', auth()->user());
+
+        $this->notifyGroupContributors($group, $newComment);
 
         $comments = LocalityGroupComment::where('locality_group_id', $validated['locality_group_id'])
             ->with('user')->latest()->take(20)->get()
@@ -337,6 +345,33 @@ public function next(Request $request)
             ]);
 
         return response()->json(['success' => true, 'comments' => $comments]);
+    }
+
+    private function notifyGroupContributors(LocalityGroup $group, LocalityGroupComment $comment): void
+    {
+        $currentUserId = auth()->id();
+
+        $suggesterIds = GeorefSuggestion::where('locality_group_id', $group->id)
+            ->pluck('user_id');
+
+        $validatorIds = GeorefValidation::whereIn(
+            'suggestion_id',
+            GeorefSuggestion::where('locality_group_id', $group->id)->pluck('id')
+        )->pluck('user_id');
+
+        $commenterIds = LocalityGroupComment::where('locality_group_id', $group->id)
+            ->pluck('user_id');
+
+        $recipientIds = $suggesterIds
+            ->merge($validatorIds)
+            ->merge($commenterIds)
+            ->unique()
+            ->filter(fn($id) => $id && $id !== $currentUserId);
+
+        User::whereIn('id', $recipientIds)
+            ->where('email_notifications', true)
+            ->get()
+            ->each(fn($user) => Mail::to($user->email)->queue(new CommentNotification($comment, $group)));
     }
 
     public function detectLocation(Request $request): \Illuminate\Http\JsonResponse
