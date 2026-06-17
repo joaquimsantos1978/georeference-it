@@ -7,9 +7,8 @@
 
             {{-- Focus area --}}
             <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="margin-bottom:4px;">
                     <label style="font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">{{ __('Focus area') }}</label>
-                    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;font-size:10px;font-weight:600;color:#16a34a;background:none;border:1px solid #bbf7d0;border-radius:999px;padding:1px 8px;cursor:pointer;line-height:1.6;">? Help</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;">
                     <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
@@ -459,7 +458,7 @@
             </div>
 
             {{-- Discussion --}}
-            <div class="p-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <div id="discussion-section" class="p-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
                 <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Discussion') }}</span>
                 <div id="comments-list" class="mt-1 space-y-1 max-h-20 overflow-y-auto"></div>
                 @auth
@@ -489,6 +488,9 @@
         <button id="area-search-btn" style="display:none"></button>
         <span id="area-hint" style="display:none"></span>
     </div>{{-- end #georef-wrap --}}
+
+    {{-- Help button (top-right of map) --}}
+    <button id="tut-btn" onclick="tutStart()" title="{{ __('How to use') }}" style="display:none;position:fixed;top:10px;right:52px;z-index:500;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
 
     {{-- Tutorial overlay --}}
     <div id="tut-overlay" style="display:none;position:fixed;inset:0;z-index:1000;">
@@ -1576,6 +1578,12 @@ document.getElementById('share-btn').addEventListener('click', function() {
             pos: 'left'
         },
         {
+            sel: '#nominatim-input',
+            title: 'Location Search',
+            text: 'Type a place name and press Enter (or click 🔍) to search. Selecting a result automatically centres the map and places the marker — a great starting point when the locality name is clear.',
+            pos: 'left'
+        },
+        {
             sel: '#existing-suggestions',
             title: 'Existing Suggestions',
             text: 'If someone has already submitted coordinates, you can agree with their suggestion (adding your vote) or submit a competing one if you disagree.',
@@ -1594,7 +1602,7 @@ document.getElementById('share-btn').addEventListener('click', function() {
             pos: 'left'
         },
         {
-            sel: '#comments-list',
+            sel: '#discussion-section',
             title: 'Discussion',
             text: 'Use the comment box to discuss with the community if you\'re uncertain. Other georefencers can reply and help reach a consensus.',
             pos: 'left'
