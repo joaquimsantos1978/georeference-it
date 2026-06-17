@@ -85,7 +85,7 @@
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">6. Contact</h2>
             <p class="text-gray-600 dark:text-gray-300">
                 For any privacy-related questions, contact us at
-                <a href="mailto:privacy@georeference.it" class="text-green-600 hover:underline">privacy@georeference.it</a>.
+                <a href="mailto:info@georeference.it" class="text-green-600 hover:underline">info@georeference.it</a>.
             </p>
         </section>
     </div>

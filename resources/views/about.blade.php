@@ -36,9 +36,17 @@
         </div>
 
         <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Contact</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Questions, suggestions, or collaboration proposals:</p>
-            <a href="mailto:joaquimsantos@gmail.com" class="text-sm text-green-600 hover:underline mt-1 block">joaquimsantos@gmail.com</a>
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ __('Maintainer') }}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                georeference.it is developed and maintained by
+                <a href="https://orcid.org/0000-0002-2160-4968" target="_blank" class="text-green-600 hover:underline">Joaquim Santos</a>.
+            </p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ __('Contact') }}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Questions, suggestions, or collaboration proposals:') }}</p>
+            <a href="mailto:info@georeference.it" class="text-sm text-green-600 hover:underline mt-1 block">info@georeference.it</a>
         </div>
 
         <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 border border-green-200 dark:border-green-700">

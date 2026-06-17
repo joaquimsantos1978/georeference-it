@@ -87,7 +87,7 @@
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">8. Contact</h2>
             <p class="text-gray-600 dark:text-gray-300">
                 Questions about these terms:
-                <a href="mailto:hello@georeference.it" class="text-green-600 hover:underline">hello@georeference.it</a>
+                <a href="mailto:info@georeference.it" class="text-green-600 hover:underline">info@georeference.it</a>
             </p>
         </section>
     </div>
