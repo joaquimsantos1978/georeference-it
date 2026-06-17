@@ -44,6 +44,7 @@
                 <a href="{{ route('how-it-works') }}" class="hover:text-green-600">How it works</a>
                 <a href="{{ route('extension') }}" class="hover:text-green-600">Extension</a>
                 <a href="{{ route('api-docs') }}" class="hover:text-green-600">API</a>
+                <a href="{{ route('cite') }}" class="hover:text-green-600">Cite</a>
                 <a href="{{ route('privacy') }}" class="hover:text-green-600">Privacy</a>
                 <a href="{{ route('terms') }}" class="hover:text-green-600">Terms</a>
                 <a href="https://github.com/joaquimsantos1978/georeference-it" target="_blank" class="hover:text-green-600">GitHub</a>

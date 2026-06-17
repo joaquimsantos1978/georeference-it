@@ -20,6 +20,7 @@ Route::get('/how-it-works', function () {
 Route::get('/extension', fn() => view('extension'))->name('extension');
 Route::get('/privacy', fn() => view('privacy'))->name('privacy');
 Route::get('/terms', fn() => view('terms'))->name('terms');
+Route::get('/cite', fn() => view('cite'))->name('cite');
 
 Route::get('/api-docs', function () {
     return view('api-docs');
