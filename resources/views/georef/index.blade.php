@@ -487,6 +487,33 @@
         <span id="area-hint" style="display:none"></span>
     </div>{{-- end #georef-wrap --}}
 
+    {{-- Tutorial overlay --}}
+    <div id="tut-overlay" style="display:none;position:fixed;inset:0;z-index:1000;">
+        {{-- spotlight element --}}
+        <div id="tut-spot" style="position:fixed;z-index:1001;border-radius:6px;transition:all .35s cubic-bezier(.4,0,.2,1);pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.58);"></div>
+        {{-- tooltip card --}}
+        <div id="tut-card" style="position:fixed;z-index:1002;width:280px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.22);padding:20px;transition:all .3s cubic-bezier(.4,0,.2,1);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span id="tut-step-label" style="font-size:10px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:.08em;"></span>
+                <button onclick="tutEnd()" style="border:none;background:none;font-size:18px;color:#9ca3af;cursor:pointer;line-height:1;padding:0;">×</button>
+            </div>
+            <h3 id="tut-title" style="font-size:15px;font-weight:700;color:#111827;margin:0 0 8px;"></h3>
+            <p id="tut-text" style="font-size:13px;color:#6b7280;margin:0 0 16px;line-height:1.55;"></p>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <button id="tut-prev" onclick="tutStep(-1)" style="font-size:12px;border:1px solid #e5e7eb;background:white;color:#374151;padding:6px 14px;border-radius:7px;cursor:pointer;">← Back</button>
+                <div id="tut-dots" style="display:flex;gap:5px;"></div>
+                <button id="tut-next" onclick="tutStep(1)" style="font-size:12px;background:#16a34a;color:white;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;">Next →</button>
+            </div>
+            <button onclick="tutEnd()" style="display:block;width:100%;margin-top:10px;font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">Skip tutorial</button>
+        </div>
+    </div>
+
+    {{-- Tutorial trigger button (floating over map) --}}
+    <button id="tut-btn" onclick="tutStart()" title="Show tutorial"
+        style="display:none;position:fixed;bottom:70px;right:12px;z-index:400;width:36px;height:36px;border-radius:50%;background:white;border:1.5px solid #e5e7eb;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;font-size:16px;color:#6b7280;line-height:1;">
+        ?
+    </button>
+
     {{-- Mobile bottom bar — outside georef-wrap --}}
     <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:white;border-top:1px solid #e5e7eb;height:52px;"
         class="dark:bg-gray-900 dark:border-gray-700">
@@ -1528,6 +1555,157 @@ document.getElementById('share-btn').addEventListener('click', function() {
         prompt('Copy this link:', APP_URL + '/georef?group=' + currentGroup.id);
     });
 });
+    </script>
+
+    <script>
+    // ── Tutorial ──────────────────────────────────────────────────────────────
+    var TUT_STEPS = [
+        {
+            sel: '#focus-input',
+            title: 'Focus Area',
+            text: 'Type a place name, region or country to narrow down which localities appear. Leave empty for a random global selection.',
+            pos: 'right'
+        },
+        {
+            sel: '#occurrence-info',
+            title: 'Locality Data',
+            text: 'This is the written locality description from the specimen label — the text you\'ll interpret to place a point on the map.',
+            pos: 'right'
+        },
+        {
+            sel: '#map',
+            title: 'Place a point',
+            text: 'Click anywhere on the map to set the coordinates. Drag the point to adjust. The circle represents the coordinate uncertainty — drag its edge to resize it.',
+            pos: 'left'
+        },
+        {
+            sel: '#existing-suggestions',
+            title: 'Existing Suggestions',
+            text: 'If someone has already submitted coordinates, you can agree with their suggestion (adding your vote) or submit a competing one if you disagree.',
+            pos: 'left'
+        },
+        {
+            sel: '#occurrences-list',
+            title: 'Specimens',
+            text: 'These are all the specimens that share this locality description. Check or uncheck them to include or exclude individual records from your georeference.',
+            pos: 'right'
+        },
+        {
+            sel: '#remarks-input',
+            title: 'Remarks',
+            text: 'Add a note explaining your georeferencing decision — especially useful for ambiguous or difficult localities. This will be stored with your suggestion.',
+            pos: 'left'
+        },
+        {
+            sel: '#comments-list',
+            title: 'Discussion',
+            text: 'Use the comment box to discuss with the community if you\'re uncertain. Other georefencers can reply and help reach a consensus.',
+            pos: 'left'
+        },
+        {
+            sel: '#submit-btn',
+            title: 'Submit',
+            text: 'When you\'re satisfied with the point and uncertainty radius, click Submit to save your georeferencing suggestion.',
+            pos: 'top'
+        },
+        {
+            sel: '#skip-btn',
+            title: 'Skip',
+            text: 'Not sure about this locality? Skip it — you\'ll move on to the next one. Skipped localities may appear again later.',
+            pos: 'top'
+        },
+    ];
+
+    var _tutIdx = 0;
+
+    function tutStart() {
+        _tutIdx = 0;
+        document.getElementById('tut-overlay').style.display = 'block';
+        tutRender();
+    }
+
+    function tutEnd() {
+        document.getElementById('tut-overlay').style.display = 'none';
+        try { localStorage.setItem('georef_tutorial_done', '1'); } catch(e) {}
+    }
+
+    function tutStep(dir) {
+        _tutIdx = Math.max(0, Math.min(TUT_STEPS.length - 1, _tutIdx + dir));
+        tutRender();
+    }
+
+    function tutRender() {
+        var step = TUT_STEPS[_tutIdx];
+        var el = document.querySelector(step.sel);
+
+        // update text
+        document.getElementById('tut-step-label').textContent = 'Step ' + (_tutIdx + 1) + ' of ' + TUT_STEPS.length;
+        document.getElementById('tut-title').textContent = step.title;
+        document.getElementById('tut-text').textContent  = step.text;
+        document.getElementById('tut-prev').style.visibility = _tutIdx === 0 ? 'hidden' : 'visible';
+        var nextBtn = document.getElementById('tut-next');
+        nextBtn.textContent = _tutIdx === TUT_STEPS.length - 1 ? 'Done ✓' : 'Next →';
+        if (_tutIdx === TUT_STEPS.length - 1) {
+            nextBtn.onclick = tutEnd;
+        } else {
+            nextBtn.onclick = function() { tutStep(1); };
+        }
+
+        // dots
+        var dots = document.getElementById('tut-dots');
+        dots.innerHTML = TUT_STEPS.map(function(_, i) {
+            return '<div style="width:6px;height:6px;border-radius:50%;background:' + (i === _tutIdx ? '#16a34a' : '#e5e7eb') + ';"></div>';
+        }).join('');
+
+        // position spotlight
+        var spot = document.getElementById('tut-spot');
+        var card = document.getElementById('tut-card');
+        var pad  = 6;
+
+        if (!el) {
+            spot.style.display = 'none';
+        } else {
+            var r = el.getBoundingClientRect();
+            spot.style.display = 'block';
+            spot.style.left    = (r.left - pad) + 'px';
+            spot.style.top     = (r.top  - pad) + 'px';
+            spot.style.width   = (r.width  + pad * 2) + 'px';
+            spot.style.height  = (r.height + pad * 2) + 'px';
+
+            // position card
+            var cw = 280, ch = 220, vw = window.innerWidth, vh = window.innerHeight;
+            var cx, cy;
+            if (step.pos === 'right' && r.right + cw + 20 < vw) {
+                cx = r.right + 14;
+                cy = Math.min(r.top, vh - ch - 20);
+            } else if (step.pos === 'left' && r.left - cw - 14 > 0) {
+                cx = r.left - cw - 14;
+                cy = Math.min(r.top, vh - ch - 20);
+            } else if (step.pos === 'top') {
+                cx = Math.max(10, r.left + r.width / 2 - cw / 2);
+                cy = r.top - ch - 14;
+            } else {
+                cx = Math.max(10, Math.min(r.left + r.width / 2 - cw / 2, vw - cw - 10));
+                cy = r.bottom + 14;
+            }
+            cy = Math.max(10, Math.min(cy, vh - ch - 10));
+            card.style.left = cx + 'px';
+            card.style.top  = cy + 'px';
+
+            // scroll element into view if needed
+            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }
+
+    // Show tutorial on first visit, after a short delay to let the page settle
+    window.addEventListener('load', function() {
+        document.getElementById('tut-btn').style.display = 'block';
+        try {
+            if (!localStorage.getItem('georef_tutorial_done')) {
+                setTimeout(tutStart, 1200);
+            }
+        } catch(e) {}
+    });
     </script>
     @endpush
 </x-layouts.georef>
