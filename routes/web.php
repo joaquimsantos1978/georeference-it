@@ -46,6 +46,7 @@ Route::get('/georef/search-locality', [GeorefController::class, 'searchLocality'
 Route::get('/georef/occurrence/{key}', [GeorefController::class, 'findByGbifKey'])->name('georef.occurrence');
 
 Route::post('/georef/sync', [GeorefController::class, 'sync'])->name('georef.sync');
+Route::get('/georef/iiif-proxy', [GeorefController::class, 'iiifProxy'])->name('georef.iiif-proxy');
 
 // Auth routes
 Route::get('/auth/redirect/{provider}', [App\Http\Controllers\Auth\SocialiteController::class, 'redirect'])

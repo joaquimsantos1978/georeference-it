@@ -888,12 +888,22 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     panArea.addEventListener('wheel', e => { e.preventDefault(); zoomImg(e.deltaY<0?0.15:-0.15); }, { passive: false });
 
     async function resolveImageUrl(url) {
-        if (url && (url.includes('/manifest') || url.includes('manifest.json'))) {
+        if (url && (url.includes('/manifest') || url.includes('manifest.json') || url.includes('iiif'))) {
             try {
-                const m = await (await fetch(url, { headers: { 'Accept': 'application/json' } })).json();
+                // Fetch via server-side proxy to avoid CORS issues
+                const proxyUrl = '{{ route("georef.iiif-proxy") }}?url=' + encodeURIComponent(url);
+                const m = await (await fetch(proxyUrl)).json();
+                // IIIF Presentation API 2.x
                 const imgRes = m.sequences?.[0]?.canvases?.[0]?.images?.[0]?.resource;
-                if (imgRes) { const sid = imgRes.service?.['@id']||imgRes.service?.id; if(sid) return sid+'/full/max/0/default.jpg'; if(imgRes['@id']||imgRes.id) return imgRes['@id']||imgRes.id; }
-                const item = m.items?.[0]?.items?.[0]?.items?.[0]?.body; if(item?.id) return item.id;
+                if (imgRes) {
+                    const sid = imgRes.service?.['@id'] || imgRes.service?.id;
+                    if (sid) return sid + '/full/max/0/default.jpg';
+                    if (imgRes['@id'] || imgRes.id) return imgRes['@id'] || imgRes.id;
+                }
+                // IIIF Presentation API 3.x
+                const body = m.items?.[0]?.items?.[0]?.items?.[0]?.body;
+                if (body?.id) return body.id;
+                if (body?.service?.[0]?.['@id']) return body.service[0]['@id'] + '/full/max/0/default.jpg';
             } catch(e) {}
             return null;
         }
@@ -1157,7 +1167,16 @@ function updateHistoryNav() {
         document.getElementById('occurrences-list').innerHTML=occurrences.map(function(o){
             const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
             const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
-            const occId='occ-'+o.id, media=(o.media&&o.media.length>0)?o.media[0]:null;
+            const occId='occ-'+o.id;
+            // Prefer a direct image URL over an IIIF manifest
+            var media = null;
+            if (o.media && o.media.length > 0) {
+                media = o.media.find(function(m) {
+                    return m.identifier && !m.identifier.includes('manifest') &&
+                        (/\.(jpg|jpeg|png|gif|webp|tif|tiff)(\?.*)?$/i.test(m.identifier) ||
+                         (m.format && m.format.startsWith('image/')));
+                }) || o.media[0];
+            }
             const clusterColor = occClusterColor[o.id];
             const clusterDot = clusterColor
                 ? '<span title="Belongs to suggestion cluster" style="flex-shrink:0;display:inline-block;width:7px;height:7px;border-radius:50%;background:'+clusterColor+'"></span>'

@@ -418,6 +418,37 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
     return response()->json($results);
 }
 
+    public function iiifProxy(Request $request): \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
+    {
+        $url = $request->get('url');
+        if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return response()->json(['error' => 'Invalid URL'], 400);
+        }
+        if (!str_starts_with($url, 'https://')) {
+            return response()->json(['error' => 'HTTPS only'], 400);
+        }
+        try {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 10,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json, application/ld+json'],
+                CURLOPT_USERAGENT      => 'georeference.it/1.0',
+            ]);
+            $body   = curl_exec($ch);
+            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if (!$body || $status >= 400) {
+                return response()->json(['error' => 'Upstream error'], 502);
+            }
+            return response($body, 200)->header('Content-Type', 'application/json')
+                                       ->header('Access-Control-Allow-Origin', '*');
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Proxy error'], 502);
+        }
+    }
+
     private function applyVote(GeorefSuggestion $suggestion, $user, string $vote): void
     {
         $weight = $user->getVoteWeight();
