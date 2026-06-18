@@ -13,7 +13,8 @@ class LeaderboardController extends Controller
             ->selectRaw('users.*, (
                 SELECT COUNT(*) FROM georef_validations gv
                 JOIN georef_suggestions gs ON gs.id = gv.suggestion_id
-                WHERE gv.user_id = users.id AND gs.user_id != gv.user_id
+                WHERE gv.user_id = users.id
+                AND (gs.user_id != gv.user_id OR gs.user_id IS NULL)
             ) as reviews_count')
             ->orderByDesc('total_validated')
             ->orderByDesc('suggestions_count')
