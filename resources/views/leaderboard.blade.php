@@ -44,7 +44,7 @@
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ $user->userLevel?->name ?? '—' }}</td>
                         <td class="px-5 py-3 font-semibold text-gray-900 dark:text-white">{{ number_format($user->total_validated) }}</td>
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->suggestions_count) }}</td>
-                        <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->validations_count) }}</td>
+                        <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->reviews_count) }}</td>
                     </tr>
                     @empty
                     <tr>
