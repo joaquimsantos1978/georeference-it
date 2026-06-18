@@ -11,8 +11,9 @@ class LeaderboardController extends Controller
         $users = User::with('userLevel')
             ->withCount([
                 'suggestions',
-                'validations as validations_count' => fn($q) => $q->whereHas(
-                    'suggestion', fn($q2) => $q2->whereColumn('georef_suggestions.user_id', '!=', 'georef_validations.user_id')
+                'validations as validations_count' => fn($q) => $q->whereColumn(
+                    'georef_validations.user_id', '!=',
+                    \DB::raw('(SELECT user_id FROM georef_suggestions WHERE georef_suggestions.id = georef_validations.suggestion_id)')
                 ),
             ])
             ->orderByDesc('total_validated')

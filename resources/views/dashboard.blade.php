@@ -31,7 +31,7 @@
                 <p class="text-3xl font-bold text-green-600 mt-1">{{ auth()->user()->total_validated }}</p>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-                <p class="text-xs text-gray-500 uppercase tracking-wide">{{ __('Validations cast') }}</p>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">{{ __('Reviews') }}</p>
                 <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ auth()->user()->validations()->whereHas('suggestion', fn($q) => $q->where('user_id', '!=', auth()->id())->orWhereNull('user_id'))->count() }}</p>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
@@ -151,11 +151,11 @@
         {{-- My validations --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h2 class="font-semibold text-gray-900 dark:text-white">{{ __('My votes') }}</h2>
+                <h2 class="font-semibold text-gray-900 dark:text-white">{{ __('My reviews') }}</h2>
                 <span class="text-xs text-gray-400">{{ $validations->total() }} {{ __('total') }}</span>
             </div>
             @if($validations->isEmpty())
-                <div class="p-8 text-sm text-gray-400 text-center">{{ __('No votes cast yet.') }}</div>
+                <div class="p-8 text-sm text-gray-400 text-center">{{ __('No reviews yet.') }}</div>
             @else
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
