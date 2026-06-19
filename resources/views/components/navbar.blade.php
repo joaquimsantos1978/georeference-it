@@ -1,4 +1,4 @@
-<nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-12 flex items-center z-30 relative">
+<nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-12 flex items-center z-30 sticky top-0">
     <div class="w-full px-4 flex items-center justify-between h-full">
         <div class="flex items-center gap-6">
             <a href="{{ route('home') }}" class="flex items-center gap-2 hover:opacity-80">
