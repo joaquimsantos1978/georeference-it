@@ -427,9 +427,15 @@
 
             {{-- Georef form (takes remaining space) --}}
             <div class="p-4 overflow-y-auto" style="flex:1;min-height:0;">
-                <p class="text-xs text-gray-400 mb-4 mt-1">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
+                {{-- Mode toggle: only shown when there are suggestions --}}
+                <div id="mode-toggle-wrap" style="display:none;margin-bottom:10px;">
+                    <button id="mode-toggle-btn" onclick="togglePointMode()" style="width:100%;font-size:11px;padding:6px;border-radius:6px;border:1px dashed #d1d5db;color:#6b7280;background:transparent;cursor:pointer;text-align:center;">
+                        + {{ __('Submit a different point') }}
+                    </button>
+                </div>
+                <p id="map-click-hint" class="text-xs text-gray-400 mb-3 mt-0" style="display:none;">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
                 <form id="georef-form" class="space-y-2">
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 items-end">
                         <div class="flex-1">
                             <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Latitude') }}</label>
                             <input type="number" id="lat-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
@@ -438,6 +444,7 @@
                             <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Longitude') }}</label>
                             <input type="number" id="lng-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
                         </div>
+                        <button type="button" id="reset-point-btn" onclick="resetPoint()" title="{{ __('Clear point') }}" style="flex-shrink:0;padding:5px 8px;border-radius:6px;border:1px solid #e5e7eb;background:white;color:#9ca3af;cursor:pointer;font-size:12px;line-height:1;" class="hover:text-red-400 hover:border-red-300">✕</button>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Uncertainty') }} <span id="uncertainty-display" class="text-green-600 font-semibold"></span></label>
@@ -1031,11 +1038,19 @@ function initVotingMode(suggestions) {
     var voteableSuggestions = _currentSuggestions.filter(function(s){ return !s.is_own; });
     if (voteableSuggestions.length > 0) {
         georefMode = 'vote';
+        var wrap = document.getElementById('mode-toggle-wrap');
+        if (wrap) wrap.style.display = 'block';
+        var hint = document.getElementById('map-click-hint');
+        if (hint) hint.style.display = 'none';
+        var btn = document.getElementById('mode-toggle-btn');
+        if (btn) btn.textContent = '+ {{ __("Submit a different point") }}';
     } else {
         georefMode = 'new';
+        var wrap = document.getElementById('mode-toggle-wrap');
+        if (wrap) wrap.style.display = 'none';
+        var hint = document.getElementById('map-click-hint');
+        if (hint) hint.style.display = 'block';
     }
-    var newPtBtn = document.getElementById('new-point-btn');
-    if (newPtBtn) newPtBtn.style.display = georefMode === 'vote' ? 'block' : 'none';
     updateSubmitBtn();
 }
 
@@ -1067,16 +1082,37 @@ function renderVoteButtonStates() {
     });
 }
 
-function activateNewPointMode() {
-    georefMode = 'new';
-    _currentSuggestions.forEach(function(s) {
-        if (!s.is_own) pendingVotes[s.id] = 'disagree';
-    });
-    renderVoteButtonStates();
-    var newPtBtn = document.getElementById('new-point-btn');
-    if (newPtBtn) newPtBtn.style.display = 'none';
-    var mapHint = document.getElementById('map-click-hint');
-    if (mapHint) { mapHint.style.display = 'block'; }
+function togglePointMode() {
+    if (georefMode === 'vote') {
+        // Activate new point mode
+        georefMode = 'new';
+        _currentSuggestions.forEach(function(s) { if (!s.is_own) pendingVotes[s.id] = 'disagree'; });
+        renderVoteButtonStates();
+        var btn = document.getElementById('mode-toggle-btn');
+        if (btn) btn.textContent = '← {{ __("Back to voting") }}';
+        var hint = document.getElementById('map-click-hint');
+        if (hint) hint.style.display = 'block';
+    } else {
+        // Deactivate new point mode — clear marker, go back to vote
+        georefMode = 'vote';
+        resetPoint();
+        pendingVotes = {};
+        renderVoteButtonStates();
+        var btn = document.getElementById('mode-toggle-btn');
+        if (btn) btn.textContent = '+ {{ __("Submit a different point") }}';
+        var hint = document.getElementById('map-click-hint');
+        if (hint) hint.style.display = 'none';
+    }
+    updateSubmitBtn();
+}
+
+function resetPoint() {
+    if(marker){map.removeLayer(marker);marker=null;}
+    if(circle){map.removeLayer(circle);circle=null;}
+    if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
+    document.getElementById('lat-input').value='';
+    document.getElementById('lng-input').value='';
+    document.getElementById('uncertainty-display').textContent='';
     updateSubmitBtn();
 }
 
@@ -1096,6 +1132,8 @@ function clearPanel() {
     document.getElementById('submit-btn').disabled=true;
     var ms=document.getElementById('mob-submit-btn'); if(ms){ms.disabled=true;ms.style.opacity='0.4';}
     pendingVotes={}; georefMode='new'; _currentSuggestions=[];
+    var wrap=document.getElementById('mode-toggle-wrap'); if(wrap) wrap.style.display='none';
+    var hint=document.getElementById('map-click-hint'); if(hint) hint.style.display='block';
     document.getElementById('lat-input').value=''; document.getElementById('lng-input').value='';
     document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
     document.getElementById('occurrence-loading').classList.remove('hidden');
@@ -1339,7 +1377,6 @@ function updateHistoryNav() {
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
                     '</div></div></div>';
             });
-            sugHtml += '<button id="new-point-btn" onclick="activateNewPointMode()" style="display:block;width:100%;margin-top:4px;font-size:11px;padding:5px;border-radius:6px;border:1px dashed #d1d5db;color:#6b7280;background:transparent;cursor:pointer;text-align:center;">+ {{ __("Submit a different point") }}</button>';
             document.getElementById('suggestions-list').innerHTML=sugHtml;
         } else {
             document.getElementById('suggestions-list').innerHTML='<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
