@@ -1506,13 +1506,30 @@ function updateHistoryNav() {
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
                     '<div style="flex:1">'+
                     '<div style="display:flex;justify-content:space-between"><span style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
-                    '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af"><span>'+s.submitted_by+(s.georeference_remarks?' <span title="'+s.georeference_remarks.replace(/"/g,"&quot;")+'" style="cursor:help;font-size:11px;">💬</span>':'')+'</span><div style="display:flex;gap:8px">'+valButtons+'</div></div>'+
+                    '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af"><span style="display:flex;align-items:center;gap:5px;">'+s.submitted_by+(s.georeference_remarks?'<span class="remarks-btn" data-remarks="'+s.georeference_remarks.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>':'')+'</span><div style="display:flex;gap:8px">'+valButtons+'</div></div>'+
                     '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:'+pct+'%"></div></div>'+
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
                     correctRow+
                     '</div></div></div>';
             });
             document.getElementById('suggestions-list').innerHTML=sugHtml;
+            document.querySelectorAll('.remarks-btn').forEach(function(btn){
+                btn.addEventListener('click', function(e){
+                    e.stopPropagation();
+                    var existing = document.getElementById('remarks-popup');
+                    if (existing) existing.remove();
+                    var popup = document.createElement('div');
+                    popup.id = 'remarks-popup';
+                    popup.style.cssText = 'position:fixed;z-index:9999;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#78350f;max-width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.15);line-height:1.5;';
+                    popup.textContent = btn.dataset.remarks;
+                    document.body.appendChild(popup);
+                    var r = btn.getBoundingClientRect();
+                    popup.style.left = Math.min(r.left, window.innerWidth - popup.offsetWidth - 8) + 'px';
+                    popup.style.top  = (r.bottom + 4) + 'px';
+                    var close = function(){ popup.remove(); document.removeEventListener('click', close); };
+                    setTimeout(function(){ document.addEventListener('click', close); }, 0);
+                });
+            });
         } else {
             document.getElementById('suggestions-list').innerHTML='<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
         }
