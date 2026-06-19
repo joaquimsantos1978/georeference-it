@@ -233,11 +233,11 @@
 
             {{-- Occurrences list (takes remaining space) --}}
             <div class="p-3" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;margin-bottom:4px;">
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences') }}</span>
-                    <span id="occurrence-count" class="text-xs text-gray-400"></span>
+                <div style="flex-shrink:0;margin-bottom:4px;">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences without coordinates') }}</span>
+                    <div id="occurrence-count" class="text-xs text-gray-400 mt-0.5"></div>
                 </div>
-                <p class="text-xs text-gray-400 italic mb-1" style="flex-shrink:0;">{{ __('Check specimens to include in this georeference:') }}</p>
+                <p class="text-xs text-gray-400 italic mb-1" style="flex-shrink:0;">{{ __('Uncheck to exclude from this georeference:') }}</p>
                 <div id="occ-select-controls" class="hidden mb-1" style="flex-shrink:0;">
                     <div class="flex flex-wrap gap-1">
                         <button onclick="occSelectAll(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('All') }}</button>
@@ -251,17 +251,19 @@
             </div>
         </div>
 
-        {{-- Occurrence popup (for suggestion georef occurrences) --}}
-        <div id="occ-popup" style="display:none;position:absolute;inset:0;z-index:400;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);">
-            <div style="background:white;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.22);width:360px;max-width:90vw;max-height:70vh;display:flex;flex-direction:column;overflow:hidden;">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #e5e7eb;flex-shrink:0;">
-                    <span style="font-size:12px;font-weight:600;color:#374151;">{{ __('Georeferenced occurrences in this cluster') }}</span>
-                    <button onclick="document.getElementById('occ-popup').style.display='none'" style="border:none;background:none;font-size:18px;color:#9ca3af;cursor:pointer;line-height:1;padding:0;">×</button>
-                </div>
-                <div id="occ-popup-list" class="overflow-y-auto" style="flex:1;padding:10px 14px;min-height:0;"></div>
-                <div style="padding:8px 14px;border-top:1px solid #f3f4f6;flex-shrink:0;">
-                    <button id="occ-popup-loadmore" onclick="fetchOccPopupPage(false)" style="display:none;width:100%;font-size:11px;padding:5px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;">{{ __('Load more') }}</button>
-                </div>
+        {{-- Occurrence popup (draggable window, like image viewer) --}}
+        <div id="occ-popup" style="display:none;position:absolute;top:60px;right:340px;z-index:30;width:320px;height:380px;min-width:220px;min-height:180px;"
+            class="bg-white dark:bg-gray-900 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+            <div id="occ-popup-bar" class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 cursor-move select-none shrink-0 border-b border-gray-200 dark:border-gray-700">
+                <span class="text-xs text-gray-500 truncate flex-1 mr-2">{{ __('Georeferenced occurrences in cluster') }}</span>
+                <button onclick="document.getElementById('occ-popup').style.display='none'" class="text-gray-400 hover:text-gray-600 text-sm leading-none ml-1">✕</button>
+            </div>
+            <div id="occ-popup-list" class="overflow-y-auto flex-1 px-3 py-2" style="min-height:0;font-size:11px;"></div>
+            <div class="px-3 py-2 border-t border-gray-100 shrink-0">
+                <button id="occ-popup-loadmore" onclick="fetchOccPopupPage(false)" style="display:none;width:100%;font-size:11px;padding:5px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;">{{ __('Load more') }}</button>
+            </div>
+            <div id="occ-popup-resize" style="position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:se-resize;z-index:10;">
+                <svg viewBox="0 0 16 16" style="width:16px;height:16px;opacity:0.4;"><line x1="4" y1="16" x2="16" y2="4" stroke="#6b7280" stroke-width="1.5"/><line x1="8" y1="16" x2="16" y2="8" stroke="#6b7280" stroke-width="1.5"/><line x1="12" y1="16" x2="16" y2="12" stroke="#6b7280" stroke-width="1.5"/></svg>
             </div>
         </div>
 
@@ -983,6 +985,21 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         window.addEventListener('mouseup', ()=>{ res=false; });
     })();
 
+    // ── Occ popup drag & resize ───────────────────────────────────────────────
+    (function(){
+        const win = document.getElementById('occ-popup');
+        const bar = document.getElementById('occ-popup-bar');
+        const rh  = document.getElementById('occ-popup-resize');
+        let drag=false,dx,dy,res=false,sx,sy,sw,sh;
+        bar.addEventListener('mousedown', e=>{ drag=true; const r=win.getBoundingClientRect(); dx=e.clientX-r.left; dy=e.clientY-r.top; e.preventDefault(); });
+        rh.addEventListener('mousedown',  e=>{ res=true; sx=e.clientX; sy=e.clientY; sw=win.offsetWidth; sh=win.offsetHeight; e.preventDefault(); });
+        window.addEventListener('mousemove', e=>{
+            if(drag){ win.style.left=Math.max(0,e.clientX-dx)+'px'; win.style.top=Math.max(0,e.clientY-dy)+'px'; win.style.right='auto'; }
+            if(res){ win.style.width=Math.max(220,sw+e.clientX-sx)+'px'; win.style.height=Math.max(180,sh+e.clientY-sy)+'px'; }
+        });
+        window.addEventListener('mouseup', ()=>{ drag=false; res=false; });
+    })();
+
     // ── Nominatim ─────────────────────────────────────────────────────────────
 function buildLocalityString(g) {
     return [g.verbatim_locality, g.municipality, g.county].filter(Boolean).join(', ');
@@ -1258,12 +1275,15 @@ function updateHistoryNav() {
     var _ungeorefLoaded = 0;
     var _correctSuggestionIds = new Set();
 
+    var _hasSuggestionColor = null;
+
     function renderOccurrenceRows(occurrences, append) {
+        const hasSugColor = _hasSuggestionColor || '#f59e0b';
         const statusBadge = {
             'gbif_georeferenced': ['#6b7280','georeferenced'],
             'gbif_reviewed':      ['#16a34a','georeferenced ✓'],
             'validated':          ['#16a34a','validated ✓'],
-            'has_suggestion':     ['#f59e0b','has suggestion'],
+            'has_suggestion':     [hasSugColor,'has suggestion'],
             'conflicted':         ['#ef4444','conflicted'],
             'ungeoreferenced':    ['#d1d5db','not georef'],
         };
@@ -1401,10 +1421,13 @@ function updateHistoryNav() {
         document.getElementById('nominatim-input').value=buildLocalityString(group);
         document.getElementById('nominatim-results').innerHTML='';
 
-        var countLabel = ungeorefTotal + (ungeorefTotal > occurrences.length ? ' (showing '+occurrences.length+')' : '') + ' ' + TXT.occurrences + ' {{ __("without coordinates") }}';
+        var countLabel = ungeorefTotal + (ungeorefTotal > occurrences.length ? ' {{ __("total, showing") }} '+occurrences.length : '');
         document.getElementById('occurrence-count').textContent = countLabel;
 
-        const clusterColors = ['#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+        const clusterColors = ['#3b82f6','#f97316','#a855f7','#06b6d4','#22c55e','#ec4899','#eab308','#6366f1','#14b8a6','#f43f5e'];
+
+        // Set has_suggestion badge color to match first suggestion
+        _hasSuggestionColor = (suggestions && suggestions.length > 0) ? clusterColors[0] : null;
 
         // Place georef occurrences on map as read-only markers
         georefOccurrences.forEach(function(o){
