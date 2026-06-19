@@ -429,10 +429,17 @@
             <div class="p-4 overflow-y-auto" style="flex:1;min-height:0;">
                 {{-- Mode toggle: only shown when there are suggestions --}}
                 <div id="mode-toggle-wrap" style="display:none;margin-bottom:10px;">
-                    <button id="mode-toggle-btn" onclick="togglePointMode()" style="width:100%;font-size:11px;padding:6px;border-radius:6px;border:1px dashed #d1d5db;color:#6b7280;background:transparent;cursor:pointer;text-align:center;">
+                    <button id="mode-toggle-btn" onclick="togglePointMode()" style="width:100%;font-size:11px;font-weight:600;padding:7px;border-radius:6px;border:1.5px solid #4C9C2E;color:#4C9C2E;background:#f0fdf4;cursor:pointer;text-align:center;transition:background 0.2s,color 0.2s;">
                         + {{ __('Submit a different point') }}
                     </button>
                 </div>
+                <style>
+                @keyframes btn-flash {
+                    0%,100% { background:#f0fdf4; color:#4C9C2E; }
+                    40%     { background:#4C9C2E; color:#fff; }
+                }
+                .btn-flash { animation: btn-flash 0.5s ease 2; }
+                </style>
                 <p id="map-click-hint" class="text-xs text-gray-400 mb-3 mt-0" style="display:none;">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
                 <form id="georef-form" class="space-y-2">
                     <div class="flex gap-2 items-end">
@@ -1122,6 +1129,12 @@ function showVoteModeToast() {
     toast.style.opacity = '1'; toast.style.pointerEvents = 'auto';
     clearTimeout(window._toastTimer);
     window._toastTimer = setTimeout(function(){ toast.style.opacity='0'; toast.style.pointerEvents='none'; }, 3500);
+    var btn = document.getElementById('mode-toggle-btn');
+    if (btn) {
+        btn.classList.remove('btn-flash');
+        void btn.offsetWidth; // reflow to restart animation
+        btn.classList.add('btn-flash');
+    }
 }
 
 function clearPanel() {
