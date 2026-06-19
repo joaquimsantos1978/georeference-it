@@ -8,7 +8,7 @@ A free, open-source crowdsourcing platform for georeferencing natural history sp
 
 ## What it does
 
-More than 40% of GBIF occurrence records lack geographic coordinates, limiting their use in biodiversity research and conservation. georeference.it addresses this in three ways:
+Only about 55% of natural history specimen records accessible via biodiversity aggregators such as GBIF are georeferenced, and only 31% include coordinate uncertainty information — both critical for rigorous ecological and evolutionary research (Marcer et al. 2021). georeference.it addresses this in three ways:
 
 1. **Fill coordinate gaps** — volunteers georeference occurrence records grouped by locality description, following [Georeferencing Best Practices](https://docs.gbif.org/georeferencing-best-practices/1.0/en/) (Zermoglio et al. 2020)
 2. **Validate by consensus** — community members agree or disagree with proposed georeferences; suggestions are validated once they reach a configurable confidence threshold
@@ -131,6 +131,14 @@ All output follows DarwinCore standards. API documentation: [georeference.it/api
 ## Contributing
 
 Pull requests welcome. Please open an issue first for significant changes.
+
+---
+
+## References
+
+Marcer A, Haston E, Groom Q, et al. Quality issues in georeferencing: From physical collections to digital data repositories for ecological research. *Divers Distrib.* 2021;27:564–567. https://doi.org/10.1111/ddi.13208
+
+Zermoglio PF, Chapman AD, Wieczorek JR, Luna MC, Bloom DA (2020) Georeferencing Quick Reference Guide. Copenhagen: GBIF Secretariat. https://doi.org/10.35035/e09p-h128
 
 ---
 
