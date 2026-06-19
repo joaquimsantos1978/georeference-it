@@ -1426,8 +1426,8 @@ function updateHistoryNav() {
 
         const clusterColors = ['#3b82f6','#f97316','#a855f7','#06b6d4','#22c55e','#ec4899','#eab308','#6366f1','#14b8a6','#f43f5e'];
 
-        // Set has_suggestion badge color to match first suggestion
-        _hasSuggestionColor = (suggestions && suggestions.length > 0) ? clusterColors[0] : null;
+        // has_suggestion badge: use suggestion color only if exactly one suggestion
+        _hasSuggestionColor = (suggestions && suggestions.length === 1) ? clusterColors[0] : '#f59e0b';
 
         // Place georef occurrences on map as read-only markers
         georefOccurrences.forEach(function(o){
