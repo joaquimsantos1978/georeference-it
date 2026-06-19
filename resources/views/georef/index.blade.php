@@ -684,7 +684,7 @@
 
         #map {
             position: fixed !important;
-            top: 0 !important;
+            top: 48px !important;
             left: 0 !important;
             right: 0 !important;
             bottom: 52px !important;
@@ -695,7 +695,7 @@
 
         #map-loading {
             position: fixed !important;
-            top: 0 !important; left: 0 !important; right: 0 !important;
+            top: 48px !important; left: 0 !important; right: 0 !important;
             bottom: 52px !important;
             z-index: 10 !important;
         }

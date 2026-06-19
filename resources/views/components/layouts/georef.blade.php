@@ -16,7 +16,7 @@
     @stack('styles')
     <style>
         [x-cloak] { display: none !important; }
-        body { margin: 0; padding: 0; overflow: hidden; }
+        html, body { margin: 0; padding: 0; overflow: hidden; max-width: 100vw; }
         #georef-content { height: calc(100vh - 48px); height: calc(100dvh - 48px); }
     </style>
 </head>
