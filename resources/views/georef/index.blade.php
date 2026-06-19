@@ -483,7 +483,12 @@
             </div>
         </div>
 
-        {{-- Hidden stubs for dead JS references --}}
+        {{-- Toast: vote mode warning --}}
+    <div id="vote-mode-toast" style="position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(17,24,39,0.88);color:#fff;font-size:12px;padding:8px 14px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;max-width:90vw;text-align:center;">
+        {{ __("There are suggestions to review. To place a new point, click") }} <strong>+ {{ __("Submit a different point") }}</strong>.
+    </div>
+
+    {{-- Hidden stubs for dead JS references --}}
         <input type="text" id="area-search" style="display:none">
         <button id="area-search-btn" style="display:none"></button>
         <span id="area-hint" style="display:none"></span>
@@ -701,6 +706,9 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
 
     // ── Map ───────────────────────────────────────────────────────────────────
     let map, marker, circle, radiusHandle, currentGroup = null;
+    var pendingVotes = {};
+    var georefMode = 'new'; // 'vote' | 'new'
+    var _currentSuggestions = [];
     map = L.map('map', { zoomControl: false }).setView([39.5, -8.0], 6);
     const osm           = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 });
     const esriSat       = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 19 });
@@ -727,7 +735,11 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         }
     });
     new MeasureControl().addTo(map);
-    map.on('click', e => { if (!measureMode) placeMarker(e.latlng.lat, e.latlng.lng); });
+    map.on('click', e => {
+        if (measureMode) return;
+        if (georefMode === 'vote') { showVoteModeToast(); return; }
+        placeMarker(e.latlng.lat, e.latlng.lng);
+    });
 
     // ── Radius handle helpers ─────────────────────────────────────────────────
     function getRadiusHandleLatLng(centerLatLng, radiusM) {
@@ -793,7 +805,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         document.getElementById('lng-input').value = lng.toFixed(7);
         document.getElementById('uncertainty-display').textContent = unc.toLocaleString() + 'm';
         document.getElementById('uncertainty-slider').value = Math.min(unc, 500000);
-        document.getElementById('submit-btn').disabled = false;
+        updateSubmitBtn();
         var ms = document.getElementById('mob-submit-btn'); if(ms){ms.disabled=false;ms.style.opacity='1';}
 
         marker.on('drag', e => {
@@ -1004,6 +1016,78 @@ function hideOverlay() {
     if (m) { m.style.display = 'none'; }
 }
 
+function updateSubmitBtn() {
+    var voteableIds = _currentSuggestions.filter(function(s){ return !s.is_own; }).map(function(s){ return s.id; });
+    var allVoted = voteableIds.length > 0 && voteableIds.every(function(id){ return pendingVotes[id]; });
+    var hasPoint = !!marker;
+    var enabled = (georefMode === 'vote' && allVoted) || (georefMode === 'new' && hasPoint);
+    document.getElementById('submit-btn').disabled = !enabled;
+    var ms = document.getElementById('mob-submit-btn'); if(ms){ ms.disabled=!enabled; ms.style.opacity=enabled?'1':'0.4'; }
+}
+
+function initVotingMode(suggestions) {
+    _currentSuggestions = suggestions || [];
+    pendingVotes = {};
+    var voteableSuggestions = _currentSuggestions.filter(function(s){ return !s.is_own; });
+    if (voteableSuggestions.length > 0) {
+        georefMode = 'vote';
+    } else {
+        georefMode = 'new';
+    }
+    var newPtBtn = document.getElementById('new-point-btn');
+    if (newPtBtn) newPtBtn.style.display = georefMode === 'vote' ? 'block' : 'none';
+    updateSubmitBtn();
+}
+
+function toggleVote(id, vote) {
+    if (pendingVotes[id] === vote) {
+        delete pendingVotes[id];
+    } else {
+        pendingVotes[id] = vote;
+        if (vote === 'agree') {
+            _currentSuggestions.forEach(function(s) {
+                if (s.id !== id && !s.is_own) pendingVotes[s.id] = 'disagree';
+            });
+        }
+    }
+    renderVoteButtonStates();
+    updateSubmitBtn();
+}
+
+function renderVoteButtonStates() {
+    _currentSuggestions.forEach(function(s) {
+        var agreeBtn = document.getElementById('agree-btn-'+s.id);
+        var disagreeBtn = document.getElementById('disagree-btn-'+s.id);
+        if (!agreeBtn || !disagreeBtn) return;
+        var vote = pendingVotes[s.id];
+        agreeBtn.style.background    = vote === 'agree'    ? '#16a34a' : '#f0fdf4';
+        agreeBtn.style.color         = vote === 'agree'    ? '#ffffff' : '#16a34a';
+        disagreeBtn.style.background = vote === 'disagree' ? '#ef4444' : '#fff1f2';
+        disagreeBtn.style.color      = vote === 'disagree' ? '#ffffff' : '#ef4444';
+    });
+}
+
+function activateNewPointMode() {
+    georefMode = 'new';
+    _currentSuggestions.forEach(function(s) {
+        if (!s.is_own) pendingVotes[s.id] = 'disagree';
+    });
+    renderVoteButtonStates();
+    var newPtBtn = document.getElementById('new-point-btn');
+    if (newPtBtn) newPtBtn.style.display = 'none';
+    var mapHint = document.getElementById('map-click-hint');
+    if (mapHint) { mapHint.style.display = 'block'; }
+    updateSubmitBtn();
+}
+
+function showVoteModeToast() {
+    var toast = document.getElementById('vote-mode-toast');
+    if (!toast) return;
+    toast.style.opacity = '1'; toast.style.pointerEvents = 'auto';
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(function(){ toast.style.opacity='0'; toast.style.pointerEvents='none'; }, 3500);
+}
+
 function clearPanel() {
     showOverlay();
     if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;} if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
@@ -1011,6 +1095,7 @@ function clearPanel() {
     clearSuggestionLayers(); closeImgViewer();
     document.getElementById('submit-btn').disabled=true;
     var ms=document.getElementById('mob-submit-btn'); if(ms){ms.disabled=true;ms.style.opacity='0.4';}
+    pendingVotes={}; georefMode='new'; _currentSuggestions=[];
     document.getElementById('lat-input').value=''; document.getElementById('lng-input').value='';
     document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
     document.getElementById('occurrence-loading').classList.remove('hidden');
@@ -1226,13 +1311,11 @@ function updateHistoryNav() {
         });
 
         clearSuggestionLayers();
+        initVotingMode(suggestions);
         if (suggestions&&suggestions.length>0) {
             const colors=clusterColors;
-            var competing = suggestions.length > 1 && suggestions.some(function(s){ return s.cluster_occurrence_ids && s.cluster_occurrence_ids.length > 0; });
+            var pillBase = 'font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid;cursor:pointer;font-weight:500;transition:background 0.15s,color 0.15s;';
             var sugHtml='';
-            if (competing) {
-                sugHtml += '<p style="font-size:10px;color:#6b7280;margin-bottom:6px;font-style:italic">Agreeing with one suggestion automatically disagrees with the others.</p>';
-            }
             suggestions.forEach(function(s,i){
                 var color=colors[i%colors.length];
                 var c=L.circle([s.decimal_latitude,s.decimal_longitude],{radius:s.coordinate_uncertainty_m||1000,color:color,fillColor:color,fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
@@ -1240,13 +1323,12 @@ function updateHistoryNav() {
                 window._suggestionLayers.push(c,m);
                 var pct=Math.min(100,(s.total_points/THRESHOLD)*100);
                 var dot='<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
-                var pillBase = 'font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid;cursor:pointer;font-weight:500;';
                 var valButtons = IS_AUTH
                     ? (s.is_own
                         ? '<span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Your submission") }}</span>'+
                           '<button onclick="deleteSuggestion('+s.id+')" style="font-size:10px;padding:2px 8px;border-radius:999px;border:1px solid #ef4444;color:#ef4444;background:#fff1f2;cursor:pointer;">{{ __("Delete") }}</button>'
-                        : '<button onclick="validateSuggestion('+s.id+',\'agree\','+competing+')" style="'+pillBase+'color:#16a34a;border-color:#16a34a;background:#f0fdf4;">'+TXT.agree+'</button>'+
-                          '<button onclick="validateSuggestion('+s.id+',\'disagree\','+competing+')" style="'+pillBase+'color:#ef4444;border-color:#ef4444;background:#fff1f2;">'+TXT.disagree+'</button>')
+                        : '<button id="agree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'agree\')" style="'+pillBase+'color:#16a34a;border-color:#16a34a;background:#f0fdf4;">'+TXT.agree+'</button>'+
+                          '<button id="disagree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'disagree\')" style="'+pillBase+'color:#ef4444;border-color:#ef4444;background:#fff1f2;">'+TXT.disagree+'</button>')
                     : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
                 sugHtml+='<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">'+
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
@@ -1257,6 +1339,7 @@ function updateHistoryNav() {
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
                     '</div></div></div>';
             });
+            sugHtml += '<button id="new-point-btn" onclick="activateNewPointMode()" style="display:block;width:100%;margin-top:4px;font-size:11px;padding:5px;border-radius:6px;border:1px dashed #d1d5db;color:#6b7280;background:transparent;cursor:pointer;text-align:center;">+ {{ __("Submit a different point") }}</button>';
             document.getElementById('suggestions-list').innerHTML=sugHtml;
         } else {
             document.getElementById('suggestions-list').innerHTML='<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
@@ -1306,15 +1389,30 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
         var btn=this;
         btn.disabled=true;
         btn.innerHTML='<svg class="animate-spin inline w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>{{ __("Submitting...") }}';
-        var excl=Array.from(document.querySelectorAll('.occurrence-checkbox:not(:checked)')).map(function(c){return c.value;});
-        fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
-            body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl})})
-        .then(r=>r.json()).then(d=>{
+
+        // Send pending votes
+        var votePromises = Object.keys(pendingVotes).map(function(id){
+            var vote = pendingVotes[id];
+            var hasCompeting = _currentSuggestions.length > 1;
+            var url = (vote==='agree' && hasCompeting) ? APP_URL+'/georef/agree-with/'+id : APP_URL+'/georef/validate/'+id;
+            var body = (vote==='agree' && hasCompeting) ? '{}' : JSON.stringify({vote:vote});
+            return fetch(url,{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},body:body});
+        });
+
+        Promise.all(votePromises).then(function(){
+            // If new point mode and marker placed, submit georef
+            if(georefMode==='new' && marker){
+                var excl=Array.from(document.querySelectorAll('.occurrence-checkbox:not(:checked)')).map(function(c){return c.value;});
+                return fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
+                    body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl})})
+                    .then(r=>r.json());
+            }
+            return {success:true};
+        }).then(function(d){
             btn.innerHTML='{{ __("Submit") }}';
-            if(d.success)loadNextGroup();
+            if(!d||d.success)loadNextGroup();
             else btn.disabled=false;
-        })
-        .catch(function(){ btn.innerHTML='{{ __("Submit") }}'; btn.disabled=false; });
+        }).catch(function(){ btn.innerHTML='{{ __("Submit") }}'; btn.disabled=false; });
     });
 document.getElementById('skip-btn').addEventListener('click', loadNextGroup);
 document.getElementById('hist-prev').addEventListener('click', function(e) {
