@@ -32,32 +32,54 @@ class GeorefController extends Controller
                 'recorded_by', 'event_date', 'dataset_key', 'basis_of_record',
             ]);
 
-        $allGeorefIds = $occurrences
-            ->whereNotNull('gbif_decimal_latitude')
-            ->pluck('id')
-            ->all();
+        $georefOccurrences = $occurrences->whereNotNull('gbif_decimal_latitude');
+        $allGeorefIds = $georefOccurrences->pluck('id')->all();
 
         $suggestions = GeorefSuggestion::where('locality_group_id', $group->id)
             ->where('status', 'pending')
             ->with(['user', 'exclusions'])
-            ->get()
-            ->map(function ($s) use ($allGeorefIds) {
-                $excludedIds = $s->exclusions->pluck('occurrence_id')->all();
-                // Occurrences in this cluster = all georef occurrences minus the excluded ones
-                $clusterIds = array_values(array_diff($allGeorefIds, $excludedIds));
+            ->get();
 
-                return [
-                    'id'                       => $s->id,
-                    'decimal_latitude'         => $s->decimal_latitude,
-                    'decimal_longitude'        => $s->decimal_longitude,
-                    'coordinate_uncertainty_m' => $s->coordinate_uncertainty_m,
-                    'total_points'             => $s->total_points,
-                    'submitted_by'             => $s->submitted_by,
-                    'georeference_remarks'     => $s->georeference_remarks,
-                    'cluster_occurrence_ids'   => $clusterIds,
-                    'is_own'                   => auth()->check() && $s->user_id === auth()->id(),
-                ];
-            });
+        // For system suggestions (no user_id), assign occurrences by proximity to each
+        // suggestion's centroid — whichever suggestion is closest claims the occurrence.
+        $systemSuggestions = $suggestions->whereNull('user_id')->values();
+        $systemClusterIds = [];
+        if ($systemSuggestions->count() > 1) {
+            foreach ($georefOccurrences as $occ) {
+                $minDist = PHP_FLOAT_MAX;
+                $nearest = null;
+                foreach ($systemSuggestions as $s) {
+                    $dlat = deg2rad((float)$occ->gbif_decimal_latitude - (float)$s->decimal_latitude);
+                    $dlng = deg2rad((float)$occ->gbif_decimal_longitude - (float)$s->decimal_longitude);
+                    $a = sin($dlat/2)**2 + cos(deg2rad((float)$s->decimal_latitude)) * cos(deg2rad((float)$occ->gbif_decimal_latitude)) * sin($dlng/2)**2;
+                    $dist = 2 * asin(sqrt($a));
+                    if ($dist < $minDist) { $minDist = $dist; $nearest = $s->id; }
+                }
+                $systemClusterIds[$nearest][] = $occ->id;
+            }
+        }
+
+        $mapped = $suggestions->map(function ($s) use ($allGeorefIds, $systemClusterIds) {
+            if (is_null($s->user_id)) {
+                $clusterIds = $systemClusterIds[$s->id] ?? $allGeorefIds;
+            } else {
+                $excludedIds = $s->exclusions->pluck('occurrence_id')->all();
+                $clusterIds = array_values(array_diff($allGeorefIds, $excludedIds));
+            }
+
+            return [
+                'id'                       => $s->id,
+                'decimal_latitude'         => $s->decimal_latitude,
+                'decimal_longitude'        => $s->decimal_longitude,
+                'coordinate_uncertainty_m' => $s->coordinate_uncertainty_m,
+                'total_points'             => $s->total_points,
+                'submitted_by'             => $s->submitted_by,
+                'georeference_remarks'     => $s->georeference_remarks,
+                'cluster_occurrence_ids'   => $clusterIds,
+                'is_own'                   => auth()->check() && $s->user_id === auth()->id(),
+            ];
+        });
+        $suggestions = $mapped;
 
         $comments = LocalityGroupComment::where('locality_group_id', $group->id)
             ->with('user')->latest()->take(20)->get()
