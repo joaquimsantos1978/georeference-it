@@ -41,6 +41,8 @@ Route::delete('/georef/validation/{validation}', [GeorefController::class, 'revo
 Route::post('/georef/comment', [GeorefController::class, 'comment'])->name('georef.comment')->middleware('auth');
 
 Route::get('/georef/group/{id}', [GeorefController::class, 'group'])->name('georef.group');
+Route::get('/georef/group/{id}/ungeoref-occurrences', [GeorefController::class, 'groupUngeorefOccurrences'])->name('georef.group.ungeoref');
+Route::get('/georef/suggestion/{suggestion}/georef-occurrences', [GeorefController::class, 'suggestionGeorefOccurrences'])->name('georef.suggestion.georef');
 
 Route::get('/georef/detect-location', [GeorefController::class, 'detectLocation'])->name('georef.detect-location');
 Route::get('/georef/search-locality', [GeorefController::class, 'searchLocality'])->name('georef.search-locality');

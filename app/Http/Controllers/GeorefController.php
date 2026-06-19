@@ -21,19 +21,33 @@ class GeorefController extends Controller
         return view('georef.index');
     }
 
-    private function groupData(LocalityGroup $group): array
-    {
-        $occurrences = Occurrence::where('locality_group_id', $group->id)
-            ->limit(500)
-            ->get([
-                'id', 'gbif_occurrence_key', 'catalog_number', 'institution_code',
-                'collection_code', 'scientific_name', 'georef_status', 'media',
-                'gbif_decimal_latitude', 'gbif_decimal_longitude',
-                'recorded_by', 'event_date', 'dataset_key', 'basis_of_record',
-            ]);
+    private const OCC_COLUMNS = [
+        'id', 'gbif_occurrence_key', 'catalog_number', 'institution_code',
+        'collection_code', 'scientific_name', 'georef_status', 'media',
+        'gbif_decimal_latitude', 'gbif_decimal_longitude',
+        'recorded_by', 'event_date', 'dataset_key', 'basis_of_record',
+    ];
 
-        $georefOccurrences = $occurrences->whereNotNull('gbif_decimal_latitude');
+    private function groupData(LocalityGroup $group, int $ungeorefOffset = 0): array
+    {
+        // Georef occurrences: used for map markers and cluster assignment (cap 500 for O(n²) clustering)
+        $georefOccurrences = Occurrence::where('locality_group_id', $group->id)
+            ->whereNotNull('gbif_decimal_latitude')
+            ->limit(500)
+            ->get(self::OCC_COLUMNS);
+
         $allGeorefIds = $georefOccurrences->pluck('id')->all();
+
+        // Ungeoref occurrences: paginated, shown in left panel
+        $ungeorefStatuses = ['ungeoreferenced', 'has_suggestion'];
+        $ungeorefTotal = Occurrence::where('locality_group_id', $group->id)
+            ->whereIn('georef_status', $ungeorefStatuses)
+            ->count();
+        $ungeorefOccurrences = Occurrence::where('locality_group_id', $group->id)
+            ->whereIn('georef_status', $ungeorefStatuses)
+            ->offset($ungeorefOffset)
+            ->limit(100)
+            ->get(self::OCC_COLUMNS);
 
         $suggestions = GeorefSuggestion::where('locality_group_id', $group->id)
             ->where('status', 'pending')
@@ -76,6 +90,7 @@ class GeorefController extends Controller
                 'submitted_by'             => $s->submitted_by,
                 'georeference_remarks'     => $s->georeference_remarks,
                 'cluster_occurrence_ids'   => $clusterIds,
+                'cluster_count'            => count($clusterIds),
                 'is_own'                   => auth()->check() && $s->user_id === auth()->id(),
             ];
         });
@@ -90,10 +105,12 @@ class GeorefController extends Controller
             ]);
 
         return [
-            'group'       => $group,
-            'occurrences' => $occurrences,
-            'suggestions' => $suggestions,
-            'comments'    => $comments,
+            'group'               => $group,
+            'occurrences'         => $ungeorefOccurrences,
+            'ungeoref_total'      => $ungeorefTotal,
+            'georef_occurrences'  => $georefOccurrences,
+            'suggestions'         => $suggestions,
+            'comments'            => $comments,
         ];
     }
 
@@ -231,17 +248,49 @@ public function next(Request $request)
         return response()->json($this->groupData($group));
     }
 
+    public function groupUngeorefOccurrences(Request $request, int $groupId)
+    {
+        $group = LocalityGroup::findOrFail($groupId);
+        $offset = max(0, (int) $request->get('offset', 0));
+        $occurrences = Occurrence::where('locality_group_id', $group->id)
+            ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
+            ->offset($offset)
+            ->limit(100)
+            ->get(self::OCC_COLUMNS);
+        return response()->json(['occurrences' => $occurrences]);
+    }
+
+    public function suggestionGeorefOccurrences(Request $request, GeorefSuggestion $suggestion)
+    {
+        $offset = max(0, (int) $request->get('offset', 0));
+        $clusterIds = $suggestion->exclusions()->exists()
+            ? Occurrence::where('locality_group_id', $suggestion->locality_group_id)
+                ->whereNotNull('gbif_decimal_latitude')
+                ->whereNotIn('id', $suggestion->exclusions()->pluck('occurrence_id'))
+                ->pluck('id')->all()
+            : Occurrence::where('locality_group_id', $suggestion->locality_group_id)
+                ->whereNotNull('gbif_decimal_latitude')
+                ->pluck('id')->all();
+
+        $total = count($clusterIds);
+        $occurrences = Occurrence::whereIn('id', array_slice($clusterIds, $offset, 100))
+            ->get(self::OCC_COLUMNS);
+        return response()->json(['occurrences' => $occurrences, 'total' => $total]);
+    }
+
     public function submit(Request $request)
     {
         $validated = $request->validate([
-            'locality_group_id'        => 'required|exists:locality_groups,id',
-            'decimal_latitude'         => 'required|numeric|between:-90,90',
-            'decimal_longitude'        => 'required|numeric|between:-180,180',
-            'coordinate_uncertainty_m' => 'nullable|integer|min:1',
-            'georeference_remarks'     => 'nullable|string|max:1000',
-            'anon_name'                => 'nullable|string|max:255',
-            'excluded_occurrence_ids'  => 'nullable|array',
-            'excluded_occurrence_ids.*'=> 'integer|exists:occurrences,id',
+            'locality_group_id'           => 'required|exists:locality_groups,id',
+            'decimal_latitude'            => 'required|numeric|between:-90,90',
+            'decimal_longitude'           => 'required|numeric|between:-180,180',
+            'coordinate_uncertainty_m'    => 'nullable|integer|min:1',
+            'georeference_remarks'        => 'nullable|string|max:1000',
+            'anon_name'                   => 'nullable|string|max:255',
+            'excluded_occurrence_ids'     => 'nullable|array',
+            'excluded_occurrence_ids.*'   => 'integer|exists:occurrences,id',
+            'correct_suggestion_ids'      => 'nullable|array',
+            'correct_suggestion_ids.*'    => 'integer|exists:georef_suggestions,id',
         ]);
 
         $group = LocalityGroup::findOrFail($validated['locality_group_id']);
@@ -271,8 +320,24 @@ public function next(Request $request)
 
         $group->occurrences()
             ->whereNotIn('id', $validated['excluded_occurrence_ids'] ?? [])
-            ->whereIn('georef_status', ['ungeoreferenced'])
+            ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
             ->update(['georef_status' => 'has_suggestion']);
+
+        // Include georef occurrences from suggestions the user chose to correct
+        if (!empty($validated['correct_suggestion_ids'])) {
+            $correctSuggestions = GeorefSuggestion::whereIn('id', $validated['correct_suggestion_ids'])
+                ->where('locality_group_id', $group->id)
+                ->with('exclusions')
+                ->get();
+            foreach ($correctSuggestions as $cs) {
+                $excludedIds = $cs->exclusions->pluck('occurrence_id')->all();
+                $group->occurrences()
+                    ->whereNotNull('gbif_decimal_latitude')
+                    ->whereNotIn('id', $excludedIds)
+                    ->whereIn('georef_status', ['gbif_georeferenced', 'gbif_reviewed'])
+                    ->update(['georef_status' => 'has_suggestion']);
+            }
+        }
 
         $group->recalculateCounters();
 

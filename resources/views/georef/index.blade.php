@@ -247,6 +247,21 @@
                     </div>
                 </div>
                 <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="flex:1;min-height:0;"></div>
+                <button id="load-more-occ-btn" onclick="loadMoreUngeoref()" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:5px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;flex-shrink:0;">{{ __('Load more') }}</button>
+            </div>
+        </div>
+
+        {{-- Occurrence popup (for suggestion georef occurrences) --}}
+        <div id="occ-popup" style="display:none;position:absolute;inset:0;z-index:400;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);">
+            <div style="background:white;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.22);width:360px;max-width:90vw;max-height:70vh;display:flex;flex-direction:column;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #e5e7eb;flex-shrink:0;">
+                    <span style="font-size:12px;font-weight:600;color:#374151;">{{ __('Georeferenced occurrences in this cluster') }}</span>
+                    <button onclick="document.getElementById('occ-popup').style.display='none'" style="border:none;background:none;font-size:18px;color:#9ca3af;cursor:pointer;line-height:1;padding:0;">×</button>
+                </div>
+                <div id="occ-popup-list" class="overflow-y-auto" style="flex:1;padding:10px 14px;min-height:0;"></div>
+                <div style="padding:8px 14px;border-top:1px solid #f3f4f6;flex-shrink:0;">
+                    <button id="occ-popup-loadmore" onclick="fetchOccPopupPage(false)" style="display:none;width:100%;font-size:11px;padding:5px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;">{{ __('Load more') }}</button>
+                </div>
             </div>
         </div>
 
@@ -1030,6 +1045,10 @@ function hideOverlay() {
     if (m) { m.style.display = 'none'; }
 }
 
+function toggleCorrectSuggestion(id, checked) {
+    if (checked) _correctSuggestionIds.add(id); else _correctSuggestionIds.delete(id);
+}
+
 function updateSubmitBtn() {
     var voteableIds = _currentSuggestions.filter(function(s){ return !s.is_own; }).map(function(s){ return s.id; });
     var allVoted = voteableIds.length > 0 && voteableIds.every(function(id){ return pendingVotes[id]; });
@@ -1173,7 +1192,7 @@ function loadNextGroup() {
         if(data.group){
             addToHistory(data.group);
             currentGroup=data.group;
-            renderGroup(data.group,data.occurrences,data.suggestions,data.comments);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments);
             updateUrl(data.group.id);
         } else {
             document.getElementById('occurrence-info').classList.remove('hidden');
@@ -1198,7 +1217,7 @@ function loadGroup(groupId) {
         document.getElementById('occurrence-loading').classList.add('hidden');
         if(data.group){
             currentGroup=data.group;
-            renderGroup(data.group,data.occurrences,data.suggestions,data.comments);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments);
             updateUrl(data.group.id);
         }
     })
@@ -1235,24 +1254,132 @@ function updateHistoryNav() {
 
     // ── Render group ──────────────────────────────────────────────────────────
     let _currentOccurrences = [];
+    var _ungeorefTotal = 0;
+    var _ungeorefLoaded = 0;
+    var _correctSuggestionIds = new Set();
 
-    function occSelectAll(checked) {
-        document.querySelectorAll('.occurrence-checkbox').forEach(cb => cb.checked = checked);
-    }
-    function occSelectByStatus(georeffed) {
-        const georefStatuses = ['gbif_georeferenced','gbif_reviewed','validated'];
-        document.querySelectorAll('.occurrence-checkbox').forEach(cb => {
-            const o = _currentOccurrences.find(o => String(o.id) === cb.value);
-            if (!o) return;
-            cb.checked = georeffed ? georefStatuses.includes(o.georef_status) : !georefStatuses.includes(o.georef_status);
+    function renderOccurrenceRows(occurrences, append) {
+        const statusBadge = {
+            'gbif_georeferenced': ['#6b7280','georeferenced'],
+            'gbif_reviewed':      ['#16a34a','georeferenced ✓'],
+            'validated':          ['#16a34a','validated ✓'],
+            'has_suggestion':     ['#f59e0b','has suggestion'],
+            'conflicted':         ['#ef4444','conflicted'],
+            'ungeoreferenced':    ['#d1d5db','not georef'],
+        };
+        var html = occurrences.map(function(o){
+            const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
+            const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
+            const [badgeColor, badgeLabel] = statusBadge[o.georef_status] || ['#d1d5db','—'];
+            var media = null;
+            if (o.media && o.media.length > 0) {
+                media = o.media.find(function(m){
+                    return m.identifier && !m.identifier.includes('manifest') &&
+                        (/\.(jpg|jpeg|png|gif|webp|tif|tiff)(\?.*)?$/i.test(m.identifier)||(m.format&&m.format.startsWith('image/')));
+                }) || o.media[0];
+            }
+            const badge='<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+badgeColor+'20;color:'+badgeColor+';border:1px solid '+badgeColor+'40;white-space:nowrap">'+badgeLabel+'</span>';
+            var imgBtn='';
+            if(media){
+                var isDirectImg = media.identifier && !media.identifier.includes('manifest') &&
+                    (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(media.identifier)||(media.format&&media.format.startsWith('image/')));
+                var btnStyle='flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#f9fafb;';
+                var btnContent = isDirectImg
+                    ? '<img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'📷\';this.parentElement.style.fontSize=\'14px\'">'
+                    : '<span style="font-size:14px" title="{{ __("View specimen image") }}">📷</span>';
+                imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
+            }
+            return '<div class="occ-row" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
+                '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
+                '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">'+
+                '<div style="flex:1;min-width:0">'+
+                (taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
+                '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
+                (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
+                '</div>'+badge+
+                '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
+                imgBtn+'</div></div>';
+        }).join('');
+        var list = document.getElementById('occurrences-list');
+        if (append) { list.insertAdjacentHTML('beforeend', html); }
+        else { list.innerHTML = html; }
+        list.querySelectorAll('.img-btn').forEach(function(btn){
+            btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
         });
     }
 
-    function renderGroup(group, occurrences, suggestions, comments) {
+    function loadMoreUngeoref() {
+        if (!currentGroup) return;
+        fetch(APP_URL+'/georef/group/'+currentGroup.id+'/ungeoref-occurrences?offset='+_ungeorefLoaded,
+            {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
+        .then(r=>r.json()).then(function(d){
+            if (!d.occurrences || !d.occurrences.length) return;
+            _currentOccurrences = _currentOccurrences.concat(d.occurrences);
+            _ungeorefLoaded += d.occurrences.length;
+            renderOccurrenceRows(d.occurrences, true);
+            updateLoadMoreBtn();
+        });
+    }
+
+    function updateLoadMoreBtn() {
+        var btn = document.getElementById('load-more-occ-btn');
+        if (!btn) return;
+        var remaining = _ungeorefTotal - _ungeorefLoaded;
+        if (remaining > 0) {
+            btn.style.display = 'block';
+            btn.textContent = '{{ __("Load more") }} (' + remaining + ')';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    // Occurrence popup (for suggestion georef occurrences)
+    var _occPopupOffset = 0;
+    var _occPopupTotal = 0;
+    var _occPopupSuggId = null;
+
+    function openOccPopup(suggId, count) {
+        _occPopupSuggId = suggId;
+        _occPopupOffset = 0;
+        _occPopupTotal = count;
+        document.getElementById('occ-popup').style.display = 'flex';
+        document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
+        document.getElementById('occ-popup-loadmore').style.display = 'none';
+        fetchOccPopupPage(true);
+    }
+
+    function fetchOccPopupPage(reset) {
+        fetch(APP_URL+'/georef/suggestion/'+_occPopupSuggId+'/georef-occurrences?offset='+_occPopupOffset,
+            {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
+        .then(r=>r.json()).then(function(d){
+            _occPopupTotal = d.total || _occPopupTotal;
+            var rows = (d.occurrences||[]).map(function(o){
+                var label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
+                var meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
+                return '<div style="font-size:11px;padding:4px 0;border-bottom:1px solid #f3f4f6">'+
+                    '<div style="font-style:italic;word-break:break-word">'+(o.scientific_name||'')+'</div>'+
+                    '<div style="color:#9ca3af">'+label+'</div>'+
+                    (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
+                    '</div>';
+            }).join('');
+            var list = document.getElementById('occ-popup-list');
+            if (reset) list.innerHTML = rows; else list.insertAdjacentHTML('beforeend', rows);
+            _occPopupOffset += d.occurrences.length;
+            var btn = document.getElementById('occ-popup-loadmore');
+            btn.style.display = _occPopupOffset < _occPopupTotal ? 'block' : 'none';
+            if (_occPopupOffset < _occPopupTotal)
+                btn.textContent = '{{ __("Load more") }} (' + (_occPopupTotal - _occPopupOffset) + ')';
+        });
+    }
+
+    function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments) {
         document.getElementById('occurrence-info').classList.remove('hidden');
         _currentOccurrences = occurrences;
+        _ungeorefTotal = ungeorefTotal;
+        _ungeorefLoaded = occurrences.length;
+        _correctSuggestionIds = new Set();
         const ctrl = document.getElementById('occ-select-controls');
-        if (occurrences.length > 1) ctrl.classList.remove('hidden'); else ctrl.classList.add('hidden');
+        ctrl.classList.add('hidden'); // bulk controls removed for now
         const fieldDefs = [
             {key:'verbatim_locality', label:'Locality'},
             {key:'municipality',      label:'Municipality'},
@@ -1274,92 +1401,23 @@ function updateHistoryNav() {
         document.getElementById('nominatim-input').value=buildLocalityString(group);
         document.getElementById('nominatim-results').innerHTML='';
 
-        document.getElementById('occurrence-count').textContent=occurrences.length+' '+TXT.occurrences;
-
-        const statusBadge = {
-            'gbif_georeferenced': ['#6b7280','georeferenced'],
-            'gbif_reviewed':      ['#16a34a','georeferenced ✓'],
-            'validated':          ['#16a34a','validated ✓'],
-            'has_suggestion':     ['#f59e0b','has suggestion'],
-            'conflicted':         ['#ef4444','conflicted'],
-            'ungeoreferenced':    ['#d1d5db','not georef'],
-        };
+        var countLabel = ungeorefTotal + (ungeorefTotal > occurrences.length ? ' (showing '+occurrences.length+')' : '') + ' ' + TXT.occurrences + ' {{ __("without coordinates") }}';
+        document.getElementById('occurrence-count').textContent = countLabel;
 
         const clusterColors = ['#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
 
-        const occClusterColor = {};
-        suggestions.forEach(function(s, i) {
-            if (s.cluster_occurrence_ids && s.cluster_occurrence_ids.length > 0) {
-                const color = clusterColors[i % clusterColors.length];
-                s.cluster_occurrence_ids.forEach(function(oid) {
-                    // Only assign if not already set (first suggestion wins per occurrence)
-                    if (!occClusterColor[oid]) occClusterColor[oid] = color;
-                });
-            }
+        // Place georef occurrences on map as read-only markers
+        georefOccurrences.forEach(function(o){
+            if (!o.gbif_decimal_latitude) return;
+            var m = L.circleMarker([o.gbif_decimal_latitude, o.gbif_decimal_longitude],
+                {radius:5,color:'#6b7280',fillColor:'#6b7280',fillOpacity:0.5,weight:1})
+                .bindTooltip((o.scientific_name||o.gbif_occurrence_key||'')+'<br>'+parseFloat(o.gbif_decimal_latitude).toFixed(4)+', '+parseFloat(o.gbif_decimal_longitude).toFixed(4),{permanent:false})
+                .addTo(map);
+            window._suggestionLayers.push(m);
         });
-        // Fallback: match occurrences to suggestions by GBIF coordinates
-        if (suggestions.length > 1) {
-            occurrences.forEach(function(o) {
-                if (o.gbif_decimal_latitude && o.gbif_decimal_longitude) {
-                    suggestions.forEach(function(s, i) {
-                        if (Math.abs(o.gbif_decimal_latitude - s.decimal_latitude) < 0.01 &&
-                            Math.abs(o.gbif_decimal_longitude - s.decimal_longitude) < 0.01) {
-                            occClusterColor[o.id] = clusterColors[i % clusterColors.length];
-                        }
-                    });
-                }
-            });
-        }
 
-        document.getElementById('occurrences-list').innerHTML=occurrences.map(function(o){
-            const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
-            const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
-            const occId='occ-'+o.id;
-            // Prefer a direct image URL over an IIIF manifest
-            var media = null;
-            if (o.media && o.media.length > 0) {
-                media = o.media.find(function(m) {
-                    return m.identifier && !m.identifier.includes('manifest') &&
-                        (/\.(jpg|jpeg|png|gif|webp|tif|tiff)(\?.*)?$/i.test(m.identifier) ||
-                         (m.format && m.format.startsWith('image/')));
-                }) || o.media[0];
-            }
-            const clusterColor = occClusterColor[o.id];
-            const clusterDot = clusterColor
-                ? '<span title="Belongs to suggestion cluster" style="flex-shrink:0;display:inline-block;width:7px;height:7px;border-radius:50%;background:'+clusterColor+'"></span>'
-                : '';
-            const [badgeColor, badgeLabel] = statusBadge[o.georef_status] || ['#d1d5db','—'];
-            const hasCoords = o.gbif_decimal_latitude && o.gbif_decimal_longitude;
-            const coordHint = hasCoords
-                ? '<span style="color:#9ca3af;font-size:10px">'+parseFloat(o.gbif_decimal_latitude).toFixed(4)+', '+parseFloat(o.gbif_decimal_longitude).toFixed(4)+'</span>'
-                : '';
-            const badge='<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+badgeColor+'20;color:'+badgeColor+';border:1px solid '+badgeColor+'40;white-space:nowrap">'+badgeLabel+'</span>';
-            var imgBtn='';
-            if(media){
-                var isDirectImg = media.identifier && !media.identifier.includes('manifest') &&
-                    (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(media.identifier) || (media.format && media.format.startsWith('image/')));
-                var btnStyle='flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#f9fafb;';
-                var btnContent = isDirectImg
-                    ? '<img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'📷\';this.parentElement.style.fontSize=\'14px\'">'
-                    : '<span style="font-size:14px" title="{{ __("View specimen image") }}">📷</span>';
-                imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
-            }
-            return '<div class="occ-row" id="'+occId+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
-                '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
-                '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">'+
-                '<div style="flex:1;min-width:0">'+
-(taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
-'<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
-(meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-(hasCoords?'<div style="display:flex;align-items:center;gap:4px;margin-top:1px">'+clusterDot+coordHint+'</div>':'')+
-                '</div>'+badge+
-                '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
-                imgBtn+'</div></div>';
-        }).join('');
-
-        document.querySelectorAll('.img-btn').forEach(function(btn){
-            btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
-        });
+        renderOccurrenceRows(occurrences, false);
+        updateLoadMoreBtn();
 
         clearSuggestionLayers();
         initVotingMode(suggestions);
@@ -1381,6 +1439,15 @@ function updateHistoryNav() {
                         : '<button id="agree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'agree\')" style="'+pillBase+'color:#16a34a;border-color:#16a34a;background:#f0fdf4;">'+TXT.agree+'</button>'+
                           '<button id="disagree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'disagree\')" style="'+pillBase+'color:#ef4444;border-color:#ef4444;background:#fff1f2;">'+TXT.disagree+'</button>')
                     : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
+                var correctRow = s.cluster_count > 0
+                    ? '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6;">'+
+                      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:#6b7280;">'+
+                      '<input type="checkbox" id="correct-chk-'+s.id+'" onchange="toggleCorrectSuggestion('+s.id+',this.checked)" style="cursor:pointer;">'+
+                      '{{ __("Correct") }} '+s.cluster_count+' {{ __("georef. occurrences") }}'+
+                      '</label>'+
+                      '<button onclick="openOccPopup('+s.id+','+s.cluster_count+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">{{ __("see list") }} ↗</button>'+
+                      '</div>'
+                    : '';
                 sugHtml+='<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">'+
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
                     '<div style="flex:1">'+
@@ -1388,6 +1455,7 @@ function updateHistoryNav() {
                     '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af"><span>'+s.submitted_by+'</span><div style="display:flex;gap:8px">'+valButtons+'</div></div>'+
                     '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:'+pct+'%"></div></div>'+
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
+                    correctRow+
                     '</div></div></div>';
             });
             document.getElementById('suggestions-list').innerHTML=sugHtml;
@@ -1454,7 +1522,7 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
             if(georefMode==='new' && marker){
                 var excl=Array.from(document.querySelectorAll('.occurrence-checkbox:not(:checked)')).map(function(c){return c.value;});
                 return fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
-                    body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl})})
+                    body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl,correct_suggestion_ids:Array.from(_correctSuggestionIds)})})
                     .then(r=>r.json());
             }
             return {success:true};
