@@ -69,7 +69,7 @@
         @endif
 
         {{-- My suggestions --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="font-semibold text-gray-900 dark:text-white">{{ __('My suggestions') }}</h2>
                 <span class="text-xs text-gray-400">{{ $suggestions->total() }} {{ __('total') }}</span>
@@ -149,7 +149,7 @@
         </div>
 
         {{-- My validations --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="font-semibold text-gray-900 dark:text-white">{{ __('My reviews') }}</h2>
                 <span class="text-xs text-gray-400">{{ $validations->total() }} {{ __('total') }}</span>
