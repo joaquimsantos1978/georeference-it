@@ -1506,7 +1506,7 @@ function updateHistoryNav() {
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
                     '<div style="flex:1">'+
                     '<div style="display:flex;justify-content:space-between"><span style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
-                    '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af"><span>'+s.submitted_by+'</span><div style="display:flex;gap:8px">'+valButtons+'</div></div>'+
+                    '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af"><span>'+s.submitted_by+(s.georeference_remarks?' <span title="'+s.georeference_remarks.replace(/"/g,"&quot;")+'" style="cursor:help;font-size:11px;">💬</span>':'')+'</span><div style="display:flex;gap:8px">'+valButtons+'</div></div>'+
                     '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:'+pct+'%"></div></div>'+
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
                     correctRow+
