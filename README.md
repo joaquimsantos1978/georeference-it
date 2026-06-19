@@ -30,6 +30,7 @@ Only about 55% of natural history specimen records accessible via biodiversity a
 - Leaderboard, dashboard, and contribution history
 - Public DarwinCore API (output: new georeferences, confirmations, corrections)
 - Responsive UI, mobile-friendly
+- Login with Google, GitHub, or ORCID — contributions are attributable to verified researcher identities
 - Anonymous submissions supported
 
 ---
@@ -53,7 +54,7 @@ Only about 55% of natural history specimen records accessible via biodiversity a
 | Frontend | Blade, Tailwind CSS, Alpine.js, Vite |
 | Map | Leaflet.js |
 | Geocoding | Nominatim (OpenStreetMap) |
-| Auth | Laravel Breeze + Socialite (Google, GitHub) |
+| Auth | Laravel Breeze + Socialite (Google, GitHub, ORCID) |
 | Data source | GBIF API + bulk DwCA import |
 
 ---
@@ -99,17 +100,24 @@ php artisan db:seed
 
 ### Importing GBIF data
 
-Request and import a GBIF occurrence download (specimens without coordinates):
+Request a GBIF occurrence download via the GBIF API (requires credentials in `.env`). Omit `--country` to download all specimens without coordinates globally:
 
 ```bash
-php artisan gbif:request-download --country=PT
+php artisan gbif:request-download            # all countries
+php artisan gbif:request-download --country=PT  # filter by country
+```
+
+Import the resulting download (you can also use a download key from a request made manually on gbif.org):
+
+```bash
 php artisan gbif:import-download {downloadKey}
 ```
 
-Generate automatic system suggestions from existing georeferenced clusters:
+Generate automatic system suggestions from existing georeferenced clusters. Omit `--country` to process all groups:
 
 ```bash
-php artisan gbif:auto-suggest --country=PT
+php artisan gbif:auto-suggest                # all groups
+php artisan gbif:auto-suggest --country=PT  # limit by country
 ```
 
 ---
@@ -152,4 +160,4 @@ MIT
 
 If you use georeference.it data in your research, please cite:
 
-> Santos, J. (2025). georeference.it — Crowdsourced georeferencing and error detection for GBIF occurrence data. https://georeference.it
+> Santos, J. (2026). georeference.it — Crowdsourced georeferencing and error detection for GBIF occurrence data. https://georeference.it
