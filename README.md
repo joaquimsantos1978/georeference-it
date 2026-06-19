@@ -1,59 +1,147 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# georeference.it
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A free, open-source crowdsourcing platform for georeferencing natural history specimen records from GBIF — and detecting errors in coordinates that already exist.
 
-## About Laravel
+**Live platform:** [georeference.it](https://georeference.it)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## What it does
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+More than 40% of GBIF occurrence records lack geographic coordinates, limiting their use in biodiversity research and conservation. georeference.it addresses this in three ways:
 
-## Learning Laravel
+1. **Fill coordinate gaps** — volunteers georeference occurrence records grouped by locality description, following [Georeferencing Best Practices](https://docs.gbif.org/georeferencing-best-practices/1.0/en/) (Zermoglio et al. 2020)
+2. **Validate by consensus** — community members agree or disagree with proposed georeferences; suggestions are validated once they reach a configurable confidence threshold
+3. **Detect errors in existing data** — when occurrence records from the same locality cluster into spatially inconsistent groups, the platform flags and presents them as correction tasks
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Features
 
-## Laravel Sponsors
+- Interactive map (Leaflet.js) with click-to-place point, draggable uncertainty circle, and Nominatim locality search
+- Occurrence grouping by locality description with paginated left panel
+- Agree/Disagree voting with point-weighted consensus model
+- Automatic system suggestions for groups with existing but inconsistent coordinates (GBIF consistency check)
+- Per-suggestion "correct georef. occurrences" opt-in — lets users explicitly correct existing GBIF coordinates
+- Lazy-loaded occurrence lists per suggestion cluster
+- Batch check/uncheck occurrences by institution
+- Restores user's previous submission when revisiting a group
+- User levels with weighted validation points
+- Leaderboard, dashboard, and contribution history
+- Public DarwinCore API (output: new georeferences, confirmations, corrections)
+- Responsive UI, mobile-friendly
+- Anonymous submissions supported
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## How to use
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+1. Visit [georeference.it](https://georeference.it) — no account required to browse; create a free account to track contributions
+2. Use the **Focus area** field to work on localities you know, or leave blank for any available task
+3. Read the locality description, navigate the map, place a point and set the uncertainty radius
+4. Uncheck any occurrences you believe belong elsewhere
+5. Submit — or vote Agree/Disagree on existing suggestions
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Laravel 12 (PHP) |
+| Database | MySQL |
+| Frontend | Blade, Tailwind CSS, Alpine.js, Vite |
+| Map | Leaflet.js |
+| Geocoding | Nominatim (OpenStreetMap) |
+| Auth | Laravel Breeze + Socialite (Google, GitHub) |
+| Data source | GBIF API + bulk DwCA import |
+
+---
+
+## Installation
+
+### Requirements
+
+- PHP 8.2+
+- MySQL 8+
+- Node.js 18+
+- Composer
+
+### Setup
+
+```bash
+git clone https://github.com/joaquimsantos1978/georeference-it.git
+cd georeference-it
+composer install
+npm install && npm run build
+cp .env.example .env
+php artisan key:generate
+```
+
+Configure your `.env`:
+
+```env
+DB_DATABASE=georeference_it
+DB_USERNAME=your_user
+DB_PASSWORD=your_password
+
+GBIF_USERNAME=your_gbif_username
+GBIF_PASSWORD=your_gbif_password
+GBIF_EMAIL=your_email
+```
+
+Run migrations and seed:
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+### Importing GBIF data
+
+Request and import a GBIF occurrence download (specimens without coordinates):
+
+```bash
+php artisan gbif:request-download --country=PT
+php artisan gbif:import-download {downloadKey}
+```
+
+Generate automatic system suggestions from existing georeferenced clusters:
+
+```bash
+php artisan gbif:auto-suggest --country=PT
+```
+
+---
+
+## Data output
+
+The platform exposes a public API with three output types per occurrence record:
+
+| Type | Description |
+|---|---|
+| New georeference | Coordinates for a previously uncoordinated record |
+| Confirmation | Community agreement with existing GBIF coordinates |
+| Correction | Alternative coordinates with rationale for a suspected error |
+
+All output follows DarwinCore standards. API documentation: [georeference.it/api-docs](https://georeference.it/api-docs)
+
+---
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Pull requests welcome. Please open an issue first for significant changes.
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Licence
 
-## Security Vulnerabilities
+MIT
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Citation
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+If you use georeference.it data in your research, please cite:
+
+> Santos, J. (2025). georeference.it — Crowdsourced georeferencing and error detection for GBIF occurrence data. https://georeference.it
