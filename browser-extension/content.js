@@ -119,7 +119,7 @@
         const top  = e.clientY - startY;
         badge.style.left = left + 'px';
         badge.style.top  = top  + 'px';
-        savePos(left, top);
+        savePos(left, top, badge.offsetWidth);
       }
       function onUp() {
         header.style.cursor = 'grab';
@@ -205,7 +205,10 @@
   let _running = false;
   let _lastKey = null;
 
-  function savePos(left, top)      { chrome.storage.local.set({ georef_pos:  { left, top } }); }
+  function savePos(left, top, w) {
+    const right = window.innerWidth - left - (w || 0);
+    chrome.storage.local.set({ georef_pos: { right, top } });
+  }
   function saveSize(width, height) { chrome.storage.local.set({ georef_size: { width, height } }); }
   function loadPrefs()             { return new Promise(r => chrome.storage.local.get(['georef_pos', 'georef_size'], r)); }
 
@@ -233,9 +236,14 @@
     const badge = div.firstElementChild;
     const { georef_pos: pos, georef_size: size } = await loadPrefs();
     if (pos) {
-      badge.style.left   = pos.left + 'px';
-      badge.style.top    = pos.top  + 'px';
-      badge.style.right  = 'auto';
+      // Restore position anchored to right edge, clamped to viewport
+      const w = (size && size.width) ? size.width : 320;
+      const h = (size && size.height) ? size.height : 400;
+      const right = Math.max(8, Math.min(pos.right ?? 24, window.innerWidth - w - 8));
+      const top   = Math.max(8, Math.min(pos.top, window.innerHeight - h - 8));
+      badge.style.right  = right + 'px';
+      badge.style.top    = top   + 'px';
+      badge.style.left   = 'auto';
       badge.style.bottom = 'auto';
     }
     if (size) {

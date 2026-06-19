@@ -17,7 +17,7 @@
     <style>
         [x-cloak] { display: none !important; }
         body { margin: 0; padding: 0; overflow: hidden; }
-        #georef-content { height: calc(100vh - 48px); }
+        #georef-content { height: calc(100vh - 48px); height: calc(100dvh - 48px); }
     </style>
 </head>
 <body class="bg-gray-900">
