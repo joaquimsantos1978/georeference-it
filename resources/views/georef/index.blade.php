@@ -239,11 +239,12 @@
                 </div>
                 <p class="text-xs text-gray-400 italic mb-1" style="flex-shrink:0;">{{ __('Uncheck to exclude from this georeference:') }}</p>
                 <div id="occ-select-controls" class="hidden mb-1" style="flex-shrink:0;">
-                    <div class="flex flex-wrap gap-1">
+                    <div class="flex flex-wrap gap-1 items-center">
                         <button onclick="occSelectAll(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('All') }}</button>
                         <button onclick="occSelectAll(false)" class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('None') }}</button>
-                        <button onclick="occSelectByStatus(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('Georef') }}</button>
-                        <button onclick="occSelectByStatus(false)" class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('Ungeoref') }}</button>
+                        <select id="inst-filter" onchange="occSelectByInstitution(this.value)" class="text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white text-gray-600 max-w-full" style="max-width:130px;">
+                            <option value="">{{ __('All institutions') }}</option>
+                        </select>
                     </div>
                 </div>
                 <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="flex:1;min-height:0;"></div>
@@ -991,7 +992,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         const bar = document.getElementById('occ-popup-bar');
         const rh  = document.getElementById('occ-popup-resize');
         let drag=false,dx,dy,res=false,sx,sy,sw,sh;
-        bar.addEventListener('mousedown', e=>{ drag=true; const r=win.getBoundingClientRect(); dx=e.clientX-r.left; dy=e.clientY-r.top; e.preventDefault(); });
+        bar.addEventListener('mousedown', e=>{ drag=true; dx=e.clientX-win.offsetLeft; dy=e.clientY-win.offsetTop; e.preventDefault(); });
         rh.addEventListener('mousedown',  e=>{ res=true; sx=e.clientX; sy=e.clientY; sw=win.offsetWidth; sh=win.offsetHeight; e.preventDefault(); });
         window.addEventListener('mousemove', e=>{
             if(drag){ win.style.left=Math.max(0,e.clientX-dx)+'px'; win.style.top=Math.max(0,e.clientY-dy)+'px'; win.style.right='auto'; }
@@ -1277,54 +1278,71 @@ function updateHistoryNav() {
 
     var _hasSuggestionColor = null;
 
+    var _statusBadge = {
+        'gbif_georeferenced': ['#6b7280','georeferenced'],
+        'gbif_reviewed':      ['#16a34a','georeferenced ✓'],
+        'validated':          ['#16a34a','validated ✓'],
+        'has_suggestion':     ['#f59e0b','has suggestion'],
+        'conflicted':         ['#ef4444','conflicted'],
+        'ungeoreferenced':    ['#d1d5db','not georef'],
+    };
+
+    function renderOccRowHtml(o, showCheckbox) {
+        var hasSugColor = _hasSuggestionColor || '#f59e0b';
+        var badges = Object.assign({}, _statusBadge, {'has_suggestion': [hasSugColor,'has suggestion']});
+        var label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
+        var taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
+        var bv = badges[o.georef_status] || ['#d1d5db','—'];
+        var badgeColor=bv[0], badgeLabel=bv[1];
+        var media = null;
+        if (o.media && o.media.length > 0) {
+            media = o.media.find(function(m){
+                return m.identifier && !m.identifier.includes('manifest') &&
+                    (/\.(jpg|jpeg|png|gif|webp|tif|tiff)(\?.*)?$/i.test(m.identifier)||(m.format&&m.format.startsWith('image/')));
+            }) || o.media[0];
+        }
+        var badge='<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+badgeColor+'20;color:'+badgeColor+';border:1px solid '+badgeColor+'40;white-space:nowrap">'+badgeLabel+'</span>';
+        var imgBtn='';
+        if(media){
+            var isDirectImg = media.identifier && !media.identifier.includes('manifest') &&
+                (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(media.identifier)||(media.format&&media.format.startsWith('image/')));
+            var btnStyle='flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#f9fafb;';
+            var btnContent = isDirectImg
+                ? '<img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'📷\';this.parentElement.style.fontSize=\'14px\'">'
+                : '<span style="font-size:14px" title="{{ __("View specimen image") }}">📷</span>';
+            imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
+        }
+        var cbHtml = showCheckbox ? '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">' : '';
+        return '<div class="occ-row" data-institution="'+(o.institution_code||'')+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
+            '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
+            cbHtml+
+            '<div style="flex:1;min-width:0">'+
+            (taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
+            '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
+            (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
+            '</div>'+badge+
+            '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
+            imgBtn+'</div></div>';
+    }
+
     function renderOccurrenceRows(occurrences, append) {
-        const hasSugColor = _hasSuggestionColor || '#f59e0b';
-        const statusBadge = {
-            'gbif_georeferenced': ['#6b7280','georeferenced'],
-            'gbif_reviewed':      ['#16a34a','georeferenced ✓'],
-            'validated':          ['#16a34a','validated ✓'],
-            'has_suggestion':     [hasSugColor,'has suggestion'],
-            'conflicted':         ['#ef4444','conflicted'],
-            'ungeoreferenced':    ['#d1d5db','not georef'],
-        };
-        var html = occurrences.map(function(o){
-            const label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
-            const taxon=o.scientific_name||'', meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
-            const [badgeColor, badgeLabel] = statusBadge[o.georef_status] || ['#d1d5db','—'];
-            var media = null;
-            if (o.media && o.media.length > 0) {
-                media = o.media.find(function(m){
-                    return m.identifier && !m.identifier.includes('manifest') &&
-                        (/\.(jpg|jpeg|png|gif|webp|tif|tiff)(\?.*)?$/i.test(m.identifier)||(m.format&&m.format.startsWith('image/')));
-                }) || o.media[0];
-            }
-            const badge='<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+badgeColor+'20;color:'+badgeColor+';border:1px solid '+badgeColor+'40;white-space:nowrap">'+badgeLabel+'</span>';
-            var imgBtn='';
-            if(media){
-                var isDirectImg = media.identifier && !media.identifier.includes('manifest') &&
-                    (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(media.identifier)||(media.format&&media.format.startsWith('image/')));
-                var btnStyle='flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#f9fafb;';
-                var btnContent = isDirectImg
-                    ? '<img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'📷\';this.parentElement.style.fontSize=\'14px\'">'
-                    : '<span style="font-size:14px" title="{{ __("View specimen image") }}">📷</span>';
-                imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
-            }
-            return '<div class="occ-row" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
-                '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
-                '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">'+
-                '<div style="flex:1;min-width:0">'+
-                (taxon?'<div style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
-                '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
-                (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-                '</div>'+badge+
-                '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
-                imgBtn+'</div></div>';
-        }).join('');
+        var html = occurrences.map(function(o){ return renderOccRowHtml(o, true); }).join('');
         var list = document.getElementById('occurrences-list');
         if (append) { list.insertAdjacentHTML('beforeend', html); }
         else { list.innerHTML = html; }
         list.querySelectorAll('.img-btn').forEach(function(btn){
             btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
+        });
+    }
+
+    function occSelectAll(checked) {
+        document.querySelectorAll('#occurrences-list .occurrence-checkbox').forEach(function(cb){ cb.checked = checked; });
+    }
+    function occSelectByInstitution(code) {
+        document.querySelectorAll('#occurrences-list .occ-row').forEach(function(row){
+            var cb = row.querySelector('.occurrence-checkbox');
+            if (!cb) return;
+            cb.checked = !code || row.dataset.institution === code;
         });
     }
 
@@ -1373,17 +1391,20 @@ function updateHistoryNav() {
             {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
         .then(r=>r.json()).then(function(d){
             _occPopupTotal = d.total || _occPopupTotal;
-            var rows = (d.occurrences||[]).map(function(o){
-                var label=[o.recorded_by,o.event_date].filter(Boolean).join(' · ')||o.gbif_occurrence_key;
-                var meta=[o.institution_code,o.collection_code].filter(Boolean).join(' · ');
-                return '<div style="font-size:11px;padding:4px 0;border-bottom:1px solid #f3f4f6">'+
-                    '<div style="font-style:italic;word-break:break-word">'+(o.scientific_name||'')+'</div>'+
-                    '<div style="color:#9ca3af">'+label+'</div>'+
-                    (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-                    '</div>';
-            }).join('');
+            var rows = (d.occurrences||[]).map(function(o){ return renderOccRowHtml(o, false); }).join('');
             var list = document.getElementById('occ-popup-list');
-            if (reset) list.innerHTML = rows; else list.insertAdjacentHTML('beforeend', rows);
+            if (reset) {
+                list.innerHTML = rows;
+                list.querySelectorAll('.img-btn').forEach(function(btn){
+                    btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
+                });
+            } else {
+                list.insertAdjacentHTML('beforeend', rows);
+                list.querySelectorAll('.img-btn:not([data-bound])').forEach(function(btn){
+                    btn.dataset.bound='1';
+                    btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
+                });
+            }
             _occPopupOffset += d.occurrences.length;
             var btn = document.getElementById('occ-popup-loadmore');
             btn.style.display = _occPopupOffset < _occPopupTotal ? 'block' : 'none';
@@ -1398,8 +1419,6 @@ function updateHistoryNav() {
         _ungeorefTotal = ungeorefTotal;
         _ungeorefLoaded = occurrences.length;
         _correctSuggestionIds = new Set();
-        const ctrl = document.getElementById('occ-select-controls');
-        ctrl.classList.add('hidden'); // bulk controls removed for now
         const fieldDefs = [
             {key:'verbatim_locality', label:'Locality'},
             {key:'municipality',      label:'Municipality'},
@@ -1442,6 +1461,18 @@ function updateHistoryNav() {
         renderOccurrenceRows(occurrences, false);
         updateLoadMoreBtn();
 
+        // Populate institution filter and show batch controls
+        var instSel = document.getElementById('inst-filter');
+        if (instSel) {
+            var allOccs = occurrences || [];
+            var instCodes = [];
+            allOccs.forEach(function(o){ if (o.institution_code && instCodes.indexOf(o.institution_code) === -1) instCodes.push(o.institution_code); });
+            instSel.innerHTML = '<option value="">{{ __("All institutions") }}</option>' +
+                instCodes.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('');
+        }
+        var ctrl = document.getElementById('occ-select-controls');
+        if (ctrl && occurrences && occurrences.length > 0) ctrl.classList.remove('hidden');
+
         clearSuggestionLayers();
         initVotingMode(suggestions);
         if (suggestions&&suggestions.length>0) {
@@ -1451,7 +1482,7 @@ function updateHistoryNav() {
             suggestions.forEach(function(s,i){
                 var color=colors[i%colors.length];
                 var c=L.circle([s.decimal_latitude,s.decimal_longitude],{radius:s.coordinate_uncertainty_m||1000,color:color,fillColor:color,fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
-                var m=L.circleMarker([s.decimal_latitude,s.decimal_longitude],{radius:6,color:color,fillColor:color,fillOpacity:0.8,weight:2}).bindTooltip(s.submitted_by+' · ±'+s.coordinate_uncertainty_m+'m · '+s.total_points+'pts',{permanent:false}).addTo(map);
+                var m=L.circleMarker([s.decimal_latitude,s.decimal_longitude],{radius:6,color:color,fillColor:color,fillOpacity:0.8,weight:2}).bindTooltip(parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'<br>'+s.submitted_by+' · ±'+s.coordinate_uncertainty_m+'m · '+s.total_points+'pts',{permanent:false}).addTo(map);
                 window._suggestionLayers.push(c,m);
                 var pct=Math.min(100,(s.total_points/THRESHOLD)*100);
                 var dot='<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
@@ -1484,6 +1515,26 @@ function updateHistoryNav() {
             document.getElementById('suggestions-list').innerHTML=sugHtml;
         } else {
             document.getElementById('suggestions-list').innerHTML='<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
+        }
+
+        // Restore user's previous submission if present
+        var ownSugg = suggestions ? suggestions.find(function(s){ return s.is_own; }) : null;
+        if (ownSugg) {
+            georefMode = 'new';
+            document.getElementById('lat-input').value = parseFloat(ownSugg.decimal_latitude).toFixed(7);
+            document.getElementById('lng-input').value = parseFloat(ownSugg.decimal_longitude).toFixed(7);
+            if (ownSugg.coordinate_uncertainty_m) document.getElementById('uncertainty-input').value = ownSugg.coordinate_uncertainty_m;
+            if (ownSugg.georeference_remarks) document.getElementById('remarks-input').value = ownSugg.georeference_remarks;
+            var modeBtn = document.getElementById('mode-toggle-btn');
+            var modeWrap = document.getElementById('mode-toggle-wrap');
+            var mapHint = document.getElementById('map-click-hint');
+            if (_currentSuggestions.some(function(s){ return !s.is_own; })) {
+                if (modeWrap) modeWrap.style.display = 'block';
+                if (modeBtn) modeBtn.textContent = '← {{ __("Back to voting") }}';
+            }
+            if (mapHint) mapHint.style.display = 'block';
+            placeMarker(parseFloat(ownSugg.decimal_latitude), parseFloat(ownSugg.decimal_longitude));
+            updateSubmitBtn();
         }
 
         renderComments(comments||[]);
