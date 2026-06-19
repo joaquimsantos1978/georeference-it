@@ -682,9 +682,15 @@ public function destroySuggestion(Request $request, GeorefSuggestion $suggestion
     $suggestion->exclusions()->delete();
     $suggestion->delete();
 
-    // Recount pending suggestions for this group
     if ($group) {
-        $group->pending_count   = $group->suggestions()->where('status', 'pending')->count();
+        $remainingPending = $group->suggestions()->where('status', 'pending')->count();
+        // If no pending suggestions remain, revert has_suggestion occurrences to ungeoreferenced
+        if ($remainingPending === 0) {
+            $group->occurrences()
+                ->where('georef_status', 'has_suggestion')
+                ->update(['georef_status' => 'ungeoreferenced']);
+        }
+        $group->pending_count   = $remainingPending;
         $group->validated_count = $group->suggestions()->where('status', 'validated')->count();
         $group->save();
     }
