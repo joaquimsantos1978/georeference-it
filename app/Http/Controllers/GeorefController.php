@@ -92,6 +92,7 @@ class GeorefController extends Controller
                 'cluster_occurrence_ids'   => $clusterIds,
                 'cluster_count'            => count($clusterIds),
                 'is_own'                   => auth()->check() && $s->user_id === auth()->id(),
+                'is_system'                => is_null($s->user_id),
             ];
         });
         $suggestions = $mapped;
