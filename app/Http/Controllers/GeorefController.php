@@ -30,13 +30,18 @@ class GeorefController extends Controller
 
     private function groupData(LocalityGroup $group, int $ungeorefOffset = 0): array
     {
-        // Georef occurrences: used for map markers and cluster assignment (cap 500 for O(n²) clustering)
+        // All georef occurrences: used for proximity/cluster assignment and counts
+        $allGeorefOccurrences = Occurrence::where('locality_group_id', $group->id)
+            ->whereNotNull('gbif_decimal_latitude')
+            ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude']);
+
+        $allGeorefIds = $allGeorefOccurrences->pluck('id')->all();
+
+        // Cap at 500 for map markers (Leaflet performance)
         $georefOccurrences = Occurrence::where('locality_group_id', $group->id)
             ->whereNotNull('gbif_decimal_latitude')
             ->limit(500)
             ->get(self::OCC_COLUMNS);
-
-        $allGeorefIds = $georefOccurrences->pluck('id')->all();
 
         // Ungeoref occurrences: paginated, shown in left panel
         $ungeorefStatuses = ['ungeoreferenced', 'has_suggestion'];
@@ -59,7 +64,7 @@ class GeorefController extends Controller
         $systemSuggestions = $suggestions->whereNull('user_id')->values();
         $systemClusterIds = [];
         if ($systemSuggestions->count() > 1) {
-            foreach ($georefOccurrences as $occ) {
+            foreach ($allGeorefOccurrences as $occ) {
                 $minDist = PHP_FLOAT_MAX;
                 $nearest = null;
                 foreach ($systemSuggestions as $s) {
