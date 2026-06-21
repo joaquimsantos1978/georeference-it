@@ -56,6 +56,7 @@
              ${parseFloat(data.decimalLatitude).toFixed(5)}, ${parseFloat(data.decimalLongitude).toFixed(5)}
              ${data.coordinateUncertaintyInMeters ? `<span style="color:#6b7280"> ±${data.coordinateUncertaintyInMeters}m</span>` : ''}
            </div>
+           ${data.georeferenceRemarks ? `<div style="margin-top:4px;color:#374151;font-family:inherit;font-size:10px;font-style:italic">${data.georeferenceRemarks}</div>` : ''}
          </div>`
       : '';
 
