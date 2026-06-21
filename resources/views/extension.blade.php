@@ -15,13 +15,13 @@
             <a href="https://chromewebstore.google.com/detail/georeferenceit/kpeachknjnikeihigoapgognjmgkimbd"
                target="_blank"
                class="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2.5a7.5 7.5 0 0 1 6.547 3.836L12 8.5a3.5 3.5 0 0 0-3.5 3.5H4.522A7.5 7.5 0 0 1 12 4.5zm0 5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm4.938 1.164h3.04A7.5 7.5 0 0 1 12 19.5a7.47 7.47 0 0 1-5.196-2.094l3.03-5.25A3.503 3.503 0 0 0 12 13.5a3.5 3.5 0 0 0 2.134-.72l2.804-.116z"/></svg>
                 Install for Chrome
             </a>
             <a href="https://addons.mozilla.org/en-US/firefox/addon/georeference-it/"
                target="_blank"
-               class="inline-flex items-center gap-2 border border-green-600 text-green-600 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+               class="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-.5 3.5c1.6 0 3.1.5 4.3 1.4-.4-.1-.8-.1-1.2-.1-2.8 0-5.1 2-5.5 4.7H7.5c.4-3.4 3.2-6 6-6zm.5 13c-3.3 0-6-2.7-6-6 0-.3 0-.6.1-.9.5 2.2 2.5 3.9 4.9 3.9 1.1 0 2.1-.4 2.9-1H16c-.9 2.4-3.2 4-5 4z"/></svg>
                 Install for Firefox
             </a>
             <a href="https://github.com/joaquimsantos1978/georeference-it/tree/main/browser-extension"
