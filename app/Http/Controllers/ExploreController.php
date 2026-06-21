@@ -74,13 +74,13 @@ class ExploreController extends Controller
                 ->pluck('country_code');
         });
 
-        $datasets = \Illuminate\Support\Facades\Cache::remember('explore_datasets', 3600, function () {
-            return \Illuminate\Support\Facades\DB::table('datasets')
-                ->where('total', '>', 0)
-                ->orderByDesc('total')
-                ->get(['key', 'title', 'institution_code', 'collection_code']);
-        });
+        $currentDataset = null;
+        if ($request->filled('dataset_key')) {
+            $currentDataset = \Illuminate\Support\Facades\DB::table('datasets')
+                ->where('key', $request->dataset_key)
+                ->first(['title', 'institution_code', 'collection_code']);
+        }
 
-        return view('explore', compact('groups', 'countries', 'datasets'));
+        return view('explore', compact('groups', 'countries', 'currentDataset'));
     }
 }

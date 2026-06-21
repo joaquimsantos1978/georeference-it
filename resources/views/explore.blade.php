@@ -34,16 +34,15 @@
                     <option value="inconsistent" {{ request('status') === 'inconsistent' ? 'selected' : '' }}>{{ __('Inconsistent') }}</option>
                 </select>
             </div>
-            <div>
+            <div class="relative min-w-48">
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Collection') }}</label>
-                <select name="dataset_key" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg pl-3 pr-8 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500 max-w-xs">
-                    <option value="">{{ __('All collections') }}</option>
-                    @foreach($datasets as $ds)
-                        <option value="{{ $ds->key }}" {{ request('dataset_key') === $ds->key ? 'selected' : '' }}>
-                            {{ $ds->title ?: ($ds->institution_code . ($ds->collection_code ? ' / '.$ds->collection_code : '')) }}
-                        </option>
-                    @endforeach
-                </select>
+                <input type="text" id="dataset-search"
+                    placeholder="{{ __('Search collection...') }}"
+                    value="{{ request('dataset_key') ? ($currentDataset->title ?? request('dataset_key')) : '' }}"
+                    autocomplete="off"
+                    class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                <input type="hidden" name="dataset_key" id="dataset-key-input" value="{{ request('dataset_key') }}">
+                <div id="dataset-suggestions" class="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">{{ __('Search') }}</button>
@@ -119,4 +118,54 @@
 
         {{ $groups->links() }}
     </div>
+
+<script>
+(function () {
+    const input = document.getElementById('dataset-search');
+    const hidden = document.getElementById('dataset-key-input');
+    const box    = document.getElementById('dataset-suggestions');
+    let timer;
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        const q = this.value.trim();
+        hidden.value = '';
+        if (q.length < 2) { box.classList.add('hidden'); return; }
+        timer = setTimeout(() => fetchDatasets(q), 250);
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { box.classList.add('hidden'); }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!input.contains(e.target) && !box.contains(e.target)) box.classList.add('hidden');
+    });
+
+    function fetchDatasets(q) {
+        fetch('/api/v1/datasets?q=' + encodeURIComponent(q) + '&per_page=8')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.data.length) { box.innerHTML = '<p class="px-3 py-2 text-xs text-gray-400">No results</p>'; box.classList.remove('hidden'); return; }
+                box.innerHTML = data.data.map(ds => {
+                    const label = ds.title || ((ds.institution_code || '') + (ds.collection_code ? ' / ' + ds.collection_code : ''));
+                    return `<div class="px-3 py-2 text-sm cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/30 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                                 data-key="${ds.dataset_key}" data-label="${label.replace(/"/g, '&quot;')}">
+                                <div class="font-medium text-gray-800 dark:text-white truncate">${label}</div>
+                                <div class="text-xs text-gray-400">${ds.total.toLocaleString()} occurrences</div>
+                            </div>`;
+                }).join('');
+                box.classList.remove('hidden');
+                box.querySelectorAll('[data-key]').forEach(el => {
+                    el.addEventListener('click', function () {
+                        hidden.value = this.dataset.key;
+                        input.value  = this.dataset.label;
+                        box.classList.add('hidden');
+                        input.closest('form').submit();
+                    });
+                });
+            });
+    }
+})();
+</script>
 </x-layouts.app>
