@@ -548,16 +548,32 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
         return response()->json([]);
     }
 
-    $results = LocalityGroup::whereRaw(
-            'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
-            [$q]
-        )
-        ->where('occurrence_count', '>', 0)
-        ->orderByRaw(
-            'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
-            [$q]
-        )
-        ->limit(8)
+    // Detect country name at end of query (e.g. "Pombal, Portugal") and convert to ISO2
+    $countryCode = null;
+    $searchQ = $q;
+    $countryMap = $this->countryNameToIso2();
+    foreach ($countryMap as $name => $iso2) {
+        if (preg_match('/,?\s*' . preg_quote($name, '/') . '\s*$/i', $q)) {
+            $countryCode = $iso2;
+            $searchQ = trim(preg_replace('/,?\s*' . preg_quote($name, '/') . '\s*$/i', '', $q));
+            break;
+        }
+    }
+
+    $query = LocalityGroup::where('occurrence_count', '>', 0);
+
+    if ($countryCode) {
+        $query->where('country_code', $countryCode);
+    }
+
+    if (strlen($searchQ) >= 2) {
+        $query->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$searchQ])
+              ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$searchQ]);
+    } else {
+        $query->orderBy('occurrence_count', 'desc');
+    }
+
+    $results = $query->limit(8)
         ->get(['id', 'verbatim_locality', 'municipality', 'county',
                'state_province', 'country_code', 'occurrence_count',
                'pending_count', 'validated_count'])
@@ -579,6 +595,33 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
     }
 
     return response()->json($results);
+}
+
+private function countryNameToIso2(): array
+{
+    return [
+        'Afghanistan' => 'AF', 'Albania' => 'AL', 'Algeria' => 'DZ', 'Angola' => 'AO',
+        'Argentina' => 'AR', 'Australia' => 'AU', 'Austria' => 'AT', 'Belgium' => 'BE',
+        'Bolivia' => 'BO', 'Brazil' => 'BR', 'Brasil' => 'BR', 'Bulgaria' => 'BG',
+        'Canada' => 'CA', 'Chile' => 'CL', 'China' => 'CN', 'Colombia' => 'CO',
+        'Costa Rica' => 'CR', 'Croatia' => 'HR', 'Cuba' => 'CU', 'Czech Republic' => 'CZ',
+        'Czechia' => 'CZ', 'Denmark' => 'DK', 'Ecuador' => 'EC', 'Egypt' => 'EG',
+        'Ethiopia' => 'ET', 'Finland' => 'FI', 'France' => 'FR', 'Germany' => 'DE',
+        'Ghana' => 'GH', 'Greece' => 'GR', 'Guatemala' => 'GT', 'Honduras' => 'HN',
+        'Hungary' => 'HU', 'India' => 'IN', 'Indonesia' => 'ID', 'Iran' => 'IR',
+        'Iraq' => 'IQ', 'Ireland' => 'IE', 'Israel' => 'IL', 'Italy' => 'IT',
+        'Japan' => 'JP', 'Kenya' => 'KE', 'Madagascar' => 'MG', 'Malaysia' => 'MY',
+        'Mexico' => 'MX', 'Morocco' => 'MA', 'Mozambique' => 'MZ', 'Netherlands' => 'NL',
+        'New Zealand' => 'NZ', 'Nicaragua' => 'NI', 'Nigeria' => 'NG', 'Norway' => 'NO',
+        'Pakistan' => 'PK', 'Panama' => 'PA', 'Paraguay' => 'PY', 'Peru' => 'PE',
+        'Philippines' => 'PH', 'Poland' => 'PL', 'Portugal' => 'PT', 'Romania' => 'RO',
+        'Russia' => 'RU', 'Saudi Arabia' => 'SA', 'Senegal' => 'SN', 'Slovakia' => 'SK',
+        'Slovenia' => 'SI', 'South Africa' => 'ZA', 'Spain' => 'ES', 'Sweden' => 'SE',
+        'Switzerland' => 'CH', 'Taiwan' => 'TW', 'Tanzania' => 'TZ', 'Thailand' => 'TH',
+        'Turkey' => 'TR', 'Uganda' => 'UG', 'Ukraine' => 'UA', 'United Kingdom' => 'GB',
+        'United States' => 'US', 'USA' => 'US', 'Uruguay' => 'UY', 'Venezuela' => 'VE',
+        'Vietnam' => 'VN', 'Zimbabwe' => 'ZW',
+    ];
 }
 
     public function iiifProxy(Request $request): \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
