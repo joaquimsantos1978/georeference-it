@@ -7,17 +7,7 @@
         </div>
 
         {{-- Filters --}}
-        @if(request('dataset_key'))
-        <div class="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-2 text-sm text-green-800 dark:text-green-300">
-            <span>Filtered to dataset <code class="font-mono text-xs">{{ request('dataset_key') }}</code></span>
-            <a href="{{ route('explore') }}" class="ml-auto text-xs text-green-600 hover:underline">Clear filter</a>
-        </div>
-        @endif
-
         <form method="GET" action="{{ route('explore') }}" class="flex flex-wrap gap-2 items-end">
-            @if(request('dataset_key'))
-            <input type="hidden" name="dataset_key" value="{{ request('dataset_key') }}">
-            @endif
             <div class="flex-1 min-w-48">
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Search locality') }}</label>
                 <input type="text" name="q" value="{{ request('q') }}"
@@ -26,7 +16,7 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Country') }}</label>
-                <select name="country" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                <select name="country" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg pl-3 pr-8 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
                     <option value="">{{ __('All countries') }}</option>
                     @foreach($countries as $code)
                         <option value="{{ $code }}" {{ request('country') === $code ? 'selected' : '' }}>{{ $code }}</option>
@@ -35,13 +25,24 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Status') }}</label>
-                <select name="status" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                <select name="status" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg pl-3 pr-8 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
                     <option value="">{{ __('All') }}</option>
                     <option value="ungeoreferenced" {{ request('status') === 'ungeoreferenced' ? 'selected' : '' }}>{{ __('Needs georeferencing') }}</option>
                     <option value="has_suggestion" {{ request('status') === 'has_suggestion' ? 'selected' : '' }}>{{ __('Has suggestions') }}</option>
                     <option value="validated" {{ request('status') === 'validated' ? 'selected' : '' }}>{{ __('Validated') }}</option>
                     <option value="georeferenced" {{ request('status') === 'georeferenced' ? 'selected' : '' }}>{{ __('Georeferenced (any)') }}</option>
                     <option value="inconsistent" {{ request('status') === 'inconsistent' ? 'selected' : '' }}>{{ __('Inconsistent') }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Collection') }}</label>
+                <select name="dataset_key" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg pl-3 pr-8 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500 max-w-xs">
+                    <option value="">{{ __('All collections') }}</option>
+                    @foreach($datasets as $ds)
+                        <option value="{{ $ds->key }}" {{ request('dataset_key') === $ds->key ? 'selected' : '' }}>
+                            {{ $ds->title ?: ($ds->institution_code . ($ds->collection_code ? ' / '.$ds->collection_code : '')) }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
             <div class="flex gap-2">

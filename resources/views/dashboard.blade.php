@@ -228,7 +228,7 @@
                 @method('PATCH')
                 <div>
                     <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">{{ __('Preferred task') }}</label>
-                    <select name="preferred_task" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <select name="preferred_task" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg pl-3 pr-8 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500">
                         <option value="both" @selected(auth()->user()->preferred_task === 'both')>{{ __('Both (platform decides)') }}</option>
                         <option value="georef" @selected(auth()->user()->preferred_task === 'georef')>{{ __('Georeference only') }}</option>
                         <option value="validate" @selected(auth()->user()->preferred_task === 'validate')>{{ __('Validate only') }}</option>
