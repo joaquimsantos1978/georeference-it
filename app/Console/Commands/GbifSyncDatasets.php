@@ -88,8 +88,8 @@ class GbifSyncDatasets extends Command
             )
             SELECT
                 dataset_key,
-                MAX(institution_code),
-                MAX(collection_code),
+                LEFT(MAX(institution_code), 100),
+                LEFT(MAX(collection_code), 100),
                 COUNT(*),
                 SUM(georef_status != 'ungeoreferenced'),
                 SUM(georef_status = 'validated'),
