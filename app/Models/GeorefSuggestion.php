@@ -11,6 +11,7 @@ class GeorefSuggestion extends Model
     protected $fillable = [
         'occurrence_id',
         'locality_group_id',
+        'locality_group_hash',
         'user_id',
         'anon_name',
         'decimal_latitude',

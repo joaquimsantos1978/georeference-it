@@ -337,6 +337,7 @@ public function next(Request $request)
 
         $suggestion = GeorefSuggestion::create([
             'locality_group_id'        => $group->id,
+            'locality_group_hash'      => $group->group_hash,
             'occurrence_id'            => $group->occurrences()->first()->id,
             'user_id'                  => auth()->id(),
             'anon_name'                => $validated['anon_name'] ?? null,
