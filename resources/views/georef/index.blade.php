@@ -553,7 +553,7 @@
 
     {{-- Video modal --}}
     <div id="video-modal" onclick="if(event.target===this)videoClose()" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:16px;">
-        <div style="position:relative;width:100%;max-width:800px;">
+        <div style="position:relative;width:80%;max-width:1200px;">
             <button onclick="videoClose()" style="position:absolute;top:-36px;right:0;background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
             <div style="padding:56.25% 0 0 0;position:relative;border-radius:10px;overflow:hidden;">
                 <iframe id="video-iframe" src="" frameborder="0"
