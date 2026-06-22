@@ -12,6 +12,16 @@
             </p>
         </div>
 
+        {{-- Video --}}
+        <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm" style="padding:56.25% 0 0 0;position:relative;">
+            <iframe src="https://player.vimeo.com/video/1203384672?badge=0&autopause=0&player_id=0&app_id=58479"
+                    frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                    style="position:absolute;top:0;left:0;width:100%;height:100%;"
+                    title="georeference.it — Collaborative georeferencing for natural history collections">
+            </iframe>
+        </div>
+        <script src="https://player.vimeo.com/api/player.js"></script>
+
         {{-- The problem --}}
         <section class="space-y-4">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">The problem</h2>

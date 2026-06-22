@@ -60,16 +60,19 @@
 
         <section class="space-y-4">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">See it in action</h2>
-            <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm" style="padding:56.25% 0 0 0;position:relative;">
+                <iframe src="https://player.vimeo.com/video/1203384672?badge=0&autopause=0&player_id=0&app_id=58479"
+                        frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                        style="position:absolute;top:0;left:0;width:100%;height:100%;"
+                        title="georeference.it — Collaborative georeferencing for natural history collections">
+                </iframe>
+            </div>
+            <script src="https://player.vimeo.com/api/player.js"></script>
+            <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm mt-4">
                 <img src="{{ asset('images/extension-screenshot-1.png') }}"
                      alt="georeference.it extension panel on a GBIF occurrence page, showing a map with suggested coordinates and a pending suggestion badge"
                      class="w-full">
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-                The extension panel appears automatically on GBIF occurrence pages, showing the suggested
-                coordinates on a map and the current status — here, a pending suggestion for
-                <em>Collema subnigrescens</em> from Portugal.
-            </p>
         </section>
 
         <section class="space-y-4">
