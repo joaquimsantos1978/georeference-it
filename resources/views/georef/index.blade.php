@@ -547,6 +547,21 @@
                 <button id="tut-next" onclick="tutStep(1)" style="font-size:12px;background:#16a34a;color:white;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;">Next →</button>
             </div>
             <button onclick="tutEnd()" style="display:block;width:100%;margin-top:10px;font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">Skip tutorial</button>
+            <button onclick="tutEnd();videoOpen()" style="display:block;width:100%;margin-top:4px;font-size:11px;color:#16a34a;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">▶ Watch video tutorial</button>
+        </div>
+    </div>
+
+    {{-- Video modal --}}
+    <div id="video-modal" onclick="if(event.target===this)videoClose()" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:16px;">
+        <div style="position:relative;width:100%;max-width:800px;">
+            <button onclick="videoClose()" style="position:absolute;top:-36px;right:0;background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+            <div style="padding:56.25% 0 0 0;position:relative;border-radius:10px;overflow:hidden;">
+                <iframe id="video-iframe" src="" frameborder="0"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    style="position:absolute;top:0;left:0;width:100%;height:100%;"
+                    title="georeference.it tutorial">
+                </iframe>
+            </div>
         </div>
     </div>
 
@@ -1983,6 +1998,21 @@ document.getElementById('share-btn').addEventListener('click', function() {
     }
 
     function tutIsMobile() { return window.innerWidth <= 768; }
+
+    function videoOpen() {
+        const modal = document.getElementById('video-modal');
+        document.getElementById('video-iframe').src = 'https://player.vimeo.com/video/1203384672?autoplay=1&badge=0&player_id=0&app_id=58479';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function videoClose() {
+        document.getElementById('video-modal').style.display = 'none';
+        document.getElementById('video-iframe').src = '';
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') videoClose(); });
 
     function tutRender() {
         var step  = TUT_STEPS[_tutIdx];
