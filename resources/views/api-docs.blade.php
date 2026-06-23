@@ -233,15 +233,12 @@
                     <p class="text-xs text-gray-500 mt-1">Coordinates submitted and approved by community members.</p>
                     <span class="inline-block mt-2 text-xs font-mono bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded">validated</span>
                 </div>
-                <div class="bg-white dark:bg-gray-800 border border-green-200 dark:border-green-800 rounded-xl p-4">
-                    <code class="text-xs font-mono text-green-700 dark:text-green-400">verified by data custodian</code>
-                    <p class="text-xs text-gray-500 mt-1">Reviewed and published by the data publisher via GBIF.</p>
-                    <span class="inline-block mt-2 text-xs font-mono bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded">gbif_reviewed</span>
-                </div>
                 <div class="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                     <code class="text-xs font-mono text-amber-700 dark:text-amber-400">requires verification</code>
-                    <p class="text-xs text-gray-500 mt-1">Coordinates exist but not yet community-validated.</p>
+                    <p class="text-xs text-gray-500 mt-1">Coordinates exist but not yet community-validated. Applies to records with pending suggestions, conflicting georeferences, or existing GBIF coordinates awaiting confirmation.</p>
                     <span class="inline-block mt-2 text-xs font-mono bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">has_suggestion</span>
+                    <span class="inline-block mt-2 text-xs font-mono bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">conflicted</span>
+                    <span class="inline-block mt-2 text-xs font-mono bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">gbif_georeferenced</span>
                 </div>
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                     <code class="text-xs font-mono text-gray-500">requires georeference</code>

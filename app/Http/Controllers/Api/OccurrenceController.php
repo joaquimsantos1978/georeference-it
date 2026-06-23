@@ -95,6 +95,8 @@ class OccurrenceController extends Controller
                 'per_page'     => $results->perPage(),
                 'current_page' => $results->currentPage(),
                 'last_page'    => $results->lastPage(),
+                'next_page_url' => $results->nextPageUrl(),
+                'prev_page_url' => $results->previousPageUrl(),
             ],
             'data' => $records,
         ]);
