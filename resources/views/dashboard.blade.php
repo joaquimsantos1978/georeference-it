@@ -238,6 +238,10 @@
                     <input type="checkbox" name="email_notifications" id="email_notifications" value="1" @checked(auth()->user()->email_notifications) class="rounded border-gray-300">
                     <label for="email_notifications" class="text-sm text-gray-600 dark:text-gray-400">{{ __('Email notifications') }}</label>
                 </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="public_name" id="public_name" value="1" @checked(auth()->user()->public_name ?? true) class="rounded border-gray-300">
+                    <label for="public_name" class="text-sm text-gray-600 dark:text-gray-400">{{ __('Show my name in public API responses') }}</label>
+                </div>
                 <button type="submit" class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">{{ __('Save') }}</button>
             </form>
         </div>

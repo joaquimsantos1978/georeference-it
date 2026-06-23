@@ -208,7 +208,8 @@ class OccurrenceController extends Controller
     private function resolveGeoref(Occurrence $o): array
     {
         if (in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted'])) {
-            $suggestion = GeorefSuggestion::where('locality_group_id', $o->locality_group_id)
+            $suggestion = GeorefSuggestion::with('user:id,name,public_name')
+                ->where('locality_group_id', $o->locality_group_id)
                 ->whereNotNull('decimal_latitude')
                 ->where(function ($q) {
                     $q->where('status', 'accepted')->orWhere('status', 'pending');
@@ -222,7 +223,9 @@ class OccurrenceController extends Controller
                     'lng'         => $suggestion->decimal_longitude,
                     'datum'       => $suggestion->geodetic_datum ?? 'WGS84',
                     'uncertainty' => $suggestion->coordinate_uncertainty_m,
-                    'by'          => $suggestion->user_id ? 'georeference.it contributor' : 'georeference.it system',
+                    'by'          => $suggestion->user_id
+                                        ? (($suggestion->user?->public_name ?? true) ? $suggestion->user?->name : 'georeference.it contributor')
+                                        : 'georeference.it system',
                     'date'        => $suggestion->georeferenced_date ?? $suggestion->created_at?->toDateString(),
                     'protocol'    => $suggestion->georeference_protocol ?? 'https://doi.org/10.35035/e09p-h128',
                     'sources'     => $suggestion->georeference_sources ?? 'georeference.it',

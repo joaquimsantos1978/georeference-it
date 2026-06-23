@@ -29,11 +29,13 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'preferred_task' => 'required|in:georef,validate,both',
             'email_notifications' => 'nullable|boolean',
+            'public_name' => 'nullable|boolean',
         ]);
 
         auth()->user()->update([
             'preferred_task' => $validated['preferred_task'],
             'email_notifications' => $request->boolean('email_notifications'),
+            'public_name' => $request->boolean('public_name'),
         ]);
 
         return redirect()->route('dashboard')->with('success', __('Preferences saved.'));

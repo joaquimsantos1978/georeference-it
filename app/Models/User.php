@@ -26,6 +26,7 @@ class User extends Authenticatable
         'bio',
 'email_notifications',
 'preferred_task',
+'public_name',
     ];
 
     protected $hidden = [
@@ -39,6 +40,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'email_notifications' => 'boolean',
+            'public_name' => 'boolean',
         ];
     }
 
