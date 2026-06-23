@@ -190,7 +190,7 @@ public function next(Request $request)
                 ->limit(50)
                 ->get();
 
-            if ($candidates->isEmpty() && $userId) {
+            if ($candidates->isEmpty()) {
                 $candidates = LocalityGroup::where('pending_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
                     ->tap($focusMatch)
