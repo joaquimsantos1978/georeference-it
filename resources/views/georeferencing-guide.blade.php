@@ -4,7 +4,7 @@
 
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Georeferencing Guide</h1>
-            <p class="mt-2 text-gray-500 dark:text-gray-400 text-sm">A practical summary based on <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="text-green-600 hover:underline">Georeferencing Best Practices</a> (Chapman &amp; Wieczorek, 2020) — read in ~2 minutes.</p>
+            <p class="mt-2 text-gray-500 dark:text-gray-400 text-sm">A practical summary based on <a href="https://doi.org/10.15468/doc-gg7h-s853" target="_blank" class="text-green-600 hover:underline">Georeferencing Best Practices</a> (Chapman &amp; Wieczorek, 2020) — read in ~2 minutes.</p>
         </div>
 
         {{-- What is georeferencing --}}
@@ -41,7 +41,7 @@
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">3</span>
                     <div>
                         <p class="font-medium text-gray-800 dark:text-gray-100">Place the coordinate</p>
-                        <p>For a named feature, use its center. For directional descriptions (<em>"5 km NW of [town]"</em>), the output coordinates are computed by the <a href="https://georeferencing.org/georefcalculator/gc.html" target="_blank" class="text-green-600 hover:underline">Georeferencing Calculator</a> from the town's corrected center, the heading, and the offset distance — the input coordinates (town center) differ from the output coordinates (the georeference point). The uncertainty radius combines the town's <em>geographic radial</em> (distance from center to furthest point on its boundary) plus the imprecision of the stated distance and direction. For administrative areas with no finer detail, use the centroid. <span class="text-gray-400">(Quick Reference Guide §2.2.5)</span></p>
+                        <p>For a named feature, use its center. For directional descriptions (<em>"5 km NW of [town]"</em>), find the town's center and apply the heading and distance to get the georeference point. For administrative areas with no finer detail, use the centroid.</p>
                     </div>
                 </div>
                 <div class="flex gap-3">
@@ -75,7 +75,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         <tr><td class="py-2 pr-4">GPS coordinates on label</td><td class="py-2">10–100 m</td></tr>
                         <tr><td class="py-2 pr-4">Named village or small town</td><td class="py-2">1–5 km</td></tr>
-                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Geographic radial of town + imprecision of distance/direction — use the Georeferencing Calculator</td></tr>
+                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Geographic radial of town + imprecision of distance/direction</td></tr>
                         <tr><td class="py-2 pr-4">Named river, lake or mountain</td><td class="py-2">Radius of smallest circle enclosing the feature</td></tr>
                         <tr><td class="py-2 pr-4">County / district only</td><td class="py-2">Radius of the administrative area</td></tr>
                         <tr><td class="py-2 pr-4">Country only</td><td class="py-2">Radius of the country</td></tr>
@@ -100,16 +100,16 @@
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Further reading</h2>
             <ul class="text-sm space-y-2">
                 <li>
-                    <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Best Practices</a>
-                    <span class="text-gray-500"> — Chapman &amp; Wieczorek (2020). The authoritative reference. GBIF Secretariat.</span>
+                    <a href="https://doi.org/10.15468/doc-gg7h-s853" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Best Practices</a>
+                    <span class="text-gray-500"> — Chapman AD &amp; Wieczorek JR (2020). GBIF Secretariat. The authoritative reference.</span>
                 </li>
                 <li>
-                    <a href="https://doi.org/10.35035/gdwq-3v93" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Quick Reference Guide</a>
-                    <span class="text-gray-500"> — Zermoglio et al. (2020). Step-by-step worked examples.</span>
+                    <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Quick Reference Guide</a>
+                    <span class="text-gray-500"> — Zermoglio PF, Chapman AD, Wieczorek JR, Luna MC &amp; Bloom DA (2020). GBIF Secretariat. Step-by-step worked examples.</span>
                 </li>
                 <li>
-                    <a href="https://georeferencing.org/georefcalculator/gc.html" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Calculator</a>
-                    <span class="text-gray-500"> — Online tool for computing point-radius georeferences from locality descriptions.</span>
+                    <a href="https://doi.org/10.35035/gdwq-3v93" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Calculator Manual</a>
+                    <span class="text-gray-500"> — Bloom DA, Wieczorek JR &amp; Zermoglio PF (2020). GBIF Secretariat.</span>
                 </li>
             </ul>
         </section>
