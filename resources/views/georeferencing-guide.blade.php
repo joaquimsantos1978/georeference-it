@@ -75,8 +75,8 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         <tr><td class="py-2 pr-4">GPS coordinates on label</td><td class="py-2">10–100 m</td></tr>
                         <tr><td class="py-2 pr-4">Named village or small town</td><td class="py-2">1–5 km</td></tr>
-                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">radius of town + 500 m–1 km</td></tr>
-                        <tr><td class="py-2 pr-4">Named river, lake or mountain</td><td class="py-2">Extent of the feature / 2</td></tr>
+                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Radius of town + ~10% of stated distance</td></tr>
+                        <tr><td class="py-2 pr-4">Named river, lake or mountain</td><td class="py-2">Radius of smallest circle enclosing the feature</td></tr>
                         <tr><td class="py-2 pr-4">County / district only</td><td class="py-2">Radius of the administrative area</td></tr>
                         <tr><td class="py-2 pr-4">Country only</td><td class="py-2">Radius of the country</td></tr>
                     </tbody>
@@ -92,7 +92,7 @@
                 <li>Multiple equally plausible interpretations exist and you cannot resolve the ambiguity.</li>
                 <li>The place name is unresolvable in any gazetteer, even with contextual clues.</li>
             </ul>
-            <p class="text-sm text-gray-600 dark:text-gray-300">In these cases it is better to leave it ungeoreferenced than to assign misleading coordinates. You can use the <strong>Remarks</strong> field to explain why.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">In these cases it is better to leave it ungeoreferenced than to assign misleading coordinates.</p>
         </section>
 
         {{-- Further reading --}}
