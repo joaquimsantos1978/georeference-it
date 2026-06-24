@@ -16,7 +16,10 @@
             </p>
         </div>
 
-        <a href="{{ route('how-it-works') }}" class="inline-block text-sm text-green-600 hover:underline">How it works in detail →</a>
+        <div class="flex gap-4 flex-wrap">
+            <a href="{{ route('how-it-works') }}" class="text-sm text-green-600 hover:underline">How it works →</a>
+            <a href="{{ route('georeferencing-guide') }}" class="text-sm text-green-600 hover:underline">Georeferencing best practices →</a>
+        </div>
 
         <div class="grid md:grid-cols-3 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">

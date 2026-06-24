@@ -5,10 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ isset($title) ? $title . ' — georeference.it' : 'georeference.it — Crowdsourced Georeferencing for Biodiversity' }}</title>
+    <title>{{ isset($title) ? $title . ' — georeference.it' : 'georeference.it — Georeference GBIF Specimens' }}</title>
     @php
         $metaDescription = $description ?? 'georeference.it is a crowdsourced platform to add coordinates to ungeoreferenced natural history specimens from GBIF. Help map biodiversity collections worldwide.';
-        $metaTitle = isset($title) ? $title . ' — georeference.it' : 'georeference.it — Crowdsourced Georeferencing for Biodiversity';
+        $metaTitle = isset($title) ? $title . ' — georeference.it' : 'georeference.it — Georeference GBIF Specimens';
         $metaUrl = url()->current();
         $metaImage = url('/images/logo.png');
     @endphp
@@ -64,6 +64,7 @@
             <div class="flex gap-4">
                 <a href="{{ route('about') }}" class="hover:text-green-600">About</a>
                 <a href="{{ route('how-it-works') }}" class="hover:text-green-600">How it works</a>
+                <a href="{{ route('georeferencing-guide') }}" class="hover:text-green-600">Georeferencing guide</a>
                 <a href="{{ route('extension') }}" class="hover:text-green-600">Extension</a>
                 <a href="{{ route('api-docs') }}" class="hover:text-green-600">API</a>
                 <a href="{{ route('cite') }}" class="hover:text-green-600">Cite</a>
