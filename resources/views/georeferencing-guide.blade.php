@@ -75,7 +75,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         <tr><td class="py-2 pr-4">GPS coordinates on label</td><td class="py-2">10–100 m</td></tr>
                         <tr><td class="py-2 pr-4">Named village or small town</td><td class="py-2">1–5 km</td></tr>
-                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Geographic radial of town + imprecision of stated distance/direction</td></tr>
+                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Geographic radial of town + imprecision of distance/direction — use the Georeferencing Calculator</td></tr>
                         <tr><td class="py-2 pr-4">Named river, lake or mountain</td><td class="py-2">Radius of smallest circle enclosing the feature</td></tr>
                         <tr><td class="py-2 pr-4">County / district only</td><td class="py-2">Radius of the administrative area</td></tr>
                         <tr><td class="py-2 pr-4">Country only</td><td class="py-2">Radius of the country</td></tr>
