@@ -41,7 +41,7 @@
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">3</span>
                     <div>
                         <p class="font-medium text-gray-800 dark:text-gray-100">Place the coordinate</p>
-                        <p>For a named feature, use its center. For directional descriptions (<em>"5 km NW of [town]"</em>), place the point 5 km NW of the town's corrected center. The uncertainty radius combines the town's <em>geographic radial</em> (distance from center to furthest point on its boundary) plus the imprecision of the stated distance and direction. For administrative areas with no finer detail, use the centroid. <span class="text-gray-400">(Quick Reference Guide §2.2.5)</span></p>
+                        <p>For a named feature, use its center. For directional descriptions (<em>"5 km NW of [town]"</em>), the output coordinates are computed by the <a href="https://georeferencing.org/georefcalculator/gc.html" target="_blank" class="text-green-600 hover:underline">Georeferencing Calculator</a> from the town's corrected center, the heading, and the offset distance — the input coordinates (town center) differ from the output coordinates (the georeference point). The uncertainty radius combines the town's <em>geographic radial</em> (distance from center to furthest point on its boundary) plus the imprecision of the stated distance and direction. For administrative areas with no finer detail, use the centroid. <span class="text-gray-400">(Quick Reference Guide §2.2.5)</span></p>
                     </div>
                 </div>
                 <div class="flex gap-3">
