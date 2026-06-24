@@ -1,5 +1,4 @@
 <x-layouts.app title="Leaderboard" description="See the top contributors helping to georeference natural history specimens on georeference.it. Join the community and make biodiversity data more useful.">
-    <x-slot name="title">{{ __('Leaderboard') }} — georeference.it</x-slot>
 
     <div class="space-y-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Leaderboard') }}</h1>

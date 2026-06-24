@@ -1,5 +1,4 @@
 <x-layouts.app title="API Documentation" description="Access georeferenced GBIF occurrence data via the georeference.it open API. DarwinCore-compliant JSON and JSON-LD endpoints with filtering and pagination.">
-<x-slot name="title">API — georeference.it</x-slot>
 
 <div class="max-w-4xl mx-auto space-y-4 mb-8">
     <div class="flex items-center gap-2">

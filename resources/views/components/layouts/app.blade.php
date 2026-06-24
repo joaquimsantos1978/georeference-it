@@ -5,10 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ isset($title) ? $title . ' — georeference.it' : 'georeference.it — Georeference GBIF Specimens' }}</title>
+    <title>{{ isset($title) ? $title . ' | georeference.it' : 'georeference.it | Georeference GBIF Specimens' }}</title>
     @php
         $metaDescription = $description ?? 'georeference.it is a crowdsourced platform to add coordinates to ungeoreferenced natural history specimens from GBIF. Help map biodiversity collections worldwide.';
-        $metaTitle = isset($title) ? $title . ' — georeference.it' : 'georeference.it — Georeference GBIF Specimens';
+        $metaTitle = isset($title) ? $title . ' | georeference.it' : 'georeference.it | Georeference GBIF Specimens';
         $metaUrl = url()->current();
         $metaImage = url('/images/logo.png');
     @endphp

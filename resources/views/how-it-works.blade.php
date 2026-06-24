@@ -1,5 +1,4 @@
 <x-layouts.app title="How It Works" description="Learn how to georeference natural history specimens on georeference.it — from finding a locality to submitting coordinates and validating other contributions.">
-    <x-slot name="title">How it works — georeference.it</x-slot>
 
     <div class="max-w-3xl mx-auto space-y-8">
 
@@ -59,9 +58,9 @@
             </ul>
             <p class="text-gray-600 dark:text-gray-300">
                 We follow the
-                <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="text-green-600 hover:underline">Georeferencing Best Practices</a>
+                <a href="https://doi.org/10.15468/doc-gg7h-s853" target="_blank" class="text-green-600 hover:underline">Georeferencing Best Practices</a>
                 (Chapman &amp; Wieczorek, 2020) and the
-                <a href="https://doi.org/10.35035/gdwq-3v93" target="_blank" class="text-green-600 hover:underline">Georeferencing Quick Reference Guide</a>.
+                <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="text-green-600 hover:underline">Georeferencing Quick Reference Guide</a>.
             </p>
         </section>
 

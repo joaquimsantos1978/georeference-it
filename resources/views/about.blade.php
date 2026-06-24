@@ -1,5 +1,4 @@
 <x-layouts.app title="About" description="Learn about georeference.it — a crowdsourced platform to georeference natural history specimens from GBIF biodiversity collections worldwide.">
-    <x-slot name="title">{{ __('About') }} — georeference.it</x-slot>
 
     <div class="max-w-3xl mx-auto space-y-8">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ __('About georeference.it') }}</h1>

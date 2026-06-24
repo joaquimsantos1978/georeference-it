@@ -1,5 +1,4 @@
 <x-layouts.app title="Explore" description="Browse georeferenced and ungeoreferenced GBIF occurrences. Filter by country, status, or dataset and explore the progress of crowdsourced georeferencing.">
-    <x-slot name="title">{{ __('Explore') }} — georeference.it</x-slot>
 
     <div class="space-y-4">
         <div class="flex items-center justify-between">
