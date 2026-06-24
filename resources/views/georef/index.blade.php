@@ -756,7 +756,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     var pendingVotes = {};
     var georefMode = 'new'; // 'vote' | 'new'
     var _currentSuggestions = [];
-    map = L.map('map', { zoomControl: false }).setView([39.5, -8.0], 6);
+    map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
     const osm           = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 });
     const esriSat       = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 19 });
     const esriLabels    = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, pane: 'overlayPane' });
