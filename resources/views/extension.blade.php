@@ -1,4 +1,4 @@
-<x-layouts.app>
+<x-layouts.app title="Browser Extension" description="Install the georeference.it browser extension for Chrome and Firefox to georeference GBIF specimens directly while browsing occurrence pages.">
     <x-slot name="title">Browser Extension — georeference.it</x-slot>
 
     <div class="max-w-3xl mx-auto space-y-8">

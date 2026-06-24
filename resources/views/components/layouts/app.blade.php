@@ -1,10 +1,32 @@
+@props(['title' => null, 'description' => null])
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? config('app.name', 'georeference.it') }}</title>
+    <title>{{ isset($title) ? $title . ' — georeference.it' : 'georeference.it — Crowdsourced Georeferencing for Biodiversity' }}</title>
+    @php
+        $metaDescription = $description ?? 'georeference.it is a crowdsourced platform to add coordinates to ungeoreferenced natural history specimens from GBIF. Help map biodiversity collections worldwide.';
+        $metaTitle = isset($title) ? $title . ' — georeference.it' : 'georeference.it — Crowdsourced Georeferencing for Biodiversity';
+        $metaUrl = url()->current();
+        $metaImage = url('/images/logo.png');
+    @endphp
+    <meta name="description" content="{{ $metaDescription }}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ $metaUrl }}">
+    {{-- Open Graph --}}
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ $metaUrl }}">
+    <meta property="og:title" content="{{ $metaTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:image" content="{{ $metaImage }}">
+    <meta property="og:site_name" content="georeference.it">
+    {{-- Twitter / X --}}
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ $metaTitle }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    <meta name="twitter:image" content="{{ $metaImage }}">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">

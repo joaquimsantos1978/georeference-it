@@ -1,4 +1,4 @@
-<x-layouts.app>
+<x-layouts.app title="How It Works" description="Learn how to georeference natural history specimens on georeference.it — from finding a locality to submitting coordinates and validating other contributions.">
     <x-slot name="title">How it works — georeference.it</x-slot>
 
     <div class="max-w-3xl mx-auto space-y-8">
