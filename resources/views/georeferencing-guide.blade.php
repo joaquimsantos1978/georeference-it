@@ -41,7 +41,7 @@
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">3</span>
                     <div>
                         <p class="font-medium text-gray-800 dark:text-gray-100">Place the coordinate</p>
-                        <p>For a named feature, use its center. For directional descriptions (<em>"5 km NW of…"</em>), apply the bearing and distance from the named place. For administrative areas with no finer detail, use the centroid.</p>
+                        <p>For a named feature, use its center. For directional descriptions (<em>"5 km NW of [town]"</em>), place the point 5 km NW of the town's center — the uncertainty radius then accounts for the town's own extent plus the imprecision of the stated distance. For administrative areas with no finer detail, use the centroid.</p>
                     </div>
                 </div>
                 <div class="flex gap-3">
@@ -75,7 +75,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         <tr><td class="py-2 pr-4">GPS coordinates on label</td><td class="py-2">10–100 m</td></tr>
                         <tr><td class="py-2 pr-4">Named village or small town</td><td class="py-2">1–5 km</td></tr>
-                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Radius of town + ~10% of stated distance</td></tr>
+                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Radius of town + ~500 m (imprecision of the stated distance)</td></tr>
                         <tr><td class="py-2 pr-4">Named river, lake or mountain</td><td class="py-2">Radius of smallest circle enclosing the feature</td></tr>
                         <tr><td class="py-2 pr-4">County / district only</td><td class="py-2">Radius of the administrative area</td></tr>
                         <tr><td class="py-2 pr-4">Country only</td><td class="py-2">Radius of the country</td></tr>
