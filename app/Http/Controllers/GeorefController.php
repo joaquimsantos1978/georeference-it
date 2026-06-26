@@ -283,6 +283,16 @@ public function next(Request $request)
         return response()->json(['occurrences' => $occurrences]);
     }
 
+    public function occurrencesByIds(Request $request)
+    {
+        session()->save();
+        $ids = array_filter(array_map('intval', explode(',', $request->get('ids', ''))));
+        $occurrences = $ids
+            ? Occurrence::whereIn('id', $ids)->get(self::OCC_COLUMNS)
+            : collect();
+        return response()->json(['occurrences' => $occurrences]);
+    }
+
     public function submit(Request $request)
     {
         $validated = $request->validate([

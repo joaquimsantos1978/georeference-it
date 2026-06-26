@@ -1404,9 +1404,23 @@ function updateHistoryNav() {
         fetchOccPopupPage(true);
     }
 
+    function openGbifOccPopup(ids) {
+        _occPopupSuggId = null;
+        _occPopupOffset = 0;
+        _occPopupTotal = ids.length;
+        _occPopupIds = ids;
+        document.getElementById('occ-popup').style.display = 'flex';
+        document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
+        document.getElementById('occ-popup-loadmore').style.display = 'none';
+        fetchOccPopupPage(true);
+    }
+
     function fetchOccPopupPage(reset) {
         var pageIds = _occPopupIds.slice(_occPopupOffset, _occPopupOffset + 100);
-        fetch(APP_URL+'/georef/suggestion/'+_occPopupSuggId+'/georef-occurrences?ids='+pageIds.join(','),
+        var url = _occPopupSuggId
+            ? APP_URL+'/georef/suggestion/'+_occPopupSuggId+'/georef-occurrences?ids='+pageIds.join(',')
+            : APP_URL+'/georef/occurrences-by-ids?ids='+pageIds.join(',');
+        fetch(url,
             {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
         .then(r=>r.json()).then(function(d){
             var rows = (d.occurrences||[]).map(function(o){ return renderOccRowHtml(o, false); }).join('');
@@ -1492,15 +1506,26 @@ function updateHistoryNav() {
         });
 
         if (allGeoref) {
-            renderOccurrenceRows(georefOccurrences, false);
+            // Left panel: simple message, occurrences accessible via "see list" on each card
+            document.getElementById('occ-panel-label').textContent = '{{ __("Georeferenced occurrences") }}';
+            document.getElementById('occ-panel-hint').style.display = 'none';
+            document.getElementById('occurrence-list').innerHTML =
+                '<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">' +
+                georefOccurrences.length + ' {{ __("occurrence(s) already georeferenced by GBIF. See each card to browse them.") }}' +
+                '</p>';
             document.getElementById('load-more-occ-btn').style.display = 'none';
-            // Show GBIF coordinates as suggestion-style cards, deduplicating by coords
+
+            // Build per-coord occurrence ID lists for "see list" button
+            var gbifCoordIds = {};
             var gbifCounts = {};
             georefOccurrences.forEach(function(o) {
                 if (!o.gbif_decimal_latitude) return;
                 var key = parseFloat(o.gbif_decimal_latitude).toFixed(5) + ',' + parseFloat(o.gbif_decimal_longitude).toFixed(5);
+                if (!gbifCoordIds[key]) gbifCoordIds[key] = [];
+                gbifCoordIds[key].push(o.id);
                 gbifCounts[key] = (gbifCounts[key] || 0) + 1;
             });
+
             var gbifSeen = {};
             var gbifHtml = '';
             georefOccurrences.forEach(function(o) {
@@ -1509,20 +1534,27 @@ function updateHistoryNav() {
                 if (gbifSeen[key]) return;
                 gbifSeen[key] = true;
                 var cnt = gbifCounts[key];
+                var ids = gbifCoordIds[key];
+                var lat = parseFloat(o.gbif_decimal_latitude);
+                var lng = parseFloat(o.gbif_decimal_longitude);
                 var color = _gbifCoordColors[key] || clusterColors[0];
                 var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
                 gbifHtml += '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">' +
                     '<div style="display:flex;align-items:flex-start;gap:4px">' + dot +
                     '<div style="flex:1">' +
                     '<div style="display:flex;justify-content:space-between">' +
-                    '<span style="font-weight:500">' + parseFloat(o.gbif_decimal_latitude).toFixed(5) + ', ' + parseFloat(o.gbif_decimal_longitude).toFixed(5) + '</span>' +
-                    '<span style="color:#9ca3af">' + cnt + ' {{ __("occ.") }}</span>' +
+                    '<span style="font-weight:500">' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</span>' +
+                    '<span style="color:#9ca3af">'+cnt+' {{ __("occ.") }}</span>' +
                     '</div>' +
                     '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af">' +
-                    '<span>GBIF</span>' +
-                    (IS_AUTH ? '<span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Georeferenced by GBIF") }}</span>' : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>') +
+                    '<span style="display:flex;align-items:center;gap:5px;">GBIF</span>' +
+                    '<div style="display:flex;gap:8px"><span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Georeferenced by GBIF") }}</span></div>' +
                     '</div>' +
                     '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:100%"></div></div>' +
+                    '<div style="display:flex;gap:8px;margin-top:4px">' +
+                    '<button onclick="previewSuggestion('+lat+','+lng+',0)" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>' +
+                    '<button onclick="openGbifOccPopup('+JSON.stringify(ids)+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0">{{ __("occurrences") }} ↗</button>' +
+                    '</div>' +
                     '</div></div></div>';
             });
             document.getElementById('suggestions-list').innerHTML = gbifHtml ||
