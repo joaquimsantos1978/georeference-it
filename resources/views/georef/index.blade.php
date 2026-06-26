@@ -1477,11 +1477,11 @@ function updateHistoryNav() {
 
         clearSuggestionLayers();
 
-        // Place georef occurrences on map as read-only markers
+        // Place georef occurrences on map as read-only markers (green = GBIF-attributed)
         georefOccurrences.forEach(function(o){
             if (!o.gbif_decimal_latitude) return;
             var m = L.circleMarker([o.gbif_decimal_latitude, o.gbif_decimal_longitude],
-                {radius:5,color:'#6b7280',fillColor:'#6b7280',fillOpacity:0.5,weight:1})
+                {radius:5,color:'#10b981',fillColor:'#10b981',fillOpacity:0.5,weight:1})
                 .bindTooltip((o.scientific_name||o.gbif_occurrence_key||'')+'<br>'+parseFloat(o.gbif_decimal_latitude).toFixed(4)+', '+parseFloat(o.gbif_decimal_longitude).toFixed(4),{permanent:false})
                 .addTo(map);
             window._suggestionLayers.push(m);
@@ -1505,7 +1505,8 @@ function updateHistoryNav() {
                 if (gbifSeen[key]) return;
                 gbifSeen[key] = true;
                 var cnt = gbifCounts[key];
-                var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;margin-top:2px"></span>';
+                var color = '#10b981';
+                var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
                 gbifHtml += '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">' +
                     '<div style="display:flex;align-items:flex-start;gap:4px">' + dot +
                     '<div style="flex:1">' +
@@ -1513,8 +1514,11 @@ function updateHistoryNav() {
                     '<span style="font-weight:500">' + parseFloat(o.gbif_decimal_latitude).toFixed(5) + ', ' + parseFloat(o.gbif_decimal_longitude).toFixed(5) + '</span>' +
                     '<span style="color:#9ca3af">' + cnt + ' {{ __("occ.") }}</span>' +
                     '</div>' +
-                    '<div style="margin-top:4px;color:#9ca3af">{{ __("Source: GBIF") }}</div>' +
-                    '<div style="color:#9ca3af;font-size:10px;margin-top:6px">{{ __("Use the form below to propose a correction if needed.") }}</div>' +
+                    '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af">' +
+                    '<span>GBIF</span>' +
+                    (IS_AUTH ? '<span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Georeferenced by GBIF") }}</span>' : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>') +
+                    '</div>' +
+                    '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:100%"></div></div>' +
                     '</div></div></div>';
             });
             document.getElementById('suggestions-list').innerHTML = gbifHtml ||
