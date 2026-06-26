@@ -61,20 +61,24 @@ class LocalityGroup extends Model
             UPDATE locality_groups lg
             JOIN (
                 SELECT
-                    COUNT(*)                                          AS total,
-                    SUM(georef_status IN ('has_suggestion','conflicted')) AS pending,
-                    SUM(georef_status = 'validated')                  AS validated,
-                    SUM(georef_status = 'ungeoreferenced')            AS ungeoreferenced
+                    COUNT(*)                             AS total,
+                    SUM(georef_status = 'validated')     AS validated,
+                    SUM(georef_status = 'ungeoreferenced') AS ungeoreferenced
                 FROM occurrences
                 WHERE locality_group_id = ?
-            ) c ON lg.id = ?
+            ) occ ON lg.id = ?
+            JOIN (
+                SELECT COUNT(*) AS pending
+                FROM georef_suggestions
+                WHERE locality_group_id = ? AND status = 'pending'
+            ) sug ON 1=1
             SET
-                lg.occurrence_count      = c.total,
-                lg.pending_count         = c.pending,
-                lg.validated_count       = c.validated,
-                lg.ungeoreferenced_count = c.ungeoreferenced,
+                lg.occurrence_count      = occ.total,
+                lg.pending_count         = sug.pending,
+                lg.validated_count       = occ.validated,
+                lg.ungeoreferenced_count = occ.ungeoreferenced,
                 lg.updated_at            = NOW()
-        ", [$this->id, $this->id]);
+        ", [$this->id, $this->id, $this->id]);
 
         $this->refresh();
     }
