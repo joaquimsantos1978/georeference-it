@@ -69,6 +69,7 @@ class ExploreController extends Controller
                 ->select('country_code')
                 ->whereNotNull('country_code')
                 ->where('occurrence_count', '>', 0)
+                ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
                 ->distinct()
                 ->orderBy('country_code')
                 ->pluck('country_code');
