@@ -562,9 +562,9 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
     }
 
     $query = LocalityGroup::where('occurrence_count', '>', 0)
-        ->where(function ($q) {
-            $q->where('ungeoreferenced_count', '>', 0)
-              ->orWhere('pending_count', '>', 0);
+        ->where(function ($sub) {
+            $sub->where('ungeoreferenced_count', '>', 0)
+                ->orWhere('pending_count', '>', 0);
         });
 
     if ($countryCode) {
