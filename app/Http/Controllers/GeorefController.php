@@ -70,11 +70,12 @@ class GeorefController extends Controller
             foreach ($allGeorefOccurrences as $occ) {
                 $minDist = PHP_FLOAT_MAX;
                 $nearest = null;
+                $oLat = (float)$occ->gbif_decimal_latitude;
+                $oLng = (float)$occ->gbif_decimal_longitude;
                 foreach ($systemSuggestions as $s) {
-                    $dlat = deg2rad((float)$occ->gbif_decimal_latitude - (float)$s->decimal_latitude);
-                    $dlng = deg2rad((float)$occ->gbif_decimal_longitude - (float)$s->decimal_longitude);
-                    $a = sin($dlat/2)**2 + cos(deg2rad((float)$s->decimal_latitude)) * cos(deg2rad((float)$occ->gbif_decimal_latitude)) * sin($dlng/2)**2;
-                    $dist = 2 * asin(sqrt($a));
+                    $dlat = $oLat - (float)$s->decimal_latitude;
+                    $dlng = $oLng - (float)$s->decimal_longitude;
+                    $dist = $dlat * $dlat + $dlng * $dlng;
                     if ($dist < $minDist) { $minDist = $dist; $nearest = $s->id; }
                 }
                 $systemClusterIds[$nearest][] = $occ->id;
@@ -294,11 +295,12 @@ public function next(Request $request)
                 $clusterIds = [];
                 foreach ($allGeoref as $occ) {
                     $minDist = PHP_FLOAT_MAX; $nearest = null;
+                    $oLat = (float)$occ->gbif_decimal_latitude;
+                    $oLng = (float)$occ->gbif_decimal_longitude;
                     foreach ($siblings as $s) {
-                        $dlat = deg2rad((float)$occ->gbif_decimal_latitude - (float)$s->decimal_latitude);
-                        $dlng = deg2rad((float)$occ->gbif_decimal_longitude - (float)$s->decimal_longitude);
-                        $a = sin($dlat/2)**2 + cos(deg2rad((float)$s->decimal_latitude)) * cos(deg2rad((float)$occ->gbif_decimal_latitude)) * sin($dlng/2)**2;
-                        $dist = 2 * asin(sqrt($a));
+                        $dlat = $oLat - (float)$s->decimal_latitude;
+                        $dlng = $oLng - (float)$s->decimal_longitude;
+                        $dist = $dlat * $dlat + $dlng * $dlng;
                         if ($dist < $minDist) { $minDist = $dist; $nearest = $s->id; }
                     }
                     if ($nearest === $suggestion->id) $clusterIds[] = $occ->id;
