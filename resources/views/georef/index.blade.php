@@ -513,6 +513,7 @@
                 <button id="skip-btn" class="flex-1 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 rounded-lg py-2 hover:bg-gray-50">{{ __('Skip') }}</button>
                 <button id="submit-btn" class="flex-1 text-sm bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>{{ __('Submit') }}</button>
             </div>
+            <p id="submit-hint" style="display:none;font-size:10px;color:#9ca3af;text-align:center;margin-top:4px">{{ __('Check "Correct georef. occurrences" on at least one card to enable submit.') }}</p>
         </div>
 
         {{-- Toast: vote mode warning --}}
@@ -1093,7 +1094,13 @@ function updateSubmitBtn() {
     var hasPoint = !!marker;
     var hasCorrection = !_isAllGeoref || _correctGbifOccurrenceIds.size > 0;
     var enabled = ((georefMode === 'vote' && allVoted) || (georefMode === 'new' && hasPoint)) && hasCorrection;
-    document.getElementById('submit-btn').disabled = !enabled;
+    var btn = document.getElementById('submit-btn');
+    btn.disabled = !enabled;
+    btn.title = (!enabled && _isAllGeoref && !hasCorrection)
+        ? '{{ __("Check \"Correct georef. occurrences\" on at least one card to apply your correction.") }}'
+        : '';
+    var hint = document.getElementById('submit-hint');
+    if (hint) hint.style.display = (_isAllGeoref && !hasCorrection) ? 'block' : 'none';
     var ms = document.getElementById('mob-submit-btn'); if(ms){ ms.disabled=!enabled; ms.style.opacity=enabled?'1':'0.4'; }
 }
 
