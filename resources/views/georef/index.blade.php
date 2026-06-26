@@ -1084,13 +1084,15 @@ function toggleCorrectSuggestion(id, checked) {
 }
 function toggleCorrectGbif(ids, checked) {
     ids.forEach(function(id){ if (checked) _correctGbifOccurrenceIds.add(id); else _correctGbifOccurrenceIds.delete(id); });
+    updateSubmitBtn();
 }
 
 function updateSubmitBtn() {
     var voteableIds = _currentSuggestions.filter(function(s){ return !s.is_own; }).map(function(s){ return s.id; });
     var allVoted = voteableIds.length > 0 && voteableIds.every(function(id){ return pendingVotes[id]; });
     var hasPoint = !!marker;
-    var enabled = (georefMode === 'vote' && allVoted) || (georefMode === 'new' && hasPoint);
+    var hasCorrection = !_isAllGeoref || _correctGbifOccurrenceIds.size > 0;
+    var enabled = ((georefMode === 'vote' && allVoted) || (georefMode === 'new' && hasPoint)) && hasCorrection;
     document.getElementById('submit-btn').disabled = !enabled;
     var ms = document.getElementById('mob-submit-btn'); if(ms){ ms.disabled=!enabled; ms.style.opacity=enabled?'1':'0.4'; }
 }
@@ -1295,6 +1297,7 @@ function updateHistoryNav() {
     var _ungeorefLoaded = 0;
     var _correctSuggestionIds = new Set();
     var _correctGbifOccurrenceIds = new Set();
+    var _isAllGeoref = false;
 
     var _hasSuggestionColor = null;
 
@@ -1456,6 +1459,7 @@ function updateHistoryNav() {
         _ungeorefLoaded = occurrences.length;
         _correctSuggestionIds = new Set();
         _correctGbifOccurrenceIds = new Set();
+        _isAllGeoref = (ungeorefTotal === 0 && georefOccurrences.length > 0);
         const fieldDefs = [
             {key:'verbatim_locality', label:'Locality'},
             {key:'municipality',      label:'Municipality'},
@@ -1671,7 +1675,7 @@ function updateHistoryNav() {
 
 if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
-    if (bounds.isValid()) map.fitBounds(bounds);
+    if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
 }
     }
 
@@ -1682,7 +1686,7 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     }
     function previewSuggestion(lat,lng,unc) {
         if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;} if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
-        circle=L.circle([lat,lng],{radius:unc||1000,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
+        if(unc) circle=L.circle([lat,lng],{radius:unc,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
         map.flyTo([lat,lng],12);
     }
     function validateSuggestion(id, vote, hasCompeting) {
