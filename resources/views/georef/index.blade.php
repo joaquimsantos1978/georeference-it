@@ -1477,11 +1477,15 @@ function updateHistoryNav() {
 
         clearSuggestionLayers();
 
-        // Place georef occurrences on map as read-only markers (green = GBIF-attributed)
+        // Place georef occurrences on map as read-only markers, one color per unique coord
+        var _gbifCoordColors = {};
+        var _gbifColorIdx = 0;
         georefOccurrences.forEach(function(o){
             if (!o.gbif_decimal_latitude) return;
+            var key = parseFloat(o.gbif_decimal_latitude).toFixed(5)+','+parseFloat(o.gbif_decimal_longitude).toFixed(5);
+            if (!_gbifCoordColors[key]) _gbifCoordColors[key] = clusterColors[_gbifColorIdx++ % clusterColors.length];
             var m = L.circleMarker([o.gbif_decimal_latitude, o.gbif_decimal_longitude],
-                {radius:5,color:'#10b981',fillColor:'#10b981',fillOpacity:0.5,weight:1})
+                {radius:5,color:_gbifCoordColors[key],fillColor:_gbifCoordColors[key],fillOpacity:0.5,weight:1})
                 .bindTooltip((o.scientific_name||o.gbif_occurrence_key||'')+'<br>'+parseFloat(o.gbif_decimal_latitude).toFixed(4)+', '+parseFloat(o.gbif_decimal_longitude).toFixed(4),{permanent:false})
                 .addTo(map);
             window._suggestionLayers.push(m);
@@ -1505,7 +1509,7 @@ function updateHistoryNav() {
                 if (gbifSeen[key]) return;
                 gbifSeen[key] = true;
                 var cnt = gbifCounts[key];
-                var color = '#10b981';
+                var color = _gbifCoordColors[key] || clusterColors[0];
                 var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
                 gbifHtml += '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">' +
                     '<div style="display:flex;align-items:flex-start;gap:4px">' + dot +
