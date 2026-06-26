@@ -1082,6 +1082,9 @@ function hideOverlay() {
 function toggleCorrectSuggestion(id, checked) {
     if (checked) _correctSuggestionIds.add(id); else _correctSuggestionIds.delete(id);
 }
+function toggleCorrectGbif(ids, checked) {
+    ids.forEach(function(id){ if (checked) _correctGbifOccurrenceIds.add(id); else _correctGbifOccurrenceIds.delete(id); });
+}
 
 function updateSubmitBtn() {
     var voteableIds = _currentSuggestions.filter(function(s){ return !s.is_own; }).map(function(s){ return s.id; });
@@ -1291,6 +1294,7 @@ function updateHistoryNav() {
     var _ungeorefTotal = 0;
     var _ungeorefLoaded = 0;
     var _correctSuggestionIds = new Set();
+    var _correctGbifOccurrenceIds = new Set();
 
     var _hasSuggestionColor = null;
 
@@ -1451,6 +1455,7 @@ function updateHistoryNav() {
         _ungeorefTotal = ungeorefTotal;
         _ungeorefLoaded = occurrences.length;
         _correctSuggestionIds = new Set();
+        _correctGbifOccurrenceIds = new Set();
         const fieldDefs = [
             {key:'verbatim_locality', label:'Locality'},
             {key:'municipality',      label:'Municipality'},
@@ -1551,9 +1556,13 @@ function updateHistoryNav() {
                     '<div style="display:flex;gap:8px"><span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Georeferenced by GBIF") }}</span></div>' +
                     '</div>' +
                     '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:100%"></div></div>' +
-                    '<div style="display:flex;gap:8px;margin-top:4px">' +
-                    '<button onclick="previewSuggestion('+lat+','+lng+',0)" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>' +
-                    '<button onclick="openGbifOccPopup('+JSON.stringify(ids)+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0">{{ __("occurrences") }} ↗</button>' +
+                    '<button onclick="previewSuggestion('+lat+','+lng+',0)" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>' +
+                    '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6;">' +
+                    '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:#6b7280;">' +
+                    '<input type="checkbox" id="correct-gbif-chk-'+key.replace(',','-')+'" onchange="toggleCorrectGbif('+JSON.stringify(ids)+',this.checked)" style="cursor:pointer;">' +
+                    '{{ __("Correct") }} '+cnt+' {{ __("georef. occurrences") }}' +
+                    '</label>' +
+                    '<button onclick="openGbifOccPopup('+JSON.stringify(ids)+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0">{{ __("see list") }} ↗</button>' +
                     '</div>' +
                     '</div></div></div>';
             });
@@ -1713,7 +1722,7 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
             if(georefMode==='new' && marker){
                 var excl=Array.from(document.querySelectorAll('.occurrence-checkbox:not(:checked)')).map(function(c){return c.value;});
                 return fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
-                    body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl,correct_suggestion_ids:Array.from(_correctSuggestionIds)})})
+                    body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl,correct_suggestion_ids:Array.from(_correctSuggestionIds),correct_occurrence_ids:Array.from(_correctGbifOccurrenceIds)})})
                     .then(r=>r.json());
             }
             return {success:true};

@@ -306,6 +306,8 @@ public function next(Request $request)
             'excluded_occurrence_ids.*'   => 'integer|exists:occurrences,id',
             'correct_suggestion_ids'      => 'nullable|array',
             'correct_suggestion_ids.*'    => 'integer|exists:georef_suggestions,id',
+            'correct_occurrence_ids'      => 'nullable|array',
+            'correct_occurrence_ids.*'    => 'integer|exists:occurrences,id',
         ]);
 
         $group = LocalityGroup::findOrFail($validated['locality_group_id']);
@@ -361,6 +363,14 @@ public function next(Request $request)
                     ->whereIn('georef_status', ['gbif_georeferenced', 'gbif_reviewed'])
                     ->update(['georef_status' => 'has_suggestion']);
             }
+        }
+
+        // Mark specific GBIF-georeferenced occurrences as needing correction (from GBIF cards)
+        if (!empty($validated['correct_occurrence_ids'])) {
+            $group->occurrences()
+                ->whereIn('id', $validated['correct_occurrence_ids'])
+                ->whereIn('georef_status', ['gbif_georeferenced', 'gbif_reviewed'])
+                ->update(['georef_status' => 'has_suggestion']);
         }
 
         $group->recalculateCounters();
