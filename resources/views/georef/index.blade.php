@@ -1475,6 +1475,8 @@ function updateHistoryNav() {
         // has_suggestion badge: use suggestion color only if exactly one suggestion
         _hasSuggestionColor = (suggestions && suggestions.length === 1) ? clusterColors[0] : '#f59e0b';
 
+        clearSuggestionLayers();
+
         // Place georef occurrences on map as read-only markers
         georefOccurrences.forEach(function(o){
             if (!o.gbif_decimal_latitude) return;
@@ -1515,7 +1517,6 @@ function updateHistoryNav() {
         var ctrl = document.getElementById('occ-select-controls');
         if (ctrl && occurrences && occurrences.length > 0) ctrl.classList.remove('hidden');
 
-        clearSuggestionLayers();
         initVotingMode(suggestions);
         if (suggestions&&suggestions.length>0) {
             const colors=clusterColors;
