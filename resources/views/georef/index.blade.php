@@ -234,10 +234,10 @@
             {{-- Occurrences list (takes remaining space) --}}
             <div class="p-3" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
                 <div style="flex-shrink:0;margin-bottom:4px;">
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences without coordinates') }}</span>
+                    <span id="occ-panel-label" class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences without coordinates') }}</span>
                     <div id="occurrence-count" class="text-xs text-gray-400 mt-0.5"></div>
                 </div>
-                <p class="text-xs text-gray-400 italic mb-1" style="flex-shrink:0;">{{ __('Uncheck to exclude from this georeference:') }}</p>
+                <p id="occ-panel-hint" class="text-xs text-gray-400 italic mb-1" style="flex-shrink:0;">{{ __('Uncheck to exclude from this georeference:') }}</p>
                 <div id="occ-select-controls" class="hidden mb-1" style="flex-shrink:0;">
                     <div class="flex flex-wrap gap-1 items-center">
                         <button onclick="occSelectAll(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('All') }}</button>
@@ -1458,7 +1458,16 @@ function updateHistoryNav() {
         document.getElementById('nominatim-input').value=buildLocalityString(group);
         document.getElementById('nominatim-results').innerHTML='';
 
-        var countLabel = ungeorefTotal + (ungeorefTotal > occurrences.length ? ' {{ __("total, showing") }} '+occurrences.length : '');
+        var allGeoref = ungeorefTotal === 0 && georefOccurrences.length > 0;
+        document.getElementById('occ-panel-label').textContent = allGeoref
+            ? '{{ __("Georeferenced occurrences") }}'
+            : '{{ __("Occurrences without coordinates") }}';
+        document.getElementById('occ-panel-hint').style.display = allGeoref ? 'none' : '';
+        document.getElementById('occ-select-controls').classList.add('hidden');
+
+        var countLabel = allGeoref
+            ? georefOccurrences.length + ' {{ __("with GBIF coordinates") }}'
+            : ungeorefTotal + (ungeorefTotal > occurrences.length ? ' {{ __("total, showing") }} '+occurrences.length : '');
         document.getElementById('occurrence-count').textContent = countLabel;
 
         const clusterColors = ['#3b82f6','#f97316','#a855f7','#06b6d4','#22c55e','#ec4899','#eab308','#6366f1','#14b8a6','#f43f5e'];
@@ -1476,8 +1485,13 @@ function updateHistoryNav() {
             window._suggestionLayers.push(m);
         });
 
-        renderOccurrenceRows(occurrences, false);
-        updateLoadMoreBtn();
+        if (allGeoref) {
+            renderOccurrenceRows(georefOccurrences, false);
+            document.getElementById('load-more-occ-btn').style.display = 'none';
+        } else {
+            renderOccurrenceRows(occurrences, false);
+            updateLoadMoreBtn();
+        }
 
         // Populate institution filter and show batch controls
         var instSel = document.getElementById('inst-filter');
