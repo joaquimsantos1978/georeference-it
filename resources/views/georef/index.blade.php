@@ -1391,11 +1391,13 @@ function updateHistoryNav() {
     var _occPopupOffset = 0;
     var _occPopupTotal = 0;
     var _occPopupSuggId = null;
+    var _occPopupIds = [];
 
-    function openOccPopup(suggId, count) {
+    function openOccPopup(suggId, count, ids) {
         _occPopupSuggId = suggId;
         _occPopupOffset = 0;
         _occPopupTotal = count;
+        _occPopupIds = ids || [];
         document.getElementById('occ-popup').style.display = 'flex';
         document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
         document.getElementById('occ-popup-loadmore').style.display = 'none';
@@ -1403,10 +1405,10 @@ function updateHistoryNav() {
     }
 
     function fetchOccPopupPage(reset) {
-        fetch(APP_URL+'/georef/suggestion/'+_occPopupSuggId+'/georef-occurrences?offset='+_occPopupOffset,
+        var pageIds = _occPopupIds.slice(_occPopupOffset, _occPopupOffset + 100);
+        fetch(APP_URL+'/georef/suggestion/'+_occPopupSuggId+'/georef-occurrences?ids='+pageIds.join(','),
             {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
         .then(r=>r.json()).then(function(d){
-            _occPopupTotal = d.total || _occPopupTotal;
             var rows = (d.occurrences||[]).map(function(o){ return renderOccRowHtml(o, false); }).join('');
             var list = document.getElementById('occ-popup-list');
             if (reset) {
@@ -1421,7 +1423,7 @@ function updateHistoryNav() {
                     btn.addEventListener('click',function(e){e.stopPropagation();openImgViewer(this.dataset.src,this.dataset.title,this.dataset.link);});
                 });
             }
-            _occPopupOffset += d.occurrences.length;
+            _occPopupOffset += 100;
             var btn = document.getElementById('occ-popup-loadmore');
             btn.style.display = _occPopupOffset < _occPopupTotal ? 'block' : 'none';
             if (_occPopupOffset < _occPopupTotal)
@@ -1515,7 +1517,7 @@ function updateHistoryNav() {
                       '<input type="checkbox" id="correct-chk-'+s.id+'" onchange="toggleCorrectSuggestion('+s.id+',this.checked)" style="cursor:pointer;">'+
                       '{{ __("Correct") }} '+s.cluster_count+' {{ __("georef. occurrences") }}'+
                       '</label>'+
-                      '<button onclick="openOccPopup('+s.id+','+s.cluster_count+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">{{ __("see list") }} ↗</button>'+
+                      '<button onclick="openOccPopup('+s.id+','+s.cluster_count+','+JSON.stringify(s.cluster_occurrence_ids)+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">{{ __("see list") }} ↗</button>'+
                       '</div>'
                     : '';
                 sugHtml+='<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">'+
