@@ -1474,6 +1474,7 @@ function updateHistoryNav() {
     }
 
     function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments) {
+        hideFocusDropdown();
         document.getElementById('occurrence-info').classList.remove('hidden');
         _currentOccurrences = occurrences;
         _ungeorefTotal = ungeorefTotal;
