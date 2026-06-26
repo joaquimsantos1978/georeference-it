@@ -276,20 +276,46 @@ public function next(Request $request)
         session()->save();
         $offset = max(0, (int) $request->get('offset', 0));
 
-        $baseQuery = Occurrence::where('locality_group_id', $suggestion->locality_group_id)
-            ->whereNotNull('gbif_decimal_latitude');
+        if (is_null($suggestion->user_id)) {
+            // System suggestion: replicate groupData() clustering with the same caps
+            $allGeoref = Occurrence::where('locality_group_id', $suggestion->locality_group_id)
+                ->whereNotNull('gbif_decimal_latitude')
+                ->limit(5000)
+                ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude']);
 
-        if (!is_null($suggestion->user_id)) {
-            $excludedIds = $suggestion->exclusions()->pluck('occurrence_id')->all();
-            if ($excludedIds) {
-                $baseQuery->whereNotIn('id', $excludedIds);
+            $siblings = GeorefSuggestion::where('locality_group_id', $suggestion->locality_group_id)
+                ->whereNull('user_id')->where('status', 'pending')
+                ->limit(50)
+                ->get(['id', 'decimal_latitude', 'decimal_longitude']);
+
+            if ($siblings->count() <= 1) {
+                $clusterIds = $allGeoref->pluck('id')->all();
+            } else {
+                $clusterIds = [];
+                foreach ($allGeoref as $occ) {
+                    $minDist = PHP_FLOAT_MAX; $nearest = null;
+                    foreach ($siblings as $s) {
+                        $dlat = deg2rad((float)$occ->gbif_decimal_latitude - (float)$s->decimal_latitude);
+                        $dlng = deg2rad((float)$occ->gbif_decimal_longitude - (float)$s->decimal_longitude);
+                        $a = sin($dlat/2)**2 + cos(deg2rad((float)$s->decimal_latitude)) * cos(deg2rad((float)$occ->gbif_decimal_latitude)) * sin($dlng/2)**2;
+                        $dist = 2 * asin(sqrt($a));
+                        if ($dist < $minDist) { $minDist = $dist; $nearest = $s->id; }
+                    }
+                    if ($nearest === $suggestion->id) $clusterIds[] = $occ->id;
+                }
             }
+        } else {
+            $excludedIds = $suggestion->exclusions()->pluck('occurrence_id')->all();
+            $clusterIds = Occurrence::where('locality_group_id', $suggestion->locality_group_id)
+                ->whereNotNull('gbif_decimal_latitude')
+                ->when($excludedIds, fn($q) => $q->whereNotIn('id', $excludedIds))
+                ->limit(5000)
+                ->pluck('id')->all();
         }
-        // For system suggestions we show all georef occurrences in the group —
-        // precise per-centroid clustering is only done in groupData() for the map.
 
-        $total = $baseQuery->count();
-        $occurrences = (clone $baseQuery)->offset($offset)->limit(100)->get(self::OCC_COLUMNS);
+        $total = count($clusterIds);
+        $occurrences = Occurrence::whereIn('id', array_slice($clusterIds, $offset, 100))
+            ->get(self::OCC_COLUMNS);
 
         return response()->json(['occurrences' => $occurrences, 'total' => $total]);
     }
