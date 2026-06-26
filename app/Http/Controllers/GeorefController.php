@@ -253,12 +253,14 @@ public function next(Request $request)
 
     public function group(Request $request, int $groupId)
     {
+        session()->save(); // release session lock before heavy DB work
         $group = LocalityGroup::findOrFail($groupId);
         return response()->json($this->groupData($group));
     }
 
     public function groupUngeorefOccurrences(Request $request, int $groupId)
     {
+        session()->save();
         $group = LocalityGroup::findOrFail($groupId);
         $offset = max(0, (int) $request->get('offset', 0));
         $occurrences = Occurrence::where('locality_group_id', $group->id)
@@ -271,6 +273,7 @@ public function next(Request $request)
 
     public function suggestionGeorefOccurrences(Request $request, GeorefSuggestion $suggestion)
     {
+        session()->save();
         $offset = max(0, (int) $request->get('offset', 0));
 
         $baseQuery = Occurrence::where('locality_group_id', $suggestion->locality_group_id)
