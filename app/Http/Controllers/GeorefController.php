@@ -30,9 +30,11 @@ class GeorefController extends Controller
 
     private function groupData(LocalityGroup $group, int $ungeorefOffset = 0): array
     {
-        // All georef occurrences: used for proximity/cluster assignment and counts
+        // All georef occurrences: used for proximity/cluster assignment and counts.
+        // Capped at 5000 — beyond that, cluster assignment is still representative.
         $allGeorefOccurrences = Occurrence::where('locality_group_id', $group->id)
             ->whereNotNull('gbif_decimal_latitude')
+            ->limit(5000)
             ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude']);
 
         $allGeorefIds = $allGeorefOccurrences->pluck('id')->all();
