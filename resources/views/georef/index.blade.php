@@ -1490,16 +1490,35 @@ function updateHistoryNav() {
         if (allGeoref) {
             renderOccurrenceRows(georefOccurrences, false);
             document.getElementById('load-more-occ-btn').style.display = 'none';
-            // Show GBIF coordinates as reference in the suggestions panel
-            var sample = georefOccurrences.find(function(o){ return o.gbif_decimal_latitude; });
-            if (sample) {
-                document.getElementById('suggestions-list').innerHTML =
-                    '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;background:#f9fafb">' +
-                    '<div style="font-weight:500;margin-bottom:4px;color:#374151">{{ __("GBIF coordinates") }}</div>' +
-                    '<div style="color:#6b7280">' + parseFloat(sample.gbif_decimal_latitude).toFixed(5) + ', ' + parseFloat(sample.gbif_decimal_longitude).toFixed(5) + '</div>' +
-                    '<div style="color:#9ca3af;font-size:10px;margin-top:4px">{{ __("Use the form to propose a correction if these coordinates are wrong.") }}</div>' +
-                    '</div>';
-            }
+            // Show GBIF coordinates as suggestion-style cards, deduplicating by coords
+            var gbifCounts = {};
+            georefOccurrences.forEach(function(o) {
+                if (!o.gbif_decimal_latitude) return;
+                var key = parseFloat(o.gbif_decimal_latitude).toFixed(5) + ',' + parseFloat(o.gbif_decimal_longitude).toFixed(5);
+                gbifCounts[key] = (gbifCounts[key] || 0) + 1;
+            });
+            var gbifSeen = {};
+            var gbifHtml = '';
+            georefOccurrences.forEach(function(o) {
+                if (!o.gbif_decimal_latitude) return;
+                var key = parseFloat(o.gbif_decimal_latitude).toFixed(5) + ',' + parseFloat(o.gbif_decimal_longitude).toFixed(5);
+                if (gbifSeen[key]) return;
+                gbifSeen[key] = true;
+                var cnt = gbifCounts[key];
+                var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;margin-top:2px"></span>';
+                gbifHtml += '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">' +
+                    '<div style="display:flex;align-items:flex-start;gap:4px">' + dot +
+                    '<div style="flex:1">' +
+                    '<div style="display:flex;justify-content:space-between">' +
+                    '<span style="font-weight:500">' + parseFloat(o.gbif_decimal_latitude).toFixed(5) + ', ' + parseFloat(o.gbif_decimal_longitude).toFixed(5) + '</span>' +
+                    '<span style="color:#9ca3af">' + cnt + ' {{ __("occ.") }}</span>' +
+                    '</div>' +
+                    '<div style="margin-top:4px;color:#9ca3af">{{ __("Source: GBIF") }}</div>' +
+                    '<div style="color:#9ca3af;font-size:10px;margin-top:6px">{{ __("Use the form below to propose a correction if needed.") }}</div>' +
+                    '</div></div></div>';
+            });
+            document.getElementById('suggestions-list').innerHTML = gbifHtml ||
+                '<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No coordinates available.") }}</p>';
         } else {
             renderOccurrenceRows(occurrences, false);
             updateLoadMoreBtn();
