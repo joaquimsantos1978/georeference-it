@@ -6,16 +6,19 @@
             class="bg-white dark:bg-gray-900">
 
             {{-- Focus area --}}
-            <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px;">
+            <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px; position:relative;">
                 <div style="margin-bottom:4px;">
                     <label style="font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">{{ __('Focus area') }}</label>
+                    <p style="font-size:10px;color:#9ca3af;margin:1px 0 4px">{{ __('Filter localities to georeference by area') }}</p>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;">
+                <div style="display:flex;align-items:center;gap:6px;position:relative;">
                     <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
+                        autocomplete="off"
                         class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
                     <button id="focus-clear" title="{{ __('Clear focus') }}" style="display:none;font-size:14px;background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
                     <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
                 </div>
+                <div id="focus-dropdown" style="display:none;position:absolute;left:0;right:0;background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 6px 6px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.08);max-height:200px;overflow-y:auto;"></div>
                 {{-- hidden country select kept for auto-detect --}}
                 <select id="country-select" style="display:none;" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
     <option value="">{{ __('All countries') }}</option>
@@ -217,14 +220,18 @@
             <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
                 <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
                 <div id="occurrence-info" class="hidden">
+                    <div style="margin-bottom:5px;">
+                        <span style="font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">{{ __('Locality to georeference') }}</span>
+                    </div>
                     <div style="display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;">
                         <div id="locality-fields" class="space-y-0.5 flex-1"></div>
                         <button id="share-btn" title="{{ __('Copy link to this locality') }}"
                             style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#16a34a;font-size:11px;margin-top:1px;"
                             onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">🔗</button>
                     </div>
-                    <div class="flex gap-1 mt-1">
-                        <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place to position on map...') }}">
+                    <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">{{ __('Find coordinates on map:') }}</div>
+                    <div class="flex gap-1">
+                        <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
                         <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
                     </div>
                     <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
@@ -1856,13 +1863,58 @@ function loadByGbifKey(key) {
         loadNextGroup();
     }
 
-    focusInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') applyFocus(); });
-    focusInput.addEventListener('blur', function() { if (focusInput.value.trim() !== window._georefFocus) applyFocus(); });
+    var focusDropdown = document.getElementById('focus-dropdown');
+    var _focusTimer = null;
+
+    function hideFocusDropdown() { focusDropdown.style.display = 'none'; }
+
+    function showFocusSuggestions(results) {
+        if (!results.length) { hideFocusDropdown(); return; }
+        focusDropdown.innerHTML = results.map(function(r) {
+            var badge = r.pending > 0
+                ? '<span style="font-size:9px;background:#fef9c3;color:#92400e;border-radius:3px;padding:1px 4px;margin-left:4px">'+r.pending+' pending</span>'
+                : (r.validated > 0 ? '<span style="font-size:9px;background:#dcfce7;color:#166534;border-radius:3px;padding:1px 4px;margin-left:4px">'+r.validated+' validated</span>' : '');
+            return '<div class="focus-ac-item" data-label="'+r.label.replace(/"/g,'&quot;')+'" style="padding:6px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;">' +
+                '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.label+'</span>' +
+                '<span style="flex-shrink:0;color:#9ca3af;font-size:10px;margin-left:6px;">'+r.occurrence_count+' occ.'+badge+'</span>' +
+                '</div>';
+        }).join('');
+        focusDropdown.querySelectorAll('.focus-ac-item').forEach(function(el) {
+            el.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                focusInput.value = el.dataset.label;
+                hideFocusDropdown();
+                applyFocus();
+            });
+            el.addEventListener('mouseover', function() { el.style.background = '#f9fafb'; });
+            el.addEventListener('mouseout',  function() { el.style.background = ''; });
+        });
+        focusDropdown.style.display = 'block';
+    }
+
+    focusInput.addEventListener('input', function() {
+        clearTimeout(_focusTimer);
+        var q = focusInput.value.trim();
+        if (q.length < 2) { hideFocusDropdown(); return; }
+        _focusTimer = setTimeout(function() {
+            fetch(APP_URL+'/georef/search-locality?q='+encodeURIComponent(q), {headers:{'Accept':'application/json'}})
+                .then(r=>r.json()).then(showFocusSuggestions).catch(function(){});
+        }, 250);
+    });
+    focusInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { hideFocusDropdown(); applyFocus(); }
+        if (e.key === 'Escape') hideFocusDropdown();
+    });
+    focusInput.addEventListener('blur', function() {
+        setTimeout(hideFocusDropdown, 150);
+        if (focusInput.value.trim() !== window._georefFocus) applyFocus();
+    });
     focusClear.addEventListener('click', function() {
         focusInput.value = '';
         window._georefFocus = '';
         focusClear.style.display = 'none';
         focusHint.style.display = 'none';
+        hideFocusDropdown();
         loadNextGroup();
     });
 
