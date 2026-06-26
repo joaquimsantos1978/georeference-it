@@ -58,6 +58,7 @@ class GeorefController extends Controller
 
         $suggestions = GeorefSuggestion::where('locality_group_id', $group->id)
             ->where('status', 'pending')
+            ->limit(50)
             ->with(['user', 'exclusions'])
             ->get();
 
