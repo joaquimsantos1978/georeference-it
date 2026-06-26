@@ -1509,7 +1509,7 @@ function updateHistoryNav() {
             // Left panel: simple message, occurrences accessible via "see list" on each card
             document.getElementById('occ-panel-label').textContent = '{{ __("Georeferenced occurrences") }}';
             document.getElementById('occ-panel-hint').style.display = 'none';
-            document.getElementById('occurrence-list').innerHTML =
+            document.getElementById('occurrences-list').innerHTML =
                 '<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">' +
                 georefOccurrences.length + ' {{ __("occurrence(s) already georeferenced by GBIF. See each card to browse them.") }}' +
                 '</p>';
