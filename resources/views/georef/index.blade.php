@@ -8,7 +8,7 @@
             {{-- Focus area --}}
             <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px; position:relative;">
                 <div style="margin-bottom:4px;">
-                    <label style="font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">{{ __('Focus area') }}</label>
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Focus area') }}</span>
                     <p style="font-size:10px;color:#9ca3af;margin:1px 0 4px">{{ __('Filter localities to georeference by area') }}</p>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;position:relative;">
@@ -221,7 +221,7 @@
                 <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
                 <div id="occurrence-info" class="hidden">
                     <div style="margin-bottom:5px;">
-                        <span style="font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">{{ __('Locality to georeference') }}</span>
+                        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Location to georeference') }}</span>
                     </div>
                     <div style="display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;">
                         <div id="locality-fields" class="space-y-0.5 flex-1"></div>
@@ -452,6 +452,9 @@
 
             {{-- Georef form (takes remaining space) --}}
             <div class="p-4 overflow-y-auto" style="flex:1;min-height:0;">
+                <div style="margin-bottom:10px;">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Your georeference') }}</span>
+                </div>
                 {{-- Mode toggle: only shown when there are suggestions --}}
                 <div id="mode-toggle-wrap" style="display:none;margin-bottom:10px;">
                     <button id="mode-toggle-btn" onclick="togglePointMode()" style="width:100%;font-size:11px;font-weight:600;padding:7px;border-radius:6px;border:1.5px solid #4C9C2E;color:#4C9C2E;background:#f0fdf4;cursor:pointer;text-align:center;transition:background 0.2s,color 0.2s;">
