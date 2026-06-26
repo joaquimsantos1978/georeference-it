@@ -84,9 +84,9 @@ class GeorefController extends Controller
 
         $userId = auth()->id();
         $myVotes = $userId
-            ? GeorefValidation::whereIn('georef_suggestion_id', $suggestions->pluck('id'))
+            ? GeorefValidation::whereIn('suggestion_id', $suggestions->pluck('id'))
                 ->where('user_id', $userId)
-                ->pluck('vote', 'georef_suggestion_id')
+                ->pluck('vote', 'suggestion_id')
             : collect();
 
         $mapped = $suggestions->map(function ($s) use ($allGeorefIds, $systemClusterIds, $userId, $myVotes) {
