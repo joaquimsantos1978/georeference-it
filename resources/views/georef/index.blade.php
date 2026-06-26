@@ -1117,6 +1117,10 @@ function updateSubmitBtn() {
 function initVotingMode(suggestions) {
     _currentSuggestions = suggestions || [];
     pendingVotes = {};
+    // Restore previously cast votes from the server
+    _currentSuggestions.forEach(function(s) {
+        if (s.my_vote) pendingVotes[s.id] = s.my_vote;
+    });
     var voteableSuggestions = _currentSuggestions.filter(function(s){ return !s.is_own; });
     if (voteableSuggestions.length > 0) {
         georefMode = 'vote';
@@ -1645,6 +1649,7 @@ function updateHistoryNav() {
                     '</div></div></div>';
             });
             document.getElementById('suggestions-list').innerHTML=sugHtml;
+            renderVoteButtonStates();
             document.querySelectorAll('.remarks-btn').forEach(function(btn){
                 btn.addEventListener('click', function(e){
                     e.stopPropagation();

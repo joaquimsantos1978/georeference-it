@@ -82,7 +82,14 @@ class GeorefController extends Controller
             }
         }
 
-        $mapped = $suggestions->map(function ($s) use ($allGeorefIds, $systemClusterIds) {
+        $userId = auth()->id();
+        $myVotes = $userId
+            ? GeorefValidation::whereIn('georef_suggestion_id', $suggestions->pluck('id'))
+                ->where('user_id', $userId)
+                ->pluck('vote', 'georef_suggestion_id')
+            : collect();
+
+        $mapped = $suggestions->map(function ($s) use ($allGeorefIds, $systemClusterIds, $userId, $myVotes) {
             if (is_null($s->user_id)) {
                 $clusterIds = $systemClusterIds[$s->id] ?? $allGeorefIds;
             } else {
@@ -100,8 +107,9 @@ class GeorefController extends Controller
                 'georeference_remarks'     => $s->georeference_remarks,
                 'cluster_occurrence_ids'   => $clusterIds,
                 'cluster_count'            => count($clusterIds),
-                'is_own'                   => auth()->check() && $s->user_id === auth()->id(),
+                'is_own'                   => $userId && $s->user_id === $userId,
                 'is_system'                => is_null($s->user_id),
+                'my_vote'                  => $myVotes->get($s->id),
             ];
         });
         $suggestions = $mapped;
