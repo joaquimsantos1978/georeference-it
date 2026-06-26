@@ -1600,7 +1600,7 @@ function updateHistoryNav() {
                     setTimeout(function(){ document.addEventListener('click', close); }, 0);
                 });
             });
-        } else {
+        } else if (!allGeoref) {
             document.getElementById('suggestions-list').innerHTML='<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
         }
 
