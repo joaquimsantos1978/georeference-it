@@ -312,6 +312,9 @@ class GbifImportDownload extends Command
 
     private function processStaging(): void
     {
+        // Nullify country_code values that are not valid ISO 3166-1 alpha-2
+        DB::statement("UPDATE gbif_staging SET country_code = NULL WHERE country_code NOT REGEXP '^[A-Z]{2}$'");
+
         $this->info('Step 1/3: Creating locality groups from staging...');
 
         // Replicates LocalityGroup::hashFromOccurrence() in SQL:
