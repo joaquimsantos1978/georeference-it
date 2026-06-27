@@ -1052,30 +1052,53 @@ function buildLocalityString(g) {
             if (window._nominatimPolygon) map.removeLayer(window._nominatimPolygon);
             window._nominatimPolygon=L.geoJSON(r.geojson,{style:{color:'#16a34a',weight:2,fillOpacity:0.05}}).addTo(map);
             const bounds=window._nominatimPolygon.getBounds();
-            // collect outer ring vertices only (first ring of first polygon)
-            const ring = r.geojson.type==='Polygon' ? r.geojson.coordinates[0] : r.geojson.coordinates[0][0];
-            // polygon centroid (area-weighted)
-            let cLat=0, cLon=0, area=0;
-            for(let i=0,j=ring.length-1;i<ring.length;j=i++){
-                const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
-                const f=xi*yj-xj*yi; area+=f; cLon+=(xi+xj)*f; cLat+=(yi+yj)*f;
-            }
-            area/=2; cLon/=(6*area); cLat/=(6*area);
-            // collect all verts for max-distance calculation
+            // collect all vertices
             const verts=[]; function cv(c){if(Array.isArray(c[0]))c.forEach(x=>cv(x));else verts.push(c);}
             if(r.geojson.type==='Polygon') r.geojson.coordinates.forEach(rng=>cv(rng));
             else r.geojson.coordinates.forEach(poly=>poly.forEach(rng=>cv(rng)));
-            const R=6371000; let mx=0;
+            // project to local Cartesian metres (flat-earth ok for locality scale)
+            const bc=bounds.getCenter(), RE=6371000, cosLat=Math.cos(bc.lat*Math.PI/180);
+            const pts=verts.map(([vLon,vLat])=>({x:(vLon-bc.lng)*Math.PI/180*RE*cosLat, y:(vLat-bc.lat)*Math.PI/180*RE}));
+            // minimum enclosing circle – Welzl algorithm
+            function _d2(a,b){return(a.x-b.x)**2+(a.y-b.y)**2;}
+            function _c2(a,b){return{x:(a.x+b.x)/2,y:(a.y+b.y)/2,r2:_d2(a,b)/4};}
+            function _c3(a,b,c){
+                const ax=b.x-a.x,ay=b.y-a.y,bx=c.x-a.x,by=c.y-a.y,D=2*(ax*by-ay*bx);
+                if(Math.abs(D)<1e-10)return _c2(a,b);
+                const ux=(by*(ax*ax+ay*ay)-ay*(bx*bx+by*by))/D;
+                const uy=(ax*(bx*bx+by*by)-bx*(ax*ax+ay*ay))/D;
+                return{x:a.x+ux,y:a.y+uy,r2:ux*ux+uy*uy};
+            }
+            function _inC(c,p){return _d2(c,p)<=c.r2*(1+1e-10);}
+            function welzl(P,R){
+                if(!P.length||R.length===3){
+                    if(!R.length)return{x:0,y:0,r2:0};
+                    if(R.length===1)return{x:R[0].x,y:R[0].y,r2:0};
+                    if(R.length===2)return _c2(R[0],R[1]);
+                    return _c3(R[0],R[1],R[2]);
+                }
+                const[p,...rest]=P, D=welzl(rest,R);
+                if(D&&_inC(D,p))return D;
+                return welzl(rest,[...R,p]);
+            }
+            // shuffle for expected O(n) performance
+            const shuffled=pts.slice().sort(()=>Math.random()-0.5);
+            const mec=welzl(shuffled,[]);
+            // convert MEC center back to lat/lon
+            const mecLon=bc.lng+mec.x/(RE*cosLat)*180/Math.PI;
+            const mecLat=bc.lat+mec.y/RE*180/Math.PI;
+            // final radius via Haversine to farthest vertex
+            let mx=0;
             verts.forEach(([vLon,vLat])=>{
-                const a=Math.sin(((vLat-cLat)*Math.PI/180)/2)**2+Math.cos(cLat*Math.PI/180)*Math.cos(vLat*Math.PI/180)*Math.sin(((vLon-cLon)*Math.PI/180)/2)**2;
-                const d=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); if(d>mx)mx=d;
+                const a=Math.sin(((vLat-mecLat)*Math.PI/180)/2)**2+Math.cos(mecLat*Math.PI/180)*Math.cos(vLat*Math.PI/180)*Math.sin(((vLon-mecLon)*Math.PI/180)/2)**2;
+                const d=RE*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); if(d>mx)mx=d;
             });
             const unc=Math.round(mx);
             document.getElementById('uncertainty-input').value=unc;
             document.getElementById('uncertainty-slider').max=Math.max(500000,Math.round(unc*1.5));
             document.getElementById('uncertainty-slider').value=unc;
             document.getElementById('uncertainty-display').textContent=unc.toLocaleString()+'m';
-            placeMarker(cLat,cLon); map.fitBounds(bounds,{padding:[20,20]});
+            placeMarker(mecLat,mecLon); map.fitBounds(bounds,{padding:[20,20]});
         } else { placeMarker(lat,lon); map.flyTo([lat,lon],12); }
         document.getElementById('nominatim-results').innerHTML='';
     }
