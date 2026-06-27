@@ -245,8 +245,9 @@ public function next(Request $request)
     }
     if ($country) {
         $scopes[] = fn($q) => $q->where('country_code', $country);
+    } else {
+        $scopes[] = fn($q) => $q; // fallback: any (skip when country filter is active)
     }
-    $scopes[] = fn($q) => $q; // fallback: any
 
     $group  = null;
     $userId = auth()->check() ? auth()->id() : null;
