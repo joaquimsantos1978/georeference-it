@@ -9,14 +9,17 @@
 
         {{-- Global summary cards --}}
         @php
-            $totalOcc    = (int) $global->total_occ;
-            $ungeorefOcc = (int) $global->ungeoref_occ;
-            $pendingOcc  = (int) $global->pending_occ;
-            $validatedOcc= (int) $global->validated_occ;
-            $georefOcc   = $totalOcc - $ungeorefOcc - $pendingOcc;
-            $pctDone     = $totalOcc > 0 ? round($georefOcc / $totalOcc * 100, 1) : 0;
-            $totalGroups = (int) $global->total_groups;
+            $totalOcc      = (int) $global->total_occ;
+            $ungeorefOcc   = (int) $global->ungeoref_occ;
+            $pendingOcc    = (int) $global->pending_occ;
+            $validatedOcc  = (int) $global->validated_occ;
+            $gbifOcc       = (int) $global->gbif_occ + (int) $global->gbif_reviewed_occ;
             $pendingGroups = (int) $global->pending_groups;
+            // "needs georef" = no coordinates at all
+            $needsGeoref   = $ungeorefOcc;
+            // "has coords" = gbif + validated + pending review
+            $hasCoords     = $totalOcc - $ungeorefOcc;
+            $pctDone       = $totalOcc > 0 ? round($hasCoords / $totalOcc * 100, 1) : 0;
         @endphp
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -25,16 +28,16 @@
                 <div class="text-xs text-gray-500 mt-0.5">Total occurrences</div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-                <div class="text-2xl font-bold text-green-600">{{ number_format($georefOcc) }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Georeferenced</div>
+                <div class="text-2xl font-bold text-green-600">{{ number_format($hasCoords) }}</div>
+                <div class="text-xs text-gray-500 mt-0.5">Have coordinates</div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-                <div class="text-2xl font-bold text-orange-500">{{ number_format($ungeorefOcc) }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Still to georeference</div>
+                <div class="text-2xl font-bold text-orange-500">{{ number_format($needsGeoref) }}</div>
+                <div class="text-xs text-gray-500 mt-0.5">Need georeferencing</div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $pctDone }}%</div>
-                <div class="text-xs text-gray-500 mt-0.5">Complete</div>
+                <div class="text-xs text-gray-500 mt-0.5">Have coordinates</div>
             </div>
         </div>
 
@@ -46,19 +49,19 @@
             </div>
             <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden flex">
                 @php
-                    $pctValidated  = $totalOcc > 0 ? number_format($validatedOcc / $totalOcc * 100, 2, '.', '') : 0;
-                    $pctGeoref     = $totalOcc > 0 ? number_format(max(0, $pctDone - (float)$pctValidated), 2, '.', '') : 0;
-                    $pctPending    = $totalOcc > 0 ? number_format($pendingOcc / $totalOcc * 100, 2, '.', '') : 0;
+                    $pctValidated = $totalOcc > 0 ? number_format($validatedOcc / $totalOcc * 100, 2, '.', '') : 0;
+                    $pctPending   = $totalOcc > 0 ? number_format($pendingOcc / $totalOcc * 100, 2, '.', '') : 0;
+                    $pctGbif      = $totalOcc > 0 ? number_format($gbifOcc / $totalOcc * 100, 2, '.', '') : 0;
                 @endphp
-                <div class="bg-green-600 h-4 transition-all" style="width: {{ $pctValidated }}%" title="Validated: {{ number_format($validatedOcc) }}"></div>
-                <div class="bg-green-300 h-4 transition-all" style="width: {{ $pctGeoref }}%" title="Georeferenced (not yet validated)"></div>
+                <div class="bg-green-600 h-4 transition-all" style="width: {{ $pctValidated }}%" title="Validated by community: {{ number_format($validatedOcc) }}"></div>
+                <div class="bg-green-300 h-4 transition-all" style="width: {{ $pctGbif }}%" title="Coordinates from GBIF: {{ number_format($gbifOcc) }}"></div>
                 <div class="bg-orange-300 h-4 transition-all" style="width: {{ $pctPending }}%" title="Pending review: {{ number_format($pendingOcc) }}"></div>
             </div>
             <div class="flex gap-4 mt-2 text-xs text-gray-500">
-                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-600"></span> Validated</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-300"></span> Georeferenced</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-600"></span> Validated by community</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-300"></span> Coordinates from GBIF</span>
                 <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-orange-300"></span> Pending review</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-200"></span> Not started</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-200"></span> No coordinates</span>
             </div>
         </div>
 

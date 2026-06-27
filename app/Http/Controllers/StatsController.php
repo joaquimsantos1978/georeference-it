@@ -9,28 +9,35 @@ class StatsController extends Controller
 {
     public function index()
     {
-        // Global totals
-        $global = DB::table('locality_groups')
-            ->selectRaw('
-                SUM(occurrence_count)      AS total_occ,
-                SUM(ungeoreferenced_count) AS ungeoref_occ,
-                SUM(pending_count)         AS pending_occ,
-                SUM(validated_count)       AS validated_occ,
-                COUNT(*)                   AS total_groups,
-                SUM(ungeoreferenced_count > 0 OR pending_count > 0) AS pending_groups
-            ')
+        // Global totals direct from occurrences (locality_groups counters don't distinguish gbif_georeferenced)
+        $global = DB::table('occurrences')
+            ->selectRaw("
+                COUNT(*)                                             AS total_occ,
+                SUM(georef_status = 'ungeoreferenced')               AS ungeoref_occ,
+                SUM(georef_status = 'has_suggestion')                AS pending_occ,
+                SUM(georef_status = 'gbif_georeferenced')            AS gbif_occ,
+                SUM(georef_status = 'validated')                     AS validated_occ,
+                SUM(georef_status = 'gbif_reviewed')                 AS gbif_reviewed_occ
+            ")
             ->first();
 
-        // Per-country breakdown (only countries with occurrences)
+        // pending_groups still from locality_groups (faster)
+        $pendingGroups = DB::table('locality_groups')
+            ->whereRaw('ungeoreferenced_count > 0 OR pending_count > 0')
+            ->count();
+        $global->pending_groups = $pendingGroups;
+
+        // Per-country breakdown from locality_groups (occurrences table join would be too slow)
         $byCountry = DB::table('locality_groups')
             ->selectRaw('
                 country_code,
-                SUM(occurrence_count)      AS total_occ,
-                SUM(ungeoreferenced_count) AS ungeoref_occ,
-                SUM(pending_count)         AS pending_occ,
-                SUM(validated_count)       AS validated_occ,
-                COUNT(*)                   AS total_groups,
-                SUM(ungeoreferenced_count > 0 OR pending_count > 0) AS pending_groups
+                SUM(occurrence_count)                                         AS total_occ,
+                SUM(ungeoreferenced_count)                                    AS ungeoref_occ,
+                SUM(pending_count)                                            AS pending_occ,
+                SUM(validated_count)                                          AS validated_occ,
+                SUM(occurrence_count - ungeoreferenced_count - pending_count) AS georef_occ,
+                COUNT(*)                                                      AS total_groups,
+                SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
             ')
             ->where('occurrence_count', '>', 0)
             ->groupBy('country_code')
