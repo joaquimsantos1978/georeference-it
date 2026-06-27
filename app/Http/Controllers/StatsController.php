@@ -13,7 +13,7 @@ class StatsController extends Controller
         return view('stats', compact('global', 'byCountry'));
     }
 
-    private function compute(): array
+    public function compute(): array
     {
         // Global totals direct from occurrences (locality_groups counters don't distinguish gbif_georeferenced)
         $global = DB::table('occurrences')
