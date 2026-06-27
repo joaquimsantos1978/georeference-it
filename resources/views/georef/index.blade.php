@@ -1755,18 +1755,21 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
 } else {
     // No markers — zoom to group's administrative area via Nominatim cascade
     (function zoomToGroup() {
-        const queries = [];
         const loc  = cleanLocalityTerm(group.verbatim_locality) || group.municipality;
+        const mun  = group.municipality;
         const prov = group.state_province || group.county;
         const cc   = group.country_code;
-        if (loc  && prov && cc) queries.push([loc, prov, cc].join(', '));
-        if (loc  && cc)         queries.push([loc, cc].join(', '));
-        if (prov && cc)         queries.push([prov, cc].join(', '));
-        if (cc)                 queries.push(cc);
+        const ccParam = cc ? '&countrycodes='+cc.toLowerCase() : '';
+        // Build cascade: most specific first, country constraint always applied
+        const queries = [];
+        if (loc && prov) queries.push('city='+encodeURIComponent(loc)+'&state='+encodeURIComponent(prov));
+        if (loc && mun && mun !== loc) queries.push('city='+encodeURIComponent(loc)+'&county='+encodeURIComponent(mun));
+        if (loc)         queries.push('city='+encodeURIComponent(loc));
+        if (prov)        queries.push('state='+encodeURIComponent(prov));
         if (!queries.length) return;
         function tryNext(i) {
             if (i >= queries.length) return;
-            fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(queries[i])+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
+            fetch('https://nominatim.openstreetmap.org/search?'+queries[i]+ccParam+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
                 .then(r=>r.json()).then(res=>{
                     if (!res.length) { tryNext(i+1); return; }
                     const bb = res[0].boundingbox;
