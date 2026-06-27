@@ -1555,21 +1555,27 @@ function updateHistoryNav() {
 
         clearSuggestionLayers();
 
-        // Zoom map to group's administrative area
+        // Zoom map to group's administrative area — cascade from specific to general
         (function zoomToGroup() {
-            const parts = [];
-            if (group.verbatim_locality) parts.push(group.verbatim_locality);
-            else if (group.municipality)  parts.push(group.municipality);
-            if (group.state_province)     parts.push(group.state_province);
-            if (group.country_code)       parts.push(group.country_code);
-            if (!parts.length) return;
-            const q = encodeURIComponent(parts.join(', '));
-            fetch('https://nominatim.openstreetmap.org/search?q='+q+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
-                .then(r=>r.json()).then(res=>{
-                    if (!res.length) return;
-                    const bb = res[0].boundingbox; // [minLat,maxLat,minLon,maxLon]
-                    map.fitBounds([[parseFloat(bb[0]),parseFloat(bb[2])],[parseFloat(bb[1]),parseFloat(bb[3])]],{maxZoom:13,padding:[20,20]});
-                }).catch(()=>{});
+            const queries = [];
+            const loc  = group.verbatim_locality || group.municipality;
+            const prov = group.state_province || group.county;
+            const cc   = group.country_code;
+            if (loc  && prov && cc) queries.push([loc, prov, cc].join(', '));
+            if (loc  && cc)         queries.push([loc, cc].join(', '));
+            if (prov && cc)         queries.push([prov, cc].join(', '));
+            if (cc)                 queries.push(cc);
+            if (!queries.length) return;
+            function tryNext(i) {
+                if (i >= queries.length) return;
+                fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(queries[i])+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
+                    .then(r=>r.json()).then(res=>{
+                        if (!res.length) { tryNext(i+1); return; }
+                        const bb = res[0].boundingbox;
+                        map.fitBounds([[parseFloat(bb[0]),parseFloat(bb[2])],[parseFloat(bb[1]),parseFloat(bb[3])]],{maxZoom:13,padding:[20,20]});
+                    }).catch(()=>tryNext(i+1));
+            }
+            tryNext(0);
         })();
 
         // Place georef occurrences on map as read-only markers, one color per unique coord
