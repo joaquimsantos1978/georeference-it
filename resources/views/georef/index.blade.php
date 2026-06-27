@@ -1555,29 +1555,6 @@ function updateHistoryNav() {
 
         clearSuggestionLayers();
 
-        // Zoom map to group's administrative area — cascade from specific to general
-        (function zoomToGroup() {
-            const queries = [];
-            const loc  = group.verbatim_locality || group.municipality;
-            const prov = group.state_province || group.county;
-            const cc   = group.country_code;
-            if (loc  && prov && cc) queries.push([loc, prov, cc].join(', '));
-            if (loc  && cc)         queries.push([loc, cc].join(', '));
-            if (prov && cc)         queries.push([prov, cc].join(', '));
-            if (cc)                 queries.push(cc);
-            if (!queries.length) return;
-            function tryNext(i) {
-                if (i >= queries.length) return;
-                fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(queries[i])+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
-                    .then(r=>r.json()).then(res=>{
-                        if (!res.length) { tryNext(i+1); return; }
-                        const bb = res[0].boundingbox;
-                        map.fitBounds([[parseFloat(bb[0]),parseFloat(bb[2])],[parseFloat(bb[1]),parseFloat(bb[3])]],{maxZoom:13,padding:[20,20]});
-                    }).catch(()=>tryNext(i+1));
-            }
-            tryNext(0);
-        })();
-
         // Place georef occurrences on map as read-only markers, one color per unique coord
         var _gbifCoordColors = {};
         var _gbifColorIdx = 0;
@@ -1755,6 +1732,29 @@ function updateHistoryNav() {
 if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
     if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
+} else {
+    // No markers — zoom to group's administrative area via Nominatim cascade
+    (function zoomToGroup() {
+        const queries = [];
+        const loc  = group.verbatim_locality || group.municipality;
+        const prov = group.state_province || group.county;
+        const cc   = group.country_code;
+        if (loc  && prov && cc) queries.push([loc, prov, cc].join(', '));
+        if (loc  && cc)         queries.push([loc, cc].join(', '));
+        if (prov && cc)         queries.push([prov, cc].join(', '));
+        if (cc)                 queries.push(cc);
+        if (!queries.length) return;
+        function tryNext(i) {
+            if (i >= queries.length) return;
+            fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(queries[i])+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
+                .then(r=>r.json()).then(res=>{
+                    if (!res.length) { tryNext(i+1); return; }
+                    const bb = res[0].boundingbox;
+                    map.fitBounds([[parseFloat(bb[0]),parseFloat(bb[2])],[parseFloat(bb[1]),parseFloat(bb[3])]],{maxZoom:13,padding:[20,20]});
+                }).catch(()=>tryNext(i+1));
+        }
+        tryNext(0);
+    })();
 }
     }
 
