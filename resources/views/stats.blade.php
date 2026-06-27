@@ -42,26 +42,38 @@
         </div>
 
         {{-- Global progress bar --}}
+        @php
+            $pctValidated = $totalOcc > 0 ? number_format($validatedOcc / $totalOcc * 100, 2, '.', '') : 0;
+            $pctPending   = $totalOcc > 0 ? number_format($pendingOcc   / $totalOcc * 100, 2, '.', '') : 0;
+            $pctGbif      = $totalOcc > 0 ? number_format($gbifOcc      / $totalOcc * 100, 2, '.', '') : 0;
+            $pctUngeoref  = $totalOcc > 0 ? number_format($needsGeoref  / $totalOcc * 100, 1, '.', '') : 0;
+        @endphp
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
             <div class="flex justify-between text-xs text-gray-500 mb-2">
-                <span>Global progress</span>
-                <span>{{ number_format($pendingGroups) }} locality groups with work remaining</span>
+                <span>Global progress — {{ number_format($pendingGroups) }} locality groups with work remaining</span>
             </div>
-            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden flex">
-                @php
-                    $pctValidated = $totalOcc > 0 ? number_format($validatedOcc / $totalOcc * 100, 2, '.', '') : 0;
-                    $pctPending   = $totalOcc > 0 ? number_format($pendingOcc / $totalOcc * 100, 2, '.', '') : 0;
-                    $pctGbif      = $totalOcc > 0 ? number_format($gbifOcc / $totalOcc * 100, 2, '.', '') : 0;
-                @endphp
-                <div class="bg-green-600 h-4 transition-all" style="width: {{ $pctValidated }}%" title="Validated by community: {{ number_format($validatedOcc) }}"></div>
-                <div class="bg-green-300 h-4 transition-all" style="width: {{ $pctGbif }}%" title="Coordinates from GBIF: {{ number_format($gbifOcc) }}"></div>
-                <div class="bg-orange-300 h-4 transition-all" style="width: {{ $pctPending }}%" title="Pending review: {{ number_format($pendingOcc) }}"></div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-5 overflow-hidden flex text-[10px] font-semibold">
+                @if((float)$pctValidated > 0)
+                <div class="bg-green-600 h-5 flex items-center justify-center text-white overflow-hidden" style="width:{{ $pctValidated }}%" title="Validated by community">
+                    @if((float)$pctValidated >= 3) {{ $pctValidated }}% @endif
+                </div>
+                @endif
+                @if((float)$pctGbif > 0)
+                <div class="bg-green-300 h-5 flex items-center justify-center text-green-900 overflow-hidden" style="width:{{ $pctGbif }}%" title="Coordinates from GBIF">
+                    @if((float)$pctGbif >= 3) {{ $pctGbif }}% @endif
+                </div>
+                @endif
+                @if((float)$pctPending > 0)
+                <div class="bg-orange-300 h-5 flex items-center justify-center text-orange-900 overflow-hidden" style="width:{{ $pctPending }}%" title="Pending review">
+                    @if((float)$pctPending >= 3) {{ $pctPending }}% @endif
+                </div>
+                @endif
             </div>
-            <div class="flex gap-4 mt-2 text-xs text-gray-500">
-                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-600"></span> Validated by community</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-300"></span> Coordinates from GBIF</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-orange-300"></span> Pending review</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-200"></span> No coordinates</span>
+            <div class="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-xs text-gray-500">
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-600"></span> Validated by community <strong class="text-gray-700 dark:text-gray-300">{{ number_format($validatedOcc) }}</strong> ({{ $pctValidated }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-300"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300">{{ number_format($gbifOcc) }}</strong> ({{ $pctGbif }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-orange-300"></span> Pending review <strong class="text-gray-700 dark:text-gray-300">{{ number_format($pendingOcc) }}</strong> ({{ $pctPending }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-200"></span> No coordinates <strong class="text-gray-700 dark:text-gray-300">{{ number_format($needsGeoref) }}</strong> ({{ $pctUngeoref }}%)</span>
             </div>
         </div>
 
