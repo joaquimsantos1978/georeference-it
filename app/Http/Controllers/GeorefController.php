@@ -30,19 +30,15 @@ class GeorefController extends Controller
 
     private function groupData(LocalityGroup $group, int $ungeorefOffset = 0): array
     {
-        // Lightweight query for clustering (ids + coords only — avoids fetching media/text cols for 5000 rows)
+        // Single query: fetch up to 5000 for clustering, full cols for first 500 (map markers).
+        // The (locality_group_id, gbif_decimal_latitude) index makes this fast.
         $allGeorefOccurrences = Occurrence::where('locality_group_id', $group->id)
             ->whereNotNull('gbif_decimal_latitude')
             ->limit(5000)
-            ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude']);
+            ->get(array_merge(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude'], self::OCC_COLUMNS));
 
-        $allGeorefIds = $allGeorefOccurrences->pluck('id')->all();
-
-        // Full columns only for the 500 map markers
-        $georefOccurrences = Occurrence::where('locality_group_id', $group->id)
-            ->whereNotNull('gbif_decimal_latitude')
-            ->limit(500)
-            ->get(self::OCC_COLUMNS);
+        $allGeorefIds      = $allGeorefOccurrences->pluck('id')->all();
+        $georefOccurrences = $allGeorefOccurrences->take(500);
 
         $ungeorefStatuses = ['ungeoreferenced', 'has_suggestion'];
         $ungeorefTotal = Occurrence::where('locality_group_id', $group->id)
