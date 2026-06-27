@@ -30,22 +30,16 @@ class GeorefController extends Controller
 
     private function groupData(LocalityGroup $group, int $ungeorefOffset = 0): array
     {
-        // All georef occurrences: used for proximity/cluster assignment and counts.
-        // Capped at 5000 — beyond that, cluster assignment is still representative.
+        // All georef occurrences in one query — capped at 5000 for clustering,
+        // first 500 also carry full OCC_COLUMNS for the map markers.
         $allGeorefOccurrences = Occurrence::where('locality_group_id', $group->id)
             ->whereNotNull('gbif_decimal_latitude')
             ->limit(5000)
-            ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude']);
+            ->get(array_unique(array_merge(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude'], self::OCC_COLUMNS)));
 
         $allGeorefIds = $allGeorefOccurrences->pluck('id')->all();
+        $georefOccurrences = $allGeorefOccurrences->take(500);
 
-        // Cap at 500 for map markers (Leaflet performance)
-        $georefOccurrences = Occurrence::where('locality_group_id', $group->id)
-            ->whereNotNull('gbif_decimal_latitude')
-            ->limit(500)
-            ->get(self::OCC_COLUMNS);
-
-        // Ungeoref occurrences: paginated, shown in left panel
         $ungeorefStatuses = ['ungeoreferenced', 'has_suggestion'];
         $ungeorefTotal = Occurrence::where('locality_group_id', $group->id)
             ->whereIn('georef_status', $ungeorefStatuses)
@@ -134,6 +128,8 @@ class GeorefController extends Controller
 
 public function next(Request $request)
 {
+    session()->save(); // release session lock before heavy DB work
+
     $focus         = trim($request->get('focus', ''));
     $country       = strtoupper(trim($request->get('country', ''))) ?: null;
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
