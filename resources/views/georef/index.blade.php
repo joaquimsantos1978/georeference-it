@@ -2070,7 +2070,7 @@ function loadByGbifKey(key) {
 
 // ── Focus input ───────────────────────────────────────────────────────────
     window._georefFocus   = '{{ request("focus", "") }}';
-    window._georefCountry = '';
+    if (!urlCountry) window._georefCountry = '';
 
     var focusInput = document.getElementById('focus-input');
     var focusClear = document.getElementById('focus-clear');
