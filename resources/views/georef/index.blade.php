@@ -1029,8 +1029,28 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     })();
 
     // ── Nominatim ─────────────────────────────────────────────────────────────
+function cleanLocalityTerm(raw) {
+    if (!raw) return '';
+    // Take only the first segment (real place name usually comes first)
+    let s = raw.split(/[,;]/)[0].trim();
+    // Remove altitude/distance noise: "1500m", "5 km", "500 ft"
+    s = s.replace(/\b\d+[\s-]*(m|km|ft|miles?)\b/gi, '');
+    // Remove ecological lead-ins and everything after them
+    s = s.replace(/\b(altitude|elev\.?|near|along|edge of|margin of|beira\s+d[aeo]|arredores|proximidades|perto\s+d[aeo]|ca\.|approx\.?)\b.*/gi, '');
+    return s.trim().replace(/[\s,;]+$/, '');
+}
 function buildLocalityString(g) {
-    return [g.verbatim_locality, g.municipality, g.county].filter(Boolean).join(', ');
+    const loc  = cleanLocalityTerm(g.verbatim_locality);
+    const mun  = g.municipality || '';
+    const cty  = g.county || '';
+    const parts = [];
+    if (loc) parts.push(loc);
+    // Add municipality only if not already contained in loc
+    if (mun && !loc.toLowerCase().includes(mun.toLowerCase())) parts.push(mun);
+    // Add county only if not already represented
+    const soFar = parts.join(' ').toLowerCase();
+    if (cty && !soFar.includes(cty.toLowerCase())) parts.push(cty);
+    return parts.join(', ');
 }
     async function searchNominatim(query) {
         if (!query) return;
@@ -1736,7 +1756,7 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     // No markers — zoom to group's administrative area via Nominatim cascade
     (function zoomToGroup() {
         const queries = [];
-        const loc  = group.verbatim_locality || group.municipality;
+        const loc  = cleanLocalityTerm(group.verbatim_locality) || group.municipality;
         const prov = group.state_province || group.county;
         const cc   = group.country_code;
         if (loc  && prov && cc) queries.push([loc, prov, cc].join(', '));
