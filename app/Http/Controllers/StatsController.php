@@ -41,7 +41,7 @@ class StatsController extends Controller
                 SUM(ungeoreferenced_count)                                    AS ungeoref_occ,
                 SUM(pending_count)                                            AS pending_occ,
                 SUM(validated_count)                                          AS validated_occ,
-                SUM(occurrence_count - ungeoreferenced_count - pending_count) AS georef_occ,
+                SUM(GREATEST(0, CAST(occurrence_count AS SIGNED) - CAST(ungeoreferenced_count AS SIGNED) - CAST(pending_count AS SIGNED))) AS georef_occ,
                 COUNT(*)                                                      AS total_groups,
                 SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
             ')
