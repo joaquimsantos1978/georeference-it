@@ -86,17 +86,16 @@
                             $val   = (int) $row->validated_occ;
                             $geo   = $tot - $ung - $pen;
                             $pct   = $tot > 0 ? round($geo / $tot * 100) : 0;
-                            $pctV  = $tot > 0 ? number_format($val / $tot * 100, 2, '.', '') : 0;
-                            $pctG  = $tot > 0 ? number_format(max(0, ($geo - $val) / $tot * 100), 2, '.', '') : 0;
-                            $pctP  = $tot > 0 ? number_format($pen / $tot * 100, 2, '.', '') : 0;
-                            $cc    = $row->country_code ? strtolower($row->country_code) : '';
+                            $pctGbif = $tot > 0 ? number_format(max(0, $geo - $val) / $tot * 100, 2, '.', '') : 0;
+                            $pctVal  = $tot > 0 ? number_format($val / $tot * 100, 2, '.', '') : 0;
+                            $pctPen  = $tot > 0 ? number_format($pen / $tot * 100, 2, '.', '') : 0;
+                            $cc      = strtoupper($row->country_code ?? '');
+                            $name    = $cc ? (\Locale::getDisplayRegion('-'.$cc, 'en') ?: $cc) : '—';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                             <td class="px-5 py-3 font-medium text-gray-800 dark:text-gray-200">
-                                @if($row->country_code)
-                                    <span class="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded mr-2">{{ strtoupper($row->country_code) }}</span>
-                                @endif
-                                {{ $row->country_code ?? '—' }}
+                                <span class="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded mr-2">{{ $cc }}</span>
+                                {{ $name }}
                             </td>
                             <td class="px-4 py-3 text-right text-gray-500 tabular-nums">{{ number_format($tot) }}</td>
                             <td class="px-4 py-3 text-right tabular-nums {{ $ung > 0 ? 'text-orange-500 font-medium' : 'text-gray-400' }}">
@@ -105,16 +104,16 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
                                     <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden flex">
-                                        <div class="bg-green-600 h-2" style="width:{{ $pctV }}%"></div>
-                                        <div class="bg-green-300 h-2" style="width:{{ $pctG }}%"></div>
-                                        <div class="bg-orange-300 h-2" style="width:{{ $pctP }}%"></div>
+                                        <div class="bg-green-700 h-2" style="width:{{ $pctVal }}%"></div>
+                                        <div class="bg-green-500 h-2" style="width:{{ $pctGbif }}%"></div>
+                                        <div class="bg-orange-400 h-2" style="width:{{ $pctPen }}%"></div>
                                     </div>
                                     <span class="text-xs text-gray-400 w-8 text-right">{{ $pct }}%</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
                                 @if($ung > 0 || $pen > 0)
-                                <a href="{{ route('georef.index') }}?country={{ strtoupper($row->country_code) }}"
+                                <a href="{{ route('georef.index') }}?country={{ $cc }}"
                                    class="inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors">
                                     Georeference
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">

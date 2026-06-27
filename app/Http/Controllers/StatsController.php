@@ -46,6 +46,7 @@ class StatsController extends Controller
                 SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
             ')
             ->where('occurrence_count', '>', 0)
+            ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
             ->groupBy('country_code')
             ->orderByDesc('ungeoref_occ')
             ->get();
