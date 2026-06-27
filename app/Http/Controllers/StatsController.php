@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LocalityGroup;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class StatsController extends Controller
 {
     public function index()
+    {
+        [$global, $byCountry] = Cache::remember('stats.georef', now()->addDay(), fn() => $this->compute());
+        return view('stats', compact('global', 'byCountry'));
+    }
+
+    private function compute(): array
     {
         // Global totals direct from occurrences (locality_groups counters don't distinguish gbif_georeferenced)
         $global = DB::table('occurrences')
@@ -44,6 +50,6 @@ class StatsController extends Controller
             ->orderByDesc('ungeoref_occ')
             ->get();
 
-        return view('stats', compact('global', 'byCountry'));
+        return [$global, $byCountry];
     }
 }
