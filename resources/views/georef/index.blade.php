@@ -580,8 +580,8 @@
     </div>
 
     {{-- Mobile bottom bar — outside georef-wrap --}}
-    {{-- Thin locality bar shown over map on mobile --}}
-    <div id="mob-locality-bar" style="display:none;position:fixed;top:48px;left:0;right:0;z-index:39;background:rgba(255,255,255,0.93);border-bottom:1px solid #e5e7eb;padding:3px 10px;backdrop-filter:blur(4px);">
+    {{-- Thin locality bar shown over map on mobile (right half only, to avoid overlapping history buttons) --}}
+    <div id="mob-locality-bar" style="display:none;position:fixed;top:48px;left:50%;right:0;z-index:39;background:rgba(255,255,255,0.93);border-bottom:1px solid #e5e7eb;border-left:1px solid #e5e7eb;border-radius:0 0 0 6px;padding:3px 10px;backdrop-filter:blur(4px);">
         <span id="mob-locality-text" style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;"></span>
         <span id="mob-locality-spinner" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);">
             <svg style="width:13px;height:13px;animation:spin 0.8s linear infinite;color:#9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -707,7 +707,7 @@
 
         #map {
             position: fixed !important;
-            top: 70px !important;
+            top: 48px !important;
             left: 0 !important;
             right: 0 !important;
             bottom: 52px !important;
@@ -718,7 +718,7 @@
 
         #map-loading {
             position: fixed !important;
-            top: 70px !important; left: 0 !important; right: 0 !important;
+            top: 48px !important; left: 0 !important; right: 0 !important;
             bottom: 52px !important;
             z-index: 10 !important;
         }
@@ -729,9 +729,9 @@
             top: 8px !important;
         }
 
-        /* Help button — push below locality bar on mobile */
+        /* Help button — keep near top-right on mobile */
         #tut-btn {
-            top: 78px !important;
+            top: 56px !important;
         }
     }
     </style>
@@ -964,7 +964,21 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     panArea.addEventListener('mousedown', e => { if(e.button!==0)return; isPanning=true; panStartX=e.clientX-imgX; panStartY=e.clientY-imgY; panArea.style.cursor='grabbing'; e.preventDefault(); });
     window.addEventListener('mousemove', e => { if(!isPanning)return; imgX=e.clientX-panStartX; imgY=e.clientY-panStartY; applyImgTransform(); });
     window.addEventListener('mouseup', () => { isPanning=false; panArea.style.cursor='grab'; });
-    panArea.addEventListener('wheel', e => { e.preventDefault(); zoomImg(e.deltaY<0?0.15:-0.15); }, { passive: false });
+    panArea.addEventListener('wheel', e => {
+        e.preventDefault();
+        const d = e.deltaY < 0 ? 0.15 : -0.15;
+        const rect = panArea.getBoundingClientRect();
+        // Mouse position relative to the pan area
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        // Adjust pan so zoom pivots on the mouse point
+        const prevScale = imgScale;
+        imgScale = Math.max(0.2, Math.min(8, imgScale + d));
+        const factor = imgScale / prevScale;
+        imgX = mx - factor * (mx - imgX);
+        imgY = my - factor * (my - imgY);
+        applyImgTransform();
+    }, { passive: false });
 
     async function resolveImageUrl(url) {
         if (url && (url.includes('/manifest') || url.includes('manifest.json') || url.includes('iiif'))) {
