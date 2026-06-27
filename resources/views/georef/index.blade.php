@@ -1482,9 +1482,23 @@ function updateHistoryNav() {
     var _occPopupOffset = 0;
     var _occPopupTotal = 0;
     var _occPopupSuggId = null;
+    var _occPopupGroupId = null;
     var _occPopupIds = [];
 
+    function openGroupOccPopup(groupId, count) {
+        _occPopupSuggId = null;
+        _occPopupGroupId = groupId;
+        _occPopupOffset = 0;
+        _occPopupTotal = count;
+        _occPopupIds = [];
+        document.getElementById('occ-popup').style.display = 'flex';
+        document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
+        document.getElementById('occ-popup-loadmore').style.display = 'none';
+        fetchOccPopupPage(true);
+    }
+
     function openOccPopup(suggId, count, ids) {
+        _occPopupGroupId = null;
         _occPopupSuggId = suggId;
         _occPopupOffset = 0;
         _occPopupTotal = count;
@@ -1497,6 +1511,7 @@ function updateHistoryNav() {
 
     function openGbifOccPopup(ids) {
         _occPopupSuggId = null;
+        _occPopupGroupId = null;
         _occPopupOffset = 0;
         _occPopupTotal = ids.length;
         _occPopupIds = ids;
@@ -1507,10 +1522,15 @@ function updateHistoryNav() {
     }
 
     function fetchOccPopupPage(reset) {
-        var pageIds = _occPopupIds.slice(_occPopupOffset, _occPopupOffset + 100);
-        var url = _occPopupSuggId
-            ? APP_URL+'/georef/suggestion/'+_occPopupSuggId+'/georef-occurrences?ids='+pageIds.join(',')
-            : APP_URL+'/georef/occurrences-by-ids?ids='+pageIds.join(',');
+        var url;
+        if (_occPopupGroupId) {
+            url = APP_URL+'/georef/group/'+_occPopupGroupId+'/ungeoref-occurrences?offset='+_occPopupOffset;
+        } else {
+            var pageIds = _occPopupIds.slice(_occPopupOffset, _occPopupOffset + 100);
+            url = _occPopupSuggId
+                ? APP_URL+'/georef/suggestion/'+_occPopupSuggId+'/georef-occurrences?ids='+pageIds.join(',')
+                : APP_URL+'/georef/occurrences-by-ids?ids='+pageIds.join(',');
+        }
         fetch(url,
             {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
         .then(r=>r.json()).then(function(d){
@@ -1536,40 +1556,68 @@ function updateHistoryNav() {
         });
     }
 
+    var _simSuggMap = {};
+
     function renderSimilarGroups(groups) {
         const wrap = document.getElementById('similar-groups-wrap');
         const list = document.getElementById('similar-groups-list');
+        _simSuggMap = {};
         if (!groups || !groups.length) { wrap.style.display = 'none'; list.innerHTML = ''; return; }
         wrap.style.display = 'block';
         list.innerHTML = groups.map(function(g) {
             const statusBits = [];
-            if (g.validated_count > 0) statusBits.push('<span style="color:#16a34a">'+g.validated_count+' validated</span>');
-            if (g.pending_count > 0)   statusBits.push('<span style="color:#f59e0b">'+g.pending_count+' pending</span>');
+            if (g.validated_count > 0)       statusBits.push('<span style="color:#16a34a">'+g.validated_count+' validated</span>');
+            if (g.pending_count > 0)         statusBits.push('<span style="color:#f59e0b">'+g.pending_count+' pending</span>');
             if (g.ungeoreferenced_count > 0) statusBits.push('<span style="color:#9ca3af">'+g.ungeoreferenced_count+' ungeoref</span>');
 
+            const locationParts = [g.municipality, g.county, g.state_province, g.country_code].filter(Boolean);
+            const locationHtml = locationParts.length
+                ? '<div style="font-size:10px;color:#9ca3af;margin-top:1px">'+escHtml(locationParts.join(', '))+'</div>'
+                : '';
+
             const suggHtml = (g.suggestions && g.suggestions.length) ? g.suggestions.map(function(s) {
-                const lbl = s.is_system ? 'GBIF' : (s.submitted_by || 'user');
-                const coords = parseFloat(s.decimal_latitude).toFixed(4)+', '+parseFloat(s.decimal_longitude).toFixed(4);
-                const unc = s.coordinate_uncertainty_m ? ' ±'+Math.round(s.coordinate_uncertainty_m/1000)+'km' : '';
-                return '<div style="margin-top:4px;padding:5px 7px;border-radius:5px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:10px;">'
-                    + '<span style="font-weight:600;color:#15803d">'+lbl+'</span>'
-                    + ' <span style="color:#374151">'+coords+unc+'</span>'
-                    + (s.georeference_remarks ? '<div style="color:#6b7280;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.georeference_remarks+'</div>' : '')
-                    + '<button onclick="useSimilarSuggestion('+JSON.stringify(s)+')" '
-                    + 'style="margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;border:1.5px solid #4C9C2E;color:#4C9C2E;background:#fff;cursor:pointer;">Use this</button>'
+                const key = 'ss_'+s.id;
+                _simSuggMap[key] = s;
+                const uncM = s.coordinate_uncertainty_m ? Math.round(s.coordinate_uncertainty_m) : 0;
+                const remarksHtml = (!s.is_system && s.georeference_remarks)
+                    ? '<span class="remarks-btn" data-remarks="'+escHtml(s.georeference_remarks).replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>'
+                    : '';
+                return '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-top:4px;">'
+                    + '<div style="display:flex;justify-content:space-between">'
+                    + '<span style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span>'
+                    + '<span style="color:#9ca3af">±'+uncM+'m</span>'
+                    + '</div>'
+                    + '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af">'
+                    + '<span style="display:flex;align-items:center;gap:5px;">'+(s.submitted_by||'System')+remarksHtml+'</span>'
+                    + '</div>'
+                    + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
+                    + '<button onclick="previewSuggestion('+parseFloat(s.decimal_latitude)+','+parseFloat(s.decimal_longitude)+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
+                    + '<button onclick="useSimilarSuggestion(\''+key+'\')" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;border:1.5px solid #4C9C2E;color:#4C9C2E;background:#fff;cursor:pointer;">Use this</button>'
+                    + '</div>'
                     + '</div>';
             }).join('') : '';
 
-            return '<div style="border:1px solid #fed7aa;border-radius:6px;padding:6px 8px;margin-bottom:6px;background:#fff7ed;">'
-                + '<div style="font-size:10px;font-weight:600;color:#c2410c;margin-bottom:2px;word-break:break-word">'
-                + escHtml(g.verbatim_locality || '—') + '</div>'
-                + '<div style="font-size:10px;color:#6b7280">' + (statusBits.join(' · ') || '') + '</div>'
+            return '<div style="border:1px solid #fed7aa;border-radius:6px;padding:6px 8px;background:#fff7ed;">'
+                + '<label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;">'
+                + '<input type="checkbox" class="similar-group-cb" data-id="'+g.id+'" checked '
+                + 'style="margin-top:2px;flex-shrink:0;accent-color:#ea580c;">'
+                + '<div style="min-width:0;flex:1;">'
+                + '<div style="font-size:10px;font-weight:600;color:#c2410c;word-break:break-word">'+escHtml(g.verbatim_locality || '—')+'</div>'
+                + locationHtml
+                + '<div style="font-size:10px;color:#6b7280;margin-top:1px;display:flex;align-items:center;gap:6px;">'
+                + (statusBits.join(' · ') || '')
+                + '<button onclick="openGroupOccPopup('+g.id+','+g.occurrence_count+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0;">{{ __("see list") }} ↗</button>'
+                + '</div>'
                 + suggHtml
+                + '</div>'
+                + '</label>'
                 + '</div>';
         }).join('');
     }
 
-    function useSimilarSuggestion(s) {
+    function useSimilarSuggestion(key) {
+        const s = _simSuggMap[key];
+        if (!s) return;
         // Pre-fill the georef form with coords+uncertainty from the similar group's suggestion
         const lat = parseFloat(s.decimal_latitude);
         const lng = parseFloat(s.decimal_longitude);
@@ -1895,8 +1943,9 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
             // If new point mode and marker placed, submit georef
             if(georefMode==='new' && marker){
                 var excl=Array.from(document.querySelectorAll('.occurrence-checkbox:not(:checked)')).map(function(c){return c.value;});
+                var simIds=Array.from(document.querySelectorAll('.similar-group-cb:checked')).map(function(c){return parseInt(c.dataset.id,10);});
                 return fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
-                    body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl,correct_suggestion_ids:Array.from(_correctSuggestionIds),correct_occurrence_ids:Array.from(_correctGbifOccurrenceIds)})})
+                    body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl,correct_suggestion_ids:Array.from(_correctSuggestionIds),correct_occurrence_ids:Array.from(_correctGbifOccurrenceIds),similar_group_ids:simIds})})
                     .then(r=>r.json());
             }
             return {success:true};

@@ -123,7 +123,7 @@ class GeorefController extends Controller
                 ->where('normalized_locality', $group->normalized_locality)
                 ->where('county', $group->county)
                 ->where('country_code', $group->country_code)
-                ->get(['id', 'verbatim_locality', 'occurrence_count', 'ungeoreferenced_count', 'pending_count', 'validated_count']);
+                ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'ungeoreferenced_count', 'pending_count', 'validated_count']);
 
             foreach ($siblings as $sib) {
                 $sibSuggestions = GeorefSuggestion::where('locality_group_id', $sib->id)
@@ -143,13 +143,17 @@ class GeorefController extends Controller
                     ]);
 
                 $similarGroups[] = [
-                    'id'                  => $sib->id,
-                    'verbatim_locality'   => $sib->verbatim_locality,
-                    'occurrence_count'    => $sib->occurrence_count,
+                    'id'                    => $sib->id,
+                    'verbatim_locality'     => $sib->verbatim_locality,
+                    'municipality'          => $sib->municipality,
+                    'county'                => $sib->county,
+                    'state_province'        => $sib->state_province,
+                    'country_code'          => $sib->country_code,
+                    'occurrence_count'      => $sib->occurrence_count,
                     'ungeoreferenced_count' => $sib->ungeoreferenced_count,
-                    'pending_count'       => $sib->pending_count,
-                    'validated_count'     => $sib->validated_count,
-                    'suggestions'         => $sibSuggestions,
+                    'pending_count'         => $sib->pending_count,
+                    'validated_count'       => $sib->validated_count,
+                    'suggestions'           => $sibSuggestions,
                 ];
             }
         }
@@ -382,6 +386,8 @@ public function next(Request $request)
             'correct_suggestion_ids.*'    => 'integer|exists:georef_suggestions,id',
             'correct_occurrence_ids'      => 'nullable|array',
             'correct_occurrence_ids.*'    => 'integer|exists:occurrences,id',
+            'similar_group_ids'           => 'nullable|array',
+            'similar_group_ids.*'         => 'integer|exists:locality_groups,id',
         ]);
 
         $group = LocalityGroup::findOrFail($validated['locality_group_id']);
@@ -448,6 +454,47 @@ public function next(Request $request)
         }
 
         $group->recalculateCounters();
+
+        // Create suggestions for checked similar groups (same coords/uncertainty/remarks)
+        if (!empty($validated['similar_group_ids'])) {
+            $similarGroups = LocalityGroup::whereIn('id', $validated['similar_group_ids'])
+                ->where('id', '!=', $group->id)
+                ->get();
+
+            foreach ($similarGroups as $simGroup) {
+                // Replace existing pending suggestion from same user
+                if (auth()->check()) {
+                    GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                        ->where('user_id', auth()->id())
+                        ->where('status', 'pending')
+                        ->delete();
+                }
+
+                GeorefSuggestion::create([
+                    'locality_group_id'        => $simGroup->id,
+                    'locality_group_hash'      => $simGroup->group_hash,
+                    'occurrence_id'            => $simGroup->occurrences()->first()?->id,
+                    'user_id'                  => auth()->id(),
+                    'anon_name'                => $validated['anon_name'] ?? null,
+                    'decimal_latitude'         => $validated['decimal_latitude'],
+                    'decimal_longitude'        => $validated['decimal_longitude'],
+                    'geodetic_datum'           => 'epsg:4326',
+                    'coordinate_uncertainty_m' => $validated['coordinate_uncertainty_m'] ?? null,
+                    'georeference_remarks'     => $validated['georeference_remarks'] ?? null,
+                    'georeference_protocol'    => 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020)',
+                    'georeference_sources'     => 'georeference.it',
+                    'status'                   => 'pending',
+                    'total_points'             => 0,
+                    'georeferenced_date'       => now(),
+                ]);
+
+                $simGroup->occurrences()
+                    ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
+                    ->update(['georef_status' => 'has_suggestion']);
+
+                $simGroup->recalculateCounters();
+            }
+        }
 
         if (auth()->check()) {
             $this->applyVote($suggestion, auth()->user(), 'agree');
