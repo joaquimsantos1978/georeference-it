@@ -11,6 +11,7 @@ class LocalityGroup extends Model
         'group_hash',
         'locality_string',
         'verbatim_locality',
+        'normalized_locality',
         'country_code',
         'state_province',
         'county',
@@ -30,6 +31,14 @@ class LocalityGroup extends Model
     public function suggestions(): HasMany
     {
         return $this->hasMany(GeorefSuggestion::class);
+    }
+
+    public static function normalizeLocality(string $text): string
+    {
+        $s = mb_strtolower($text);
+        $s = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $s);
+        $s = preg_replace('/\s+/', ' ', $s);
+        return trim($s);
     }
 
     public static function hashFromOccurrence(array $fields): string

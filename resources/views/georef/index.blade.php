@@ -453,6 +453,14 @@
                 </div>
             </div>
 
+            {{-- Similar groups --}}
+            <div id="similar-groups-wrap" style="display:none;flex-shrink:0;border-bottom:1px solid #e5e7eb;">
+                <div class="px-3 pt-2 pb-1" style="flex-shrink:0;">
+                    <span class="text-xs font-medium text-orange-500 uppercase tracking-wide">{{ __('Similar localities') }}</span>
+                </div>
+                <div id="similar-groups-list" class="px-3 pb-2 space-y-2 overflow-y-auto" style="max-height:180px;"></div>
+            </div>
+
             {{-- Georef form (takes remaining space) --}}
             <div class="p-4 overflow-y-auto" style="flex:1;min-height:0;">
                 <div style="margin-bottom:10px;">
@@ -1289,6 +1297,8 @@ function clearPanel() {
     document.getElementById('suggestions-list').innerHTML='<p id="suggestions-empty" style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
     document.getElementById('comments-list').innerHTML='';
     document.getElementById('nominatim-results').innerHTML='';
+    var sgw=document.getElementById('similar-groups-wrap'); if(sgw) sgw.style.display='none';
+    var sgl=document.getElementById('similar-groups-list'); if(sgl) sgl.innerHTML='';
 }
 
 function loadNextGroup() {
@@ -1305,7 +1315,7 @@ function loadNextGroup() {
         if(data.group){
             addToHistory(data.group);
             currentGroup=data.group;
-            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[]);
             updateUrl(data.group.id);
         } else {
             document.getElementById('occurrence-info').classList.remove('hidden');
@@ -1330,7 +1340,7 @@ function loadGroup(groupId) {
         document.getElementById('occurrence-loading').classList.add('hidden');
         if(data.group){
             currentGroup=data.group;
-            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[]);
             updateUrl(data.group.id);
         }
     })
@@ -1526,7 +1536,66 @@ function updateHistoryNav() {
         });
     }
 
-    function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments) {
+    function renderSimilarGroups(groups) {
+        const wrap = document.getElementById('similar-groups-wrap');
+        const list = document.getElementById('similar-groups-list');
+        if (!groups || !groups.length) { wrap.style.display = 'none'; list.innerHTML = ''; return; }
+        wrap.style.display = 'block';
+        list.innerHTML = groups.map(function(g) {
+            const statusBits = [];
+            if (g.validated_count > 0) statusBits.push('<span style="color:#16a34a">'+g.validated_count+' validated</span>');
+            if (g.pending_count > 0)   statusBits.push('<span style="color:#f59e0b">'+g.pending_count+' pending</span>');
+            if (g.ungeoreferenced_count > 0) statusBits.push('<span style="color:#9ca3af">'+g.ungeoreferenced_count+' ungeoref</span>');
+
+            const suggHtml = (g.suggestions && g.suggestions.length) ? g.suggestions.map(function(s) {
+                const lbl = s.is_system ? 'GBIF' : (s.submitted_by || 'user');
+                const coords = parseFloat(s.decimal_latitude).toFixed(4)+', '+parseFloat(s.decimal_longitude).toFixed(4);
+                const unc = s.coordinate_uncertainty_m ? ' ±'+Math.round(s.coordinate_uncertainty_m/1000)+'km' : '';
+                return '<div style="margin-top:4px;padding:5px 7px;border-radius:5px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:10px;">'
+                    + '<span style="font-weight:600;color:#15803d">'+lbl+'</span>'
+                    + ' <span style="color:#374151">'+coords+unc+'</span>'
+                    + (s.georeference_remarks ? '<div style="color:#6b7280;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.georeference_remarks+'</div>' : '')
+                    + '<button onclick="useSimilarSuggestion('+JSON.stringify(s)+')" '
+                    + 'style="margin-top:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;border:1.5px solid #4C9C2E;color:#4C9C2E;background:#fff;cursor:pointer;">Use this</button>'
+                    + '</div>';
+            }).join('') : '';
+
+            return '<div style="border:1px solid #fed7aa;border-radius:6px;padding:6px 8px;margin-bottom:6px;background:#fff7ed;">'
+                + '<div style="font-size:10px;font-weight:600;color:#c2410c;margin-bottom:2px;word-break:break-word">'
+                + escHtml(g.verbatim_locality || '—') + '</div>'
+                + '<div style="font-size:10px;color:#6b7280">' + (statusBits.join(' · ') || '') + '</div>'
+                + suggHtml
+                + '</div>';
+        }).join('');
+    }
+
+    function useSimilarSuggestion(s) {
+        // Pre-fill the georef form with coords+uncertainty from the similar group's suggestion
+        const lat = parseFloat(s.decimal_latitude);
+        const lng = parseFloat(s.decimal_longitude);
+        placeMarker(lat, lng);
+        if (s.coordinate_uncertainty_m) {
+            const uncInput = document.getElementById('uncertainty-input');
+            if (uncInput) { uncInput.value = Math.round(s.coordinate_uncertainty_m); uncInput.dispatchEvent(new Event('input')); }
+        }
+        const remarksInput = document.getElementById('remarks-input');
+        if (remarksInput && s.georeference_remarks) remarksInput.value = s.georeference_remarks;
+        // Switch to point-submission mode if currently in voting mode
+        if (georefMode !== 'new') {
+            const modeBtn = document.getElementById('mode-toggle-btn');
+            if (modeBtn) modeBtn.click();
+        }
+        updateSubmitBtn();
+        // Scroll to form
+        const formWrap = document.querySelector('.p-4.overflow-y-auto');
+        if (formWrap) formWrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+
+    function escHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments, similarGroups) {
         hideFocusDropdown();
         document.getElementById('occurrence-info').classList.remove('hidden');
         _currentOccurrences = occurrences;
@@ -1746,6 +1815,7 @@ function updateHistoryNav() {
         }
 
         renderComments(comments||[]);
+        renderSimilarGroups(similarGroups||[]);
         updateMobileBar(group, (suggestions||[]).length);
         var mab=document.getElementById('mob-action-bar'); if(mab) mab.classList.add('mob-loaded');
         var mrb=document.getElementById('mob-right-bar'); if(mrb) mrb.classList.add('mob-loaded');

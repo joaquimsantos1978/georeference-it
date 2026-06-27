@@ -116,12 +116,13 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         $localityGroup = LocalityGroup::firstOrCreate(
             ['group_hash' => $groupHash],
             [
-                'locality_string' => implode(', ', array_filter(array_values($groupFields))),
-                'verbatim_locality' => $groupFields['verbatim_locality'],
-                'country_code' => $groupFields['country_code'],
-                'state_province' => $groupFields['state_province'],
-                'county' => $groupFields['county'],
-                'municipality' => $groupFields['municipality'],
+                'locality_string'     => implode(', ', array_filter(array_values($groupFields))),
+                'verbatim_locality'   => $groupFields['verbatim_locality'],
+                'normalized_locality' => LocalityGroup::normalizeLocality($groupFields['verbatim_locality'] ?? ''),
+                'country_code'        => $groupFields['country_code'],
+                'state_province'      => $groupFields['state_province'],
+                'county'              => $groupFields['county'],
+                'municipality'        => $groupFields['municipality'],
             ]
         );
 

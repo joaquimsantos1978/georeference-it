@@ -116,6 +116,44 @@ class GeorefController extends Controller
                 'created_at' => $c->created_at->diffForHumans(),
             ]);
 
+        // Similar groups: same normalized_locality + county + country_code (excluding this group)
+        $similarGroups = [];
+        if ($group->normalized_locality) {
+            $siblings = LocalityGroup::where('id', '!=', $group->id)
+                ->where('normalized_locality', $group->normalized_locality)
+                ->where('county', $group->county)
+                ->where('country_code', $group->country_code)
+                ->get(['id', 'verbatim_locality', 'occurrence_count', 'ungeoreferenced_count', 'pending_count', 'validated_count']);
+
+            foreach ($siblings as $sib) {
+                $sibSuggestions = GeorefSuggestion::where('locality_group_id', $sib->id)
+                    ->where('status', 'pending')
+                    ->limit(5)
+                    ->with('user')
+                    ->get()
+                    ->map(fn($s) => [
+                        'id'                       => $s->id,
+                        'decimal_latitude'         => $s->decimal_latitude,
+                        'decimal_longitude'        => $s->decimal_longitude,
+                        'coordinate_uncertainty_m' => $s->coordinate_uncertainty_m,
+                        'submitted_by'             => $s->submitted_by,
+                        'georeference_remarks'     => $s->georeference_remarks,
+                        'total_points'             => $s->total_points,
+                        'is_system'                => is_null($s->user_id),
+                    ]);
+
+                $similarGroups[] = [
+                    'id'                  => $sib->id,
+                    'verbatim_locality'   => $sib->verbatim_locality,
+                    'occurrence_count'    => $sib->occurrence_count,
+                    'ungeoreferenced_count' => $sib->ungeoreferenced_count,
+                    'pending_count'       => $sib->pending_count,
+                    'validated_count'     => $sib->validated_count,
+                    'suggestions'         => $sibSuggestions,
+                ];
+            }
+        }
+
         return [
             'group'               => $group,
             'occurrences'         => $ungeorefOccurrences,
@@ -123,6 +161,7 @@ class GeorefController extends Controller
             'georef_occurrences'  => $georefOccurrences,
             'suggestions'         => $suggestions,
             'comments'            => $comments,
+            'similar_groups'      => $similarGroups,
         ];
     }
 
@@ -143,6 +182,37 @@ public function next(Request $request)
         if (!in_array($excludeId, $seenIds)) {
             $seenIds[] = $excludeId;
             session([$focusKey => $seenIds]);
+        }
+    }
+
+    // Priority: sibling of just-completed group (same normalized_locality + county + country)
+    if ($excludeId) {
+        $sibling = LocalityGroup::where('id', '!=', $excludeId)
+            ->whereNotIn('id', $seenIds)
+            ->where(function ($q) use ($excludeId) {
+                $ref = LocalityGroup::select('normalized_locality', 'county', 'country_code')
+                    ->where('id', $excludeId)->first();
+                if ($ref && $ref->normalized_locality) {
+                    $q->where('normalized_locality', $ref->normalized_locality)
+                      ->where('county', $ref->county)
+                      ->where('country_code', $ref->country_code);
+                } else {
+                    $q->whereRaw('0'); // no siblings if not normalized yet
+                }
+            })
+            ->where(function ($q) {
+                $q->where('ungeoreferenced_count', '>', 0)->orWhere('pending_count', '>', 0);
+            })
+            ->first();
+
+        if ($sibling) {
+            $seenIds[] = $sibling->id;
+            session([
+                $focusKey              => $seenIds,
+                'georef_last_province' => $sibling->state_province,
+                'georef_last_county'   => $sibling->county,
+            ]);
+            return response()->json($this->groupData($sibling));
         }
     }
 
