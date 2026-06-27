@@ -1029,27 +1029,16 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     })();
 
     // ── Nominatim ─────────────────────────────────────────────────────────────
-function cleanLocalityTerm(raw) {
-    if (!raw) return '';
-    // Take only the first segment (real place name usually comes first)
-    let s = raw.split(/[,;]/)[0].trim();
-    // Remove altitude/distance noise: "1500m", "5 km", "500 ft"
-    s = s.replace(/\b\d+[\s-]*(m|km|ft|miles?)\b/gi, '');
-    // Remove ecological lead-ins and everything after them
-    s = s.replace(/\b(altitude|elev\.?|near|along|edge of|margin of|beira\s+d[aeo]|arredores|proximidades|perto\s+d[aeo]|ca\.|approx\.?)\b.*/gi, '');
-    return s.trim().replace(/[\s,;]+$/, '');
-}
 function buildLocalityString(g) {
-    const loc  = cleanLocalityTerm(g.verbatim_locality);
-    const mun  = g.municipality || '';
-    const cty  = g.county || '';
+    const loc = g.verbatim_locality || '';
+    const mun = g.municipality || '';
+    const cty = g.county || '';
     const parts = [];
     if (loc) parts.push(loc);
-    // Add municipality only if not already contained in loc
-    if (mun && !loc.toLowerCase().includes(mun.toLowerCase())) parts.push(mun);
-    // Add county only if not already represented
-    const soFar = parts.join(' ').toLowerCase();
-    if (cty && !soFar.includes(cty.toLowerCase())) parts.push(cty);
+    // Add administrative fields only if their text isn't already present in the locality
+    const locLower = loc.toLowerCase();
+    if (mun && !locLower.includes(mun.toLowerCase())) parts.push(mun);
+    if (cty && !locLower.includes(cty.toLowerCase())) parts.push(cty);
     return parts.join(', ');
 }
     async function searchNominatim(query) {
@@ -1753,19 +1742,16 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
     if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
 } else {
-    // No markers — zoom to group's administrative area via Nominatim cascade
+    // No markers — zoom to group's administrative area (county → state → country, no locality to avoid false positives)
     (function zoomToGroup() {
-        const loc  = cleanLocalityTerm(group.verbatim_locality) || group.municipality;
-        const mun  = group.municipality;
-        const prov = group.state_province || group.county;
-        const cc   = group.country_code;
+        const county = group.county;
+        const prov   = group.state_province;
+        const cc     = group.country_code;
         const ccParam = cc ? '&countrycodes='+cc.toLowerCase() : '';
-        // Build cascade: most specific first, country constraint always applied
         const queries = [];
-        if (loc && prov) queries.push('city='+encodeURIComponent(loc)+'&state='+encodeURIComponent(prov));
-        if (loc && mun && mun !== loc) queries.push('city='+encodeURIComponent(loc)+'&county='+encodeURIComponent(mun));
-        if (loc)         queries.push('city='+encodeURIComponent(loc));
-        if (prov)        queries.push('state='+encodeURIComponent(prov));
+        if (county && prov) queries.push('county='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
+        if (county)         queries.push('county='+encodeURIComponent(county));
+        if (prov)           queries.push('state='+encodeURIComponent(prov));
         if (!queries.length) return;
         function tryNext(i) {
             if (i >= queries.length) return;
