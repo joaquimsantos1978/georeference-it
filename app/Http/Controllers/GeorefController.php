@@ -207,6 +207,9 @@ public function next(Request $request)
             ->where(function ($q) {
                 $q->where('ungeoreferenced_count', '>', 0)->orWhere('pending_count', '>', 0);
             })
+            ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
+                $s->where('user_id', auth()->id())->where('status', 'pending')
+            ))
             ->first();
 
         if ($sibling) {
@@ -301,10 +304,12 @@ public function next(Request $request)
             }
 
             if (!$group && $wantsValidate) {
-                // pending_count index is fast; skip per-user suggestion filter to avoid whereHas.
                 $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
                     ->tap($scope)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
+                    ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
+                        $s->where('user_id', auth()->id())->where('status', 'pending')
+                    ))
                     ->orderByDesc('pending_count')
                     ->limit(50)
                     ->get();
@@ -494,6 +499,7 @@ public function next(Request $request)
 
                 $simGroup->recalculateCounters();
             }
+
         }
 
         if (auth()->check()) {
