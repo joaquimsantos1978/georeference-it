@@ -1999,7 +1999,7 @@ if(urlGbifKey) {
     var existingIdx = sessionHistory.findIndex(function(g){ return g.id === parseInt(urlGroupId); });
     if(existingIdx !== -1) { historyIndex = existingIdx; updateHistoryNav(); }
     loadGroup(parseInt(urlGroupId));
-} else if(sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
+} else if(!urlCountry && sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
     loadGroup(sessionHistory[historyIndex].id);
 } else {
     function applyLocationAndLoad(loc) {
