@@ -1608,11 +1608,29 @@ function updateHistoryNav() {
                 + (statusBits.join(' · ') || '')
                 + '<button onclick="openGroupOccPopup('+g.id+','+g.occurrence_count+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0;">{{ __("see list") }} ↗</button>'
                 + '</div>'
-                + suggHtml
                 + '</div>'
                 + '</label>'
+                + suggHtml
                 + '</div>';
         }).join('');
+
+        list.querySelectorAll('.remarks-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var existing = document.getElementById('remarks-popup');
+                if (existing) existing.remove();
+                var popup = document.createElement('div');
+                popup.id = 'remarks-popup';
+                popup.style.cssText = 'position:fixed;z-index:9999;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#78350f;max-width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.15);line-height:1.5;';
+                popup.textContent = btn.dataset.remarks;
+                document.body.appendChild(popup);
+                var r = btn.getBoundingClientRect();
+                popup.style.left = Math.min(r.left, window.innerWidth - popup.offsetWidth - 8) + 'px';
+                popup.style.top  = (r.bottom + 4) + 'px';
+                var close = function(){ popup.remove(); document.removeEventListener('click', close); };
+                setTimeout(function(){ document.addEventListener('click', close); }, 0);
+            });
+        });
     }
 
     function useSimilarSuggestion(key) {
