@@ -43,21 +43,23 @@
 
         {{-- Global progress bar --}}
         @php
-            $pctValidated = $totalOcc > 0 ? number_format($validatedOcc / $totalOcc * 100, 1, '.', '') : 0;
-            $pctPending   = $totalOcc > 0 ? number_format($pendingOcc   / $totalOcc * 100, 1, '.', '') : 0;
-            $pctGbif      = $totalOcc > 0 ? number_format($gbifOcc      / $totalOcc * 100, 1, '.', '') : 0;
-            $pctUngeoref  = $totalOcc > 0 ? number_format($needsGeoref  / $totalOcc * 100, 1, '.', '') : 0;
+            $pctValidated = $totalOcc > 0 ? number_format($validatedOcc / $totalOcc * 100, 2, '.', '') : '0';
+            $pctPending   = $totalOcc > 0 ? number_format($pendingOcc   / $totalOcc * 100, 2, '.', '') : '0';
+            $pctGbif      = $totalOcc > 0 ? number_format($gbifOcc      / $totalOcc * 100, 2, '.', '') : '0';
+            $pctUngeoref  = $totalOcc > 0 ? number_format($needsGeoref  / $totalOcc * 100, 1, '.', '') : '0';
         @endphp
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
             <div class="text-xs text-gray-500 mb-2">{{ number_format($pendingGroups) }} locality groups with work remaining</div>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
-                <div class="bg-green-500 h-4 rounded-full" style="width:{{ number_format($hasCoords / $totalOcc * 100, 2, '.', '') }}%"></div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden flex">
+                <div class="bg-green-700 h-4" style="width:{{ $pctValidated }}%"></div>
+                <div class="bg-green-500 h-4" style="width:{{ $pctGbif }}%"></div>
+                <div class="bg-orange-400 h-4" style="width:{{ $pctPending }}%"></div>
             </div>
             <div class="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-xs text-gray-500">
-                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-500"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300">{{ number_format($gbifOcc) }}</strong> ({{ $pctGbif }}%)</span>
                 <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-700"></span> Validated by community <strong class="text-gray-700 dark:text-gray-300">{{ number_format($validatedOcc) }}</strong> ({{ $pctValidated }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-500"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300">{{ number_format($gbifOcc) }}</strong> ({{ $pctGbif }}%)</span>
                 <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-orange-400"></span> Pending review <strong class="text-gray-700 dark:text-gray-300">{{ number_format($pendingOcc) }}</strong> ({{ $pctPending }}%)</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-200"></span> No coordinates <strong class="text-gray-700 dark:text-gray-300">{{ number_format($needsGeoref) }}</strong> ({{ $pctUngeoref }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-200 dark:bg-gray-600"></span> No coordinates <strong class="text-gray-700 dark:text-gray-300">{{ number_format($needsGeoref) }}</strong> ({{ $pctUngeoref }}%)</span>
             </div>
         </div>
 
