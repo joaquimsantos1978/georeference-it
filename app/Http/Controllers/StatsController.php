@@ -9,7 +9,7 @@ class StatsController extends Controller
 {
     public function index()
     {
-        [$global, $byCountry] = Cache::remember('stats.georef', now()->addDay(), fn() => $this->compute());
+        [$global, $byCountry] = Cache::remember('stats.georef', now()->addWeek(), fn() => $this->compute());
         return view('stats', compact('global', 'byCountry'));
     }
 
