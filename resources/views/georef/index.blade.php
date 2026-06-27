@@ -1991,6 +1991,8 @@ updateHistoryNav();
 var urlParams = new URLSearchParams(window.location.search);
 var urlGroupId = urlParams.get('group');
 var urlGbifKey = urlParams.get('gbif');
+var urlCountry = urlParams.get('country');
+if (urlCountry) window._georefCountry = urlCountry.toUpperCase();
 if(urlGbifKey) {
     loadByGbifKey(urlGbifKey);
 } else if(urlGroupId) {
