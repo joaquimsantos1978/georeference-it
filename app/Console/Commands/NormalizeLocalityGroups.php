@@ -7,19 +7,27 @@ use Illuminate\Support\Facades\DB;
 
 class NormalizeLocalityGroups extends Command
 {
-    protected $signature = 'georef:normalize-localities {--chunk=2000}';
+    protected $signature = 'georef:normalize-localities {--chunk=2000} {--priority : Only process groups with pending or validated suggestions}';
     protected $description = 'Populate normalized_locality on all locality_groups for similar-group detection';
 
     public function handle(): void
     {
-        $chunk = (int) $this->option('chunk');
-        $total = DB::table('locality_groups')->count();
-        $bar   = $this->output->createProgressBar($total);
+        $chunk    = (int) $this->option('chunk');
+        $priority = $this->option('priority');
+
+        $query = DB::table('locality_groups')
+            ->whereNull('normalized_locality')
+            ->when($priority, fn($q) => $q->where(fn($q2) =>
+                $q2->where('pending_count', '>', 0)->orWhere('validated_count', '>', 0)
+            ))
+            ->orderBy('id');
+
+        $total = (clone $query)->count();
+        $this->info(($priority ? 'Priority mode: ' : '') . "$total rows to process");
+        $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        DB::table('locality_groups')
-            ->orderBy('id')
-            ->chunk($chunk, function ($rows) use ($bar) {
+        $query->chunk($chunk, function ($rows) use ($bar) {
                 $updates = [];
                 foreach ($rows as $row) {
                     $updates[] = [
