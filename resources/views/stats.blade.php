@@ -45,10 +45,14 @@
                 <span>{{ number_format($pendingGroups) }} locality groups with work remaining</span>
             </div>
             <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden flex">
-                @php $pctValidated = $totalOcc > 0 ? $validatedOcc / $totalOcc * 100 : 0; @endphp
+                @php
+                    $pctValidated  = $totalOcc > 0 ? number_format($validatedOcc / $totalOcc * 100, 2, '.', '') : 0;
+                    $pctGeoref     = $totalOcc > 0 ? number_format(max(0, $pctDone - (float)$pctValidated), 2, '.', '') : 0;
+                    $pctPending    = $totalOcc > 0 ? number_format($pendingOcc / $totalOcc * 100, 2, '.', '') : 0;
+                @endphp
                 <div class="bg-green-600 h-4 transition-all" style="width: {{ $pctValidated }}%" title="Validated: {{ number_format($validatedOcc) }}"></div>
-                <div class="bg-green-300 h-4 transition-all" style="width: {{ max(0, $pctDone - $pctValidated) }}%" title="Georeferenced (not yet validated)"></div>
-                <div class="bg-orange-300 h-4 transition-all" style="width: {{ $totalOcc > 0 ? $pendingOcc / $totalOcc * 100 : 0 }}%" title="Pending review: {{ number_format($pendingOcc) }}"></div>
+                <div class="bg-green-300 h-4 transition-all" style="width: {{ $pctGeoref }}%" title="Georeferenced (not yet validated)"></div>
+                <div class="bg-orange-300 h-4 transition-all" style="width: {{ $pctPending }}%" title="Pending review: {{ number_format($pendingOcc) }}"></div>
             </div>
             <div class="flex gap-4 mt-2 text-xs text-gray-500">
                 <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-600"></span> Validated</span>
@@ -83,9 +87,9 @@
                             $val   = (int) $row->validated_occ;
                             $geo   = $tot - $ung - $pen;
                             $pct   = $tot > 0 ? round($geo / $tot * 100) : 0;
-                            $pctV  = $tot > 0 ? $val / $tot * 100 : 0;
-                            $pctG  = $tot > 0 ? max(0, ($geo - $val) / $tot * 100) : 0;
-                            $pctP  = $tot > 0 ? $pen / $tot * 100 : 0;
+                            $pctV  = $tot > 0 ? number_format($val / $tot * 100, 2, '.', '') : 0;
+                            $pctG  = $tot > 0 ? number_format(max(0, ($geo - $val) / $tot * 100), 2, '.', '') : 0;
+                            $pctP  = $tot > 0 ? number_format($pen / $tot * 100, 2, '.', '') : 0;
                             $cc    = $row->country_code ? strtolower($row->country_code) : '';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
