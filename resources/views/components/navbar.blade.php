@@ -10,6 +10,7 @@
                 <a href="{{ route('explore') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Explore') }}</a>
                 <a href="{{ route('leaderboard') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Leaderboard') }}</a>
                 <a href="{{ route('datasets') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Datasets') }}</a>
+                <a href="{{ route('stats') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Stats') }}</a>
                 <a href="{{ route('about') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('About') }}</a>
                 <a href="{{ route('api-docs') }}" class="text-sm text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 font-mono">API</a>
             </div>
@@ -94,6 +95,7 @@
                     <a href="{{ route('explore') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Explore') }}</a>
                     <a href="{{ route('leaderboard') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Leaderboard') }}</a>
                     <a href="{{ route('datasets') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Datasets') }}</a>
+                    <a href="{{ route('stats') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Stats') }}</a>
                     <a href="{{ route('about') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('About') }}</a>
                     <a href="{{ route('api-docs') }}" class="block px-4 py-2 text-sm font-mono text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">API</a>
                 </div>
