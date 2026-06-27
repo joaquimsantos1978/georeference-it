@@ -239,7 +239,7 @@
             </div>
 
             {{-- Occurrences list (takes remaining space) --}}
-            <div class="p-3" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
+            <div id="occ-section" class="p-3" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
                 <div style="flex-shrink:0;margin-bottom:4px;">
                     <span id="occ-panel-label" class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Occurrences without coordinates') }}</span>
                     <div id="occurrence-count" class="text-xs text-gray-400 mt-0.5"></div>
@@ -258,6 +258,9 @@
                 <button id="load-more-occ-btn" onclick="loadMoreUngeoref()" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:5px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;flex-shrink:0;">{{ __('Load more') }}</button>
             </div>
         </div>
+
+        {{-- SPECIMENS PANEL (mobile only shell — occ-section is moved here by JS on mobile) --}}
+        <div id="specimens-panel" class="bg-white dark:bg-gray-900" style="display:none;"></div>
 
         {{-- Occurrence popup (draggable window, like image viewer) --}}
         <div id="occ-popup" style="display:none;position:absolute;top:60px;right:340px;z-index:30;width:320px;height:380px;min-width:220px;min-height:180px;"
@@ -577,12 +580,55 @@
     </div>
 
     {{-- Mobile bottom bar — outside georef-wrap --}}
+    {{-- Thin locality bar shown over map on mobile --}}
+    <div id="mob-locality-bar" style="display:none;position:fixed;top:48px;left:0;right:0;z-index:39;background:rgba(255,255,255,0.93);border-bottom:1px solid #e5e7eb;padding:3px 10px;backdrop-filter:blur(4px);">
+        <span id="mob-locality-text" style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;"></span>
+        <span id="mob-locality-spinner" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);">
+            <svg style="width:13px;height:13px;animation:spin 0.8s linear infinite;color:#9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+                <path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+        </span>
+    </div>
+
     <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:white;border-top:1px solid #e5e7eb;height:52px;"
         class="dark:bg-gray-900 dark:border-gray-700">
         <div style="display:flex;align-items:stretch;height:100%;">
 
-            {{-- Skip + Submit buttons (left) --}}
-            <div id="mob-action-bar" style="display:none;align-items:stretch;flex-shrink:0;border-right:1px solid #e5e7eb;" class="dark:border-gray-700">
+            {{-- Left group: Location | Specimens | Georef --}}
+            <div id="mob-action-bar" style="display:none;align-items:stretch;flex:1;" class="dark:border-gray-700">
+                <button id="mob-btn-info" onclick="mobileToggle('info')"
+                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;flex:1;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Location
+                </button>
+                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+                <button id="mob-btn-specimens" onclick="mobileToggle('specimens')"
+                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;flex:1;position:relative;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                    </svg>
+                    <span id="mob-occ-badge" style="display:none;position:absolute;top:4px;right:calc(50% - 18px);background:#6b7280;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
+                    Specimens
+                </button>
+                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+                <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
+                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;flex:1;position:relative;">
+                    <span style="position:relative;display:inline-block;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
+                    </span>
+                    Georef
+                </button>
+            </div>
+
+            {{-- Right group: Skip | Submit --}}
+            <div id="mob-right-bar" style="display:none;align-items:stretch;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
                 <button id="mob-skip-btn" onclick="mobSkip()"
                     style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:500;color:#6b7280;cursor:pointer;padding:0 14px;height:100%;">
                     Skip
@@ -592,41 +638,6 @@
                     style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:700;color:#16a34a;cursor:pointer;padding:0 14px;height:100%;opacity:0.35;" disabled>
                     Submit
                 </button>
-                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
-            </div>
-
-            {{-- Locality text (tappable → opens Location panel) --}}
-            <button onclick="mobileToggle('info')" style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;padding:0 10px;border:none;background:none;cursor:pointer;text-align:left;">
-                <span id="mob-locality-text" style="font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;">—</span>
-                <span id="mob-locality-spinner" style="display:none;flex-shrink:0;margin-left:6px;">
-                    <svg style="width:14px;height:14px;animation:spin 0.8s linear infinite;color:#9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
-                        <path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                </span>
-            </button>
-
-            {{-- Location + Georef toggle buttons (right) --}}
-            <div style="display:flex;align-items:stretch;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
-                <button id="mob-btn-info" onclick="mobileToggle('info')"
-                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;width:72px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Location
-                </button>
-                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
-                <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
-                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;width:72px;position:relative;">
-                    <span style="position:relative;display:inline-block;">
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                        <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
-                    </span>
-                    Georef
-                </button>
             </div>
         </div>
     </div>{{-- end #mobile-tabs --}}
@@ -634,6 +645,7 @@
     <style>
     /* Hidden on desktop, shown on mobile via media query */
     #mobile-tabs { display:none; }
+    #mob-locality-bar { display:none; }
 
     @keyframes mob-marquee {
         0%   { transform: translateX(0); }
@@ -647,19 +659,22 @@
 
     @media (max-width: 768px) {
         #mobile-tabs { display:block !important; }
+        #mob-locality-bar { display:block !important; }
         #mob-action-bar.mob-loaded { display:flex !important; }
         #mob-action-bar { display:none; }
+        #mob-right-bar.mob-loaded { display:flex !important; }
+        #mob-right-bar { display:none; }
 
         #georef-wrap { flex-direction: column !important; padding-bottom: 52px; }
 
-        #left-panel {
+        /* shared drawer style for all 3 panels */
+        #left-panel, #specimens-panel, #right-panel {
             position: fixed !important;
             bottom: 52px !important;
             left: 0 !important;
             right: 0 !important;
             width: 100% !important;
-            height: 65vh !important;
-            max-height: 65vh !important;
+            border-left: none !important;
             border-right: none !important;
             border-top: 2px solid #e5e7eb !important;
             border-radius: 16px 16px 0 0 !important;
@@ -668,9 +683,17 @@
             transition: transform 0.3s cubic-bezier(.4,0,.2,1) !important;
             box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
             pointer-events: none !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
-        #left-panel.mob-open { transform: translateY(0) !important; pointer-events:auto !important; }
-        #left-panel::before {
+        #left-panel     { height: 60vh !important; max-height: 60vh !important; }
+        #specimens-panel{ height: 65vh !important; max-height: 65vh !important; }
+        #right-panel    { height: 75vh !important; max-height: 75vh !important; }
+
+        #left-panel.mob-open, #specimens-panel.mob-open, #right-panel.mob-open {
+            transform: translateY(0) !important; pointer-events:auto !important;
+        }
+        #left-panel::before, #specimens-panel::before, #right-panel::before {
             content: '';
             display: block;
             width: 36px; height: 4px;
@@ -680,37 +703,11 @@
             flex-shrink: 0;
         }
 
-        #right-panel {
-            position: fixed !important;
-            bottom: 52px !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 100% !important;
-            height: 75vh !important;
-            max-height: 75vh !important;
-            border-left: none !important;
-            border-top: 2px solid #e5e7eb !important;
-            border-radius: 16px 16px 0 0 !important;
-            z-index: 40 !important;
-            transform: translateY(100%) !important;
-            transition: transform 0.3s cubic-bezier(.4,0,.2,1) !important;
-            box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
-            pointer-events: none !important;
-        }
-        #right-panel.mob-open { transform: translateY(0) !important; pointer-events:auto !important; }
-        #right-panel::before {
-            content: '';
-            display: block;
-            width: 36px; height: 4px;
-            background: #d1d5db;
-            border-radius: 2px;
-            margin: 8px auto 4px;
-            flex-shrink: 0;
-        }
+        #occ-section { flex:1; min-height:0; }
 
         #map {
             position: fixed !important;
-            top: 48px !important;
+            top: 70px !important;
             left: 0 !important;
             right: 0 !important;
             bottom: 52px !important;
@@ -721,7 +718,7 @@
 
         #map-loading {
             position: fixed !important;
-            top: 48px !important; left: 0 !important; right: 0 !important;
+            top: 70px !important; left: 0 !important; right: 0 !important;
             bottom: 52px !important;
             z-index: 10 !important;
         }
@@ -732,9 +729,9 @@
             top: 8px !important;
         }
 
-        /* Help button — push below navbar on mobile */
+        /* Help button — push below locality bar on mobile */
         #tut-btn {
-            top: 58px !important;
+            top: 78px !important;
         }
     }
     </style>
@@ -1737,6 +1734,7 @@ function updateHistoryNav() {
         renderComments(comments||[]);
         updateMobileBar(group, (suggestions||[]).length);
         var mab=document.getElementById('mob-action-bar'); if(mab) mab.classList.add('mob-loaded');
+        var mrb=document.getElementById('mob-right-bar'); if(mrb) mrb.classList.add('mob-loaded');
 
 if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
@@ -2057,38 +2055,72 @@ document.addEventListener('click', function() {
 // ── Mobile panel toggles ──────────────────────────────────────────────────────
 function mobileToggle(panel) {
     var left  = document.getElementById('left-panel');
+    var spec  = document.getElementById('specimens-panel');
     var right = document.getElementById('right-panel');
     var btnInfo = document.getElementById('mob-btn-info');
+    var btnSpec = document.getElementById('mob-btn-specimens');
     var btnSug  = document.getElementById('mob-btn-suggest');
-    var active  = '#16a34a', inactive = '#6b7280';
+    var active = '#16a34a', inactive = '#6b7280';
+    var panels = [left, spec, right];
+    var btns   = [btnInfo, btnSpec, btnSug];
 
-    if (panel === 'info') {
-        var opening = !left.classList.contains('mob-open');
-        left.classList.toggle('mob-open');
-        right.classList.remove('mob-open');
-        btnInfo.style.color = opening ? active : inactive;
-        btnSug.style.color  = inactive;
-        if (opening) map.invalidateSize();
-    } else {
-        var opening = !right.classList.contains('mob-open');
-        right.classList.toggle('mob-open');
-        left.classList.remove('mob-open');
-        btnSug.style.color  = opening ? active : inactive;
-        btnInfo.style.color = inactive;
-        if (opening) map.invalidateSize();
+    // Ensure occ-section lives in specimens-panel on mobile
+    if (window.innerWidth <= 768) {
+        var occSection = document.getElementById('occ-section');
+        if (occSection && occSection.parentElement !== spec) spec.appendChild(occSection);
+    }
+
+    var target = panel === 'info' ? left : panel === 'specimens' ? spec : right;
+    var targetBtn = panel === 'info' ? btnInfo : panel === 'specimens' ? btnSpec : btnSug;
+    var opening = !target.classList.contains('mob-open');
+
+    panels.forEach(function(p){ if(p) p.classList.remove('mob-open'); });
+    btns.forEach(function(b){ if(b) b.style.color = inactive; });
+
+    if (opening) {
+        target.classList.add('mob-open');
+        if (targetBtn) targetBtn.style.color = active;
+        map.invalidateSize();
     }
 }
 
+// Add swipe-down-to-close for all 3 mobile panels
+(function addSwipeClose() {
+    ['left-panel','specimens-panel','right-panel'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var startY = 0, dragging = false;
+        el.addEventListener('touchstart', function(e) {
+            startY = e.touches[0].clientY; dragging = true;
+        }, {passive:true});
+        el.addEventListener('touchmove', function(e) {
+            if (!dragging) return;
+            var dy = e.touches[0].clientY - startY;
+            if (dy > 0) el.style.transform = 'translateY('+dy+'px)';
+        }, {passive:true});
+        el.addEventListener('touchend', function(e) {
+            if (!dragging) return;
+            dragging = false;
+            var dy = e.changedTouches[0].clientY - startY;
+            el.style.transform = '';
+            if (dy > 60) {
+                el.classList.remove('mob-open');
+                ['mob-btn-info','mob-btn-specimens','mob-btn-suggest'].forEach(function(bid){
+                    var b = document.getElementById(bid); if(b) b.style.color='#6b7280';
+                });
+            }
+        }, {passive:true});
+    });
+})();
+
 function updateMobileBar(group, suggestionCount) {
-    // Build full locality string from all available fields
+    // Build locality text for thin bar
     var parts = [];
     if (group.verbatim_locality) parts.push(group.verbatim_locality);
-    if (group.municipality)      parts.push(group.municipality);
-    if (group.county)            parts.push(group.county);
-    if (group.state_province)    parts.push(group.state_province);
-    if (group.island)            parts.push(group.island);
-    if (group.water_body)        parts.push(group.water_body);
-    if (group.country_code)      parts.push(group.country_code);
+    if (group.municipality && !parts.join(' ').toLowerCase().includes((group.municipality||'').toLowerCase())) parts.push(group.municipality);
+    if (group.county       && !parts.join(' ').toLowerCase().includes((group.county||'').toLowerCase()))       parts.push(group.county);
+    if (group.state_province) parts.push(group.state_province);
+    if (group.country_code)   parts.push(group.country_code);
     var text = parts.join(', ') || '—';
 
     var el = document.getElementById('mob-locality-text');
@@ -2097,16 +2129,25 @@ function updateMobileBar(group, suggestionCount) {
     var spinner = document.getElementById('mob-locality-spinner');
     if (spinner) spinner.style.display = 'none';
 
-    // Suggestion badge
+    // Suggestion badge on Georef button
     var badge = document.getElementById('mob-sugg-badge');
     if (badge) {
-        if (suggestionCount > 0) {
-            badge.style.display = 'inline-block';
-            badge.textContent   = suggestionCount > 9 ? '9+' : suggestionCount;
-        } else {
-            badge.style.display = 'none';
-        }
+        badge.style.display = suggestionCount > 0 ? 'inline-block' : 'none';
+        if (suggestionCount > 0) badge.textContent = suggestionCount > 9 ? '9+' : suggestionCount;
     }
+
+    // Specimens badge (occurrence count)
+    var occBadge = document.getElementById('mob-occ-badge');
+    var occCount = document.getElementById('occurrence-count');
+    if (occBadge && occCount) {
+        var n = parseInt(occCount.textContent) || 0;
+        occBadge.style.display = n > 0 ? 'inline-block' : 'none';
+        if (n > 0) occBadge.textContent = n > 99 ? '99+' : n;
+    }
+
+    // Show right bar (Skip/Submit)
+    var rb = document.getElementById('mob-right-bar');
+    if (rb) rb.classList.add('mob-loaded');
 }
 
 function mobSkip() {
@@ -2114,6 +2155,10 @@ function mobSkip() {
     if (el) el.textContent = '';
     var spinner = document.getElementById('mob-locality-spinner');
     if (spinner) spinner.style.display = 'inline-flex';
+    // Close any open panel
+    ['left-panel','specimens-panel','right-panel'].forEach(function(id){
+        var p = document.getElementById(id); if(p) p.classList.remove('mob-open');
+    });
     loadNextGroup();
 }
 
