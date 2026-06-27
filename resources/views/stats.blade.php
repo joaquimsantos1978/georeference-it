@@ -55,13 +55,13 @@
                 <div style="width:{{ $pctValidated }}%;background:#15803d;height:100%"></div>
                 <div style="width:{{ $pctPending }}%;background:#fb923c;height:100%"></div>
             </div>
-            <div class="flex flex-wrap items-center gap-y-2 mt-4 text-xs text-gray-500">
-                <span class="flex items-center gap-1.5 pr-5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#22c55e"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($gbifOcc) }}</strong>&nbsp;({{ $pctGbif }}%)</span>
-                <span class="text-gray-300 dark:text-gray-600 pr-5">|</span>
-                <span class="flex items-center gap-1.5 pr-5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#15803d"></span> Validated by community <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($validatedOcc) }}</strong>&nbsp;({{ $pctValidated }}%)</span>
-                <span class="text-gray-300 dark:text-gray-600 pr-5">|</span>
-                <span class="flex items-center gap-1.5 pr-5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#fb923c"></span> Pending review <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($pendingOcc) }}</strong>&nbsp;({{ $pctPending }}%)</span>
-                <span class="text-gray-300 dark:text-gray-600 pr-5">|</span>
+            <div class="flex flex-wrap items-center gap-y-3 mt-4 text-xs text-gray-500" style="gap-x:0">
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#22c55e"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($gbifOcc) }}</strong>&nbsp;({{ $pctGbif }}%)</span>
+                <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#15803d"></span> Validated by community <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($validatedOcc) }}</strong>&nbsp;({{ $pctValidated }}%)</span>
+                <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#fb923c"></span> Pending review <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($pendingOcc) }}</strong>&nbsp;({{ $pctPending }}%)</span>
+                <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
                 <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#e5e7eb"></span> No coordinates <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($needsGeoref) }}</strong>&nbsp;({{ $pctUngeoref }}%)</span>
             </div>
         </div>

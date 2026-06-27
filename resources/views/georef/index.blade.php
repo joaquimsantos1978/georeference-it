@@ -2004,7 +2004,7 @@ if(urlGbifKey) {
 } else {
     function applyLocationAndLoad(loc) {
         var countryCode = loc && loc.country_code ? loc.country_code : null;
-        if (countryCode) {
+        if (countryCode && !urlCountry) {
             window._georefCountry = countryCode;
             var sel = document.getElementById('country-select');
             if (sel) {
