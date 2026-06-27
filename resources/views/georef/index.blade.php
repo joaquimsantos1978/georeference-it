@@ -1051,13 +1051,13 @@ function buildLocalityString(g) {
         if (r.geojson && (r.geojson.type==='Polygon'||r.geojson.type==='MultiPolygon')) {
             if (window._nominatimPolygon) map.removeLayer(window._nominatimPolygon);
             window._nominatimPolygon=L.geoJSON(r.geojson,{style:{color:'#16a34a',weight:2,fillOpacity:0.05}}).addTo(map);
-            const bounds=window._nominatimPolygon.getBounds(), center=bounds.getCenter();
+            const bounds=window._nominatimPolygon.getBounds();
             const verts=[]; function cv(c){if(Array.isArray(c[0]))c.forEach(x=>cv(x));else verts.push(c);}
             if(r.geojson.type==='Polygon') r.geojson.coordinates.forEach(ring=>cv(ring));
             else r.geojson.coordinates.forEach(poly=>poly.forEach(ring=>cv(ring)));
             const R=6371000; let mx=0;
             verts.forEach(([vLon,vLat])=>{
-                const a=Math.sin(((vLat-center.lat)*Math.PI/180)/2)**2+Math.cos(center.lat*Math.PI/180)*Math.cos(vLat*Math.PI/180)*Math.sin(((vLon-center.lng)*Math.PI/180)/2)**2;
+                const a=Math.sin(((vLat-lat)*Math.PI/180)/2)**2+Math.cos(lat*Math.PI/180)*Math.cos(vLat*Math.PI/180)*Math.sin(((vLon-lon)*Math.PI/180)/2)**2;
                 const d=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); if(d>mx)mx=d;
             });
             const unc=Math.round(mx);
@@ -1065,7 +1065,7 @@ function buildLocalityString(g) {
             document.getElementById('uncertainty-slider').max=Math.max(500000,Math.round(unc*1.5));
             document.getElementById('uncertainty-slider').value=unc;
             document.getElementById('uncertainty-display').textContent=unc.toLocaleString()+'m';
-            placeMarker(center.lat,center.lng); map.fitBounds(bounds,{padding:[20,20]});
+            placeMarker(lat,lon); map.fitBounds(bounds,{padding:[20,20]});
         } else { placeMarker(lat,lon); map.flyTo([lat,lon],12); }
         document.getElementById('nominatim-results').innerHTML='';
     }
