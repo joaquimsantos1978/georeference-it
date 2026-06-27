@@ -65,11 +65,17 @@
 
         {{-- Per-country table --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
                 <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">By country</h2>
+                <select id="sort-select" onchange="sortTable(this.value)" class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
+                    <option value="remaining">Most work remaining</option>
+                    <option value="alpha">Alphabetical</option>
+                    <option value="progress">Progress (low → high)</option>
+                    <option value="total">Total occurrences</option>
+                </select>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table id="country-table" class="w-full text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
                             <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Country</th>
@@ -79,7 +85,7 @@
                             <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide"></th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody id="country-tbody" class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($byCountry as $row)
                         @php
                             $tot   = (int) $row->total_occ;
@@ -94,7 +100,11 @@
                             $cc      = strtoupper($row->country_code ?? '');
                             $name    = $cc ? (\Locale::getDisplayRegion('-'.$cc, 'en') ?: $cc) : '—';
                         @endphp
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                            data-name="{{ $name }}"
+                            data-remaining="{{ $ung }}"
+                            data-progress="{{ $pct }}"
+                            data-total="{{ $tot }}">
                             <td class="px-5 py-3 font-medium text-gray-800 dark:text-gray-200">
                                 <span class="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded mr-2">{{ $cc }}</span>
                                 {{ $name }}
@@ -134,5 +144,19 @@
         </div>
 
     </div>
+
+    <script>
+    function sortTable(by) {
+        var tbody = document.getElementById('country-tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a, b) {
+            if (by === 'alpha')     return a.dataset.name.localeCompare(b.dataset.name);
+            if (by === 'remaining') return parseInt(b.dataset.remaining) - parseInt(a.dataset.remaining);
+            if (by === 'progress')  return parseInt(a.dataset.progress)  - parseInt(b.dataset.progress);
+            if (by === 'total')     return parseInt(b.dataset.total)     - parseInt(a.dataset.total);
+        });
+        rows.forEach(function(r) { tbody.appendChild(r); });
+    }
+    </script>
 
 </x-layouts.app>
