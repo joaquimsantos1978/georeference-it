@@ -50,16 +50,16 @@
         @endphp
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
             <div class="text-xs text-gray-500 mb-2">{{ number_format($pendingGroups) }} locality groups with work remaining</div>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden flex">
-                <div class="bg-green-500 h-4" style="width:{{ $pctGbif }}%"></div>
-                <div class="bg-green-700 h-4" style="width:{{ $pctValidated }}%"></div>
-                <div class="bg-orange-400 h-4" style="width:{{ $pctPending }}%"></div>
+            <div class="w-full rounded-full h-4 overflow-hidden flex" style="background:#e5e7eb">
+                <div style="width:{{ $pctGbif }}%;background:#22c55e;height:100%"></div>
+                <div style="width:{{ $pctValidated }}%;background:#15803d;height:100%"></div>
+                <div style="width:{{ $pctPending }}%;background:#fb923c;height:100%"></div>
             </div>
             <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-6 gap-y-2 mt-4 text-xs text-gray-500">
-                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0 bg-green-500"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($gbifOcc) }}</strong>&nbsp;({{ $pctGbif }}%)</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0 bg-green-700"></span> Validated by community <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($validatedOcc) }}</strong>&nbsp;({{ $pctValidated }}%)</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0 bg-orange-400"></span> Pending review <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($pendingOcc) }}</strong>&nbsp;({{ $pctPending }}%)</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0 bg-gray-200 dark:bg-gray-600"></span> No coordinates <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($needsGeoref) }}</strong>&nbsp;({{ $pctUngeoref }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#22c55e"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($gbifOcc) }}</strong>&nbsp;({{ $pctGbif }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#15803d"></span> Validated by community <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($validatedOcc) }}</strong>&nbsp;({{ $pctValidated }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#fb923c"></span> Pending review <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($pendingOcc) }}</strong>&nbsp;({{ $pctPending }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#e5e7eb"></span> No coordinates <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($needsGeoref) }}</strong>&nbsp;({{ $pctUngeoref }}%)</span>
             </div>
         </div>
 
@@ -67,7 +67,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
                 <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">By country</h2>
-                <select id="sort-select" onchange="sortTable(this.value)" class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
+                <select id="sort-select" onchange="sortTable(this.value)" class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg pl-2 pr-7 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
                     <option value="remaining">Most work remaining</option>
                     <option value="alpha">Alphabetical</option>
                     <option value="progress">Progress (low → high)</option>
@@ -115,10 +115,10 @@
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
-                                    <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden flex">
-                                        <div class="bg-green-700 h-2" style="width:{{ $pctVal }}%"></div>
-                                        <div class="bg-green-500 h-2" style="width:{{ $pctGbif }}%"></div>
-                                        <div class="bg-orange-400 h-2" style="width:{{ $pctPen }}%"></div>
+                                    <div class="flex-1 rounded-full h-2 overflow-hidden flex" style="background:#e5e7eb">
+                                        <div style="width:{{ $pctGbif }}%;background:#22c55e;height:100%"></div>
+                                        <div style="width:{{ $pctVal }}%;background:#15803d;height:100%"></div>
+                                        <div style="width:{{ $pctPen }}%;background:#fb923c;height:100%"></div>
                                     </div>
                                     <span class="text-xs text-gray-400 w-8 text-right">{{ $pct }}%</span>
                                 </div>
