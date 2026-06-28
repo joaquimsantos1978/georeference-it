@@ -38,42 +38,41 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
-        if ($request->hasFile('avatar')) {
-            \Log::info('Avatar upload attempt', ['file' => $request->file('avatar')?->getClientOriginalName(), 'size' => $request->file('avatar')?->getSize()]);
-            try {
-                // Delete old avatar if stored locally
-                if ($user->avatar && str_starts_with($user->avatar, '/storage/avatars/')) {
-                    Storage::disk('public')->delete('avatars/' . basename($user->avatar));
-                }
 
-                $file   = $request->file('avatar');
-                $source = imagecreatefromstring(file_get_contents($file->getRealPath()));
-                if ($source === false) throw new \Exception('imagecreatefromstring failed');
-                [$w, $h] = getimagesize($file->getRealPath());
+        $user->save();
 
-                $size   = min($w, $h);
-                $x      = (int)(($w - $size) / 2);
-                $y      = (int)(($h - $size) / 2);
-                $canvas = imagecreatetruecolor(200, 200);
-                imagecopyresampled($canvas, $source, 0, 0, $x, $y, 200, 200, $size, $size);
-                imagedestroy($source);
+        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
 
-                $filename = 'avatars/' . $user->id . '_' . time() . '.jpg';
-                ob_start();
-                imagejpeg($canvas, null, 85);
-                $data = ob_get_clean();
-                imagedestroy($canvas);
+    public function uploadAvatar(Request $request): RedirectResponse
+    {
+        $request->validate(['avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:2048']]);
 
-                Storage::disk('public')->put($filename, $data);
-                $user->avatar = '/storage/' . $filename;
-                \Log::info('Avatar saved', ['path' => $user->avatar]);
-            } catch (\Throwable $e) {
-                \Log::error('Avatar upload failed', ['error' => $e->getMessage()]);
-            }
-        } else {
-            \Log::info('No avatar file in request');
+        $user = $request->user();
+
+        if ($user->avatar && str_starts_with($user->avatar, '/storage/avatars/')) {
+            Storage::disk('public')->delete('avatars/' . basename($user->avatar));
         }
 
+        $file   = $request->file('avatar');
+        $source = imagecreatefromstring(file_get_contents($file->getRealPath()));
+        [$w, $h] = getimagesize($file->getRealPath());
+
+        $size   = min($w, $h);
+        $x      = (int)(($w - $size) / 2);
+        $y      = (int)(($h - $size) / 2);
+        $canvas = imagecreatetruecolor(200, 200);
+        imagecopyresampled($canvas, $source, 0, 0, $x, $y, 200, 200, $size, $size);
+        imagedestroy($source);
+
+        $filename = 'avatars/' . $user->id . '_' . time() . '.jpg';
+        ob_start();
+        imagejpeg($canvas, null, 85);
+        $data = ob_get_clean();
+        imagedestroy($canvas);
+
+        Storage::disk('public')->put($filename, $data);
+        $user->avatar = '/storage/' . $filename;
         $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');

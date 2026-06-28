@@ -13,9 +13,16 @@
                         {{ strtoupper(substr($user->name, 0, 1)) }}
                     @endif
                 </div>
-                <label for="avatar-upload" class="text-xs text-green-600 hover:text-green-700 cursor-pointer font-medium">
-                    {{ $user->avatar ? __('Change photo') : __('Upload photo') }}
-                </label>
+                {{-- Dedicated avatar upload form --}}
+                <form id="avatar-form" method="POST" action="{{ route('profile.avatar.upload') }}" enctype="multipart/form-data">
+                    @csrf
+                    <input type="file" id="avatar-upload" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden"
+                        onchange="document.getElementById('avatar-form').submit()">
+                    <label for="avatar-upload" class="text-xs text-green-600 hover:text-green-700 cursor-pointer font-medium">
+                        {{ $user->avatar ? __('Change photo') : __('Upload photo') }}
+                    </label>
+                </form>
+                @error('avatar')<p class="text-red-500 text-xs">{{ $message }}</p>@enderror
                 @if($user->avatar)
                     <form method="POST" action="{{ route('profile.avatar.remove') }}">
                         @csrf @method('DELETE')
@@ -76,10 +83,6 @@
             <form method="POST" action="{{ route('profile.update') }}" class="space-y-4" enctype="multipart/form-data">
                 @csrf @method('PATCH')
 
-                {{-- Hidden avatar upload (triggered by clicking the avatar in the header) --}}
-                <input type="file" id="avatar-upload" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden"
-                    onchange="this.form.submit()">
-                @error('avatar')<p class="text-red-500 text-xs mb-2">{{ $message }}</p>@enderror
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Name') }}</label>

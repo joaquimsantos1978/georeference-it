@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::delete('/profile/orcid', [ProfileController::class, 'disconnectOrcid'])->name('profile.orcid.disconnect');
+    Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar'])->name('profile.avatar.upload');
     Route::delete('/profile/avatar', [ProfileController::class, 'removeAvatar'])->name('profile.avatar.remove');
 
     Route::get('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
