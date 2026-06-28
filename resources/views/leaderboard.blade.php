@@ -14,6 +14,7 @@
                         <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Validated georefs') }}</th>
                         <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Suggestions') }}</th>
                         <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Reviews') }}</th>
+                        <th class="px-5 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -45,6 +46,11 @@
                         <td class="px-5 py-3 font-semibold text-gray-900 dark:text-white">{{ number_format($user->total_validated) }}</td>
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->suggestions_count) }}</td>
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->reviews_count) }}</td>
+                        <td class="px-5 py-3">
+                            @if($user->public_name || (auth()->check() && auth()->id() === $user->id))
+                            <a href="{{ route('activity') }}?user={{ $user->id }}" class="text-xs text-green-600 hover:underline">Activity</a>
+                            @endif
+                        </td>
                     </tr>
                     @empty
                     <tr>

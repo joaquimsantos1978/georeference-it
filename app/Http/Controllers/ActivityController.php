@@ -40,8 +40,11 @@ class ActivityController extends Controller
             ->simplePaginate(40)
             ->withQueryString();
 
-        // Public users for filter dropdown
-        $publicUsers = User::where('public_name', true)
+        // Users for filter dropdown — public_name=true, or the auth user themselves
+        $publicUsers = User::where(function($q) use ($authId) {
+                $q->where('public_name', true);
+                if ($authId) $q->orWhere('id', $authId);
+            })
             ->withCount('suggestions')
             ->having('suggestions_count', '>', 0)
             ->orderByDesc('suggestions_count')
