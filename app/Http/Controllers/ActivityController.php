@@ -29,7 +29,7 @@ class ActivityController extends Controller
 
         $activities = DB::table('activity_log as al')
             ->select(
-                'al.id', 'al.type', 'al.locality_group_id', 'al.occ_count',
+                'al.id', 'al.type', 'al.source', 'al.locality_group_id', 'al.occ_count',
                 'al.lat', 'al.lng', 'al.uncertainty_m', 'al.remarks',
                 'al.country_code', 'al.location_label', 'al.created_at', 'al.user_id',
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL) as user_name"),

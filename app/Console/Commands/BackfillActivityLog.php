@@ -19,9 +19,14 @@ class BackfillActivityLog extends Command
 
         $this->info('Backfilling georef events...');
         DB::statement("
-            INSERT IGNORE INTO activity_log (type, user_id, locality_group_id, occ_count, lat, lng, uncertainty_m, remarks, country_code, location_label, created_at)
+            INSERT IGNORE INTO activity_log (type, source, user_id, locality_group_id, occ_count, lat, lng, uncertainty_m, remarks, country_code, location_label, created_at)
             SELECT
                 'georef',
+                CASE
+                    WHEN gs.georeference_sources = 'GBIF_CONSISTENCY_CHECK' THEN 'system'
+                    WHEN gs.user_id IS NULL THEN 'anonymous'
+                    ELSE 'user'
+                END,
                 gs.user_id,
                 gs.locality_group_id,
                 COUNT(*),
@@ -45,9 +50,10 @@ class BackfillActivityLog extends Command
 
         $this->info('Backfilling validation events...');
         DB::statement("
-            INSERT IGNORE INTO activity_log (type, user_id, locality_group_id, occ_count, country_code, location_label, created_at)
+            INSERT IGNORE INTO activity_log (type, source, user_id, locality_group_id, occ_count, country_code, location_label, created_at)
             SELECT
                 CASE gv.vote WHEN 'agree' THEN 'validation_agree' WHEN 'disagree' THEN 'validation_disagree' ELSE 'validation_abstain' END,
+                'user',
                 gv.user_id,
                 gs.locality_group_id,
                 1,

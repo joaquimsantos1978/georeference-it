@@ -516,8 +516,10 @@ public function next(Request $request)
         $locationLabel = trim(implode(', ', array_filter([
             $group->verbatim_locality, $group->municipality, $group->county,
         ])));
+        $activitySource = auth()->check() ? 'user' : 'anonymous';
         DB::table('activity_log')->insert([
             'type'             => 'georef',
+            'source'           => $activitySource,
             'user_id'          => auth()->id(),
             'locality_group_id'=> $group->id,
             'occ_count'        => $group->occurrences()->whereNotIn('id', $validated['excluded_occurrence_ids'] ?? [])->count(),
@@ -536,6 +538,7 @@ public function next(Request $request)
                 $simLabel = trim(implode(', ', array_filter([$simGroup->verbatim_locality, $simGroup->municipality, $simGroup->county])));
                 DB::table('activity_log')->insert([
                     'type'             => 'georef',
+                    'source'           => $activitySource,
                     'user_id'          => auth()->id(),
                     'locality_group_id'=> $simGroup->id,
                     'occ_count'        => $simGroup->occurrence_count ?: 1,
@@ -840,6 +843,7 @@ private function countryNameToIso2(): array
             $locationLabel = $group ? trim(implode(', ', array_filter([$group->verbatim_locality, $group->municipality, $group->county]))) : null;
             DB::table('activity_log')->insert([
                 'type'             => 'validation_' . $vote,
+                'source'           => 'user',
                 'user_id'          => $user->id,
                 'locality_group_id'=> $suggestion->locality_group_id,
                 'occ_count'        => 1,

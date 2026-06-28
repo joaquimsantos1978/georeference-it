@@ -56,8 +56,12 @@
                             @if($row->user_avatar)
                                 <img src="{{ $row->user_avatar }}" class="w-8 h-8 rounded-full" alt="">
                             @else
-                                <div class="w-8 h-8 rounded-full {{ is_null($row->user_id) ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-200 dark:bg-gray-600' }} flex items-center justify-center text-gray-500 dark:text-gray-300 text-xs font-bold">
-                                    {{ $row->user_name ? strtoupper(substr($row->user_name, 0, 1)) : (is_null($row->user_id) ? 'S' : '?') }}
+                                <div class="w-8 h-8 rounded-full {{ $row->source === 'system' ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-200 dark:bg-gray-600' }} flex items-center justify-center text-gray-500 dark:text-gray-300 text-xs font-bold">
+                                    @if($row->user_name){{ strtoupper(substr($row->user_name, 0, 1)) }}
+                                    @elseif($row->source === 'system') S
+                                    @elseif($row->source === 'anonymous') A
+                                    @else ?
+                                    @endif
                                 </div>
                             @endif
                         </div>
@@ -67,8 +71,10 @@
                             <div class="text-sm text-gray-800 dark:text-gray-200">
                                 @if($row->user_name)
                                     <a href="{{ route('activity') }}?user={{ $row->public_user_id }}" class="font-semibold hover:text-green-600">{{ $row->user_name }}</a>
-                                @elseif(is_null($row->user_id))
-                                    <span class="font-semibold text-gray-400">System</span>
+                                @elseif($row->source === 'system')
+                                    <span class="font-semibold text-blue-400">System</span>
+                                @elseif($row->source === 'anonymous')
+                                    <span class="font-semibold text-gray-400">Anonymous</span>
                                 @else
                                     <span class="font-semibold text-gray-500">Hidden contributor</span>
                                 @endif
