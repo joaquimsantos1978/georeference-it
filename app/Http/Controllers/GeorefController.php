@@ -477,7 +477,7 @@ public function next(Request $request)
                         ->delete();
                 }
 
-                GeorefSuggestion::create([
+                $simSuggestion = GeorefSuggestion::create([
                     'locality_group_id'        => $simGroup->id,
                     'locality_group_hash'      => $simGroup->group_hash,
                     'occurrence_id'            => $simGroup->occurrences()->first()?->id,
@@ -494,6 +494,10 @@ public function next(Request $request)
                     'total_points'             => 0,
                     'georeferenced_date'       => now(),
                 ]);
+
+                if (auth()->check()) {
+                    $this->applyVote($simSuggestion, auth()->user(), 'agree', false);
+                }
 
                 $simGroup->occurrences()
                     ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
