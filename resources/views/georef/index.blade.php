@@ -451,6 +451,11 @@
                 <div id="suggestions-list" class="px-3 pb-2 space-y-2 overflow-y-auto" style="flex:1;min-height:0;">
                     <p id="suggestions-empty" style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __('No suggestions yet for this group.') }}</p>
                 </div>
+                <div id="dismiss-system-row" style="display:none" class="px-3 pb-2">
+                    <button id="dismiss-system-btn" class="w-full text-xs border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-400 dark:bg-amber-900/20 rounded-lg py-1.5 font-medium">
+                        {{ __('No conflict — dismiss system suggestions') }}
+                    </button>
+                </div>
             </div>
 
             {{-- Similar groups --}}
@@ -530,16 +535,9 @@
             </div>
 
             {{-- Action buttons --}}
-            <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2 shrink-0">
-                <div id="dismiss-system-row" style="display:none">
-                    <button id="dismiss-system-btn" class="w-full text-xs border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-400 dark:bg-amber-900/20 rounded-lg py-1.5 font-medium">
-                        {{ __('No conflict — dismiss system suggestions') }}
-                    </button>
-                </div>
-                <div class="flex gap-2">
-                    <button id="skip-btn" class="flex-1 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 rounded-lg py-2 hover:bg-gray-50">{{ __('Skip') }}</button>
-                    <button id="submit-btn" class="flex-1 text-sm bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>{{ __('Submit') }}</button>
-                </div>
+            <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0">
+                <button id="skip-btn" class="flex-1 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 rounded-lg py-2 hover:bg-gray-50">{{ __('Skip') }}</button>
+                <button id="submit-btn" class="flex-1 text-sm bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>{{ __('Submit') }}</button>
             </div>
             <p id="submit-hint" style="display:none;font-size:10px;color:#9ca3af;text-align:center;margin-top:4px">{{ __('Check "Correct georef. occurrences" on at least one card to enable submit.') }}</p>
         </div>
