@@ -1609,7 +1609,10 @@ function updateHistoryNav() {
                 + '<input type="checkbox" class="similar-group-cb" data-id="'+g.id+'" checked '
                 + 'style="margin-top:2px;flex-shrink:0;accent-color:#ea580c;">'
                 + '<div style="min-width:0;flex:1;">'
-                + '<div style="font-size:10px;font-weight:600;color:#c2410c;word-break:break-word">'+escHtml(g.verbatim_locality || '—')+'</div>'
+                + '<div style="display:flex;align-items:center;gap:4px;">'
+                + '<span style="font-size:10px;font-weight:600;color:#c2410c;word-break:break-word">'+escHtml(g.verbatim_locality || '—')+'</span>'
+                + '<span title="{{ __("Checking this will create a new pending suggestion for this location group with the same coordinates. It will need to be validated by other members before being applied to any occurrences.") }}" style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#d1d5db;color:#374151;font-size:9px;font-weight:700;cursor:help;flex-shrink:0;">i</span>'
+                + '</div>'
                 + locationHtml
                 + '<div style="font-size:10px;color:#6b7280;margin-top:1px;display:flex;align-items:center;gap:6px;">'
                 + (statusBits.join(' · ') || '')
