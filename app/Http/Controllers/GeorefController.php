@@ -12,6 +12,7 @@ use App\Models\Occurrence;
 use App\Models\PlatformSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class GeorefController extends Controller
@@ -507,6 +508,44 @@ public function next(Request $request)
             $this->applyVote($suggestion, auth()->user(), 'agree');
         }
 
+        // Log the georef event
+        $locationLabel = trim(implode(', ', array_filter([
+            $group->verbatim_locality, $group->municipality, $group->county,
+        ])));
+        DB::table('activity_log')->insert([
+            'type'             => 'georef',
+            'user_id'          => auth()->id(),
+            'locality_group_id'=> $group->id,
+            'occ_count'        => $group->occurrences()->whereNotIn('id', $validated['excluded_occurrence_ids'] ?? [])->count(),
+            'lat'              => $validated['decimal_latitude'],
+            'lng'              => $validated['decimal_longitude'],
+            'uncertainty_m'    => $validated['coordinate_uncertainty_m'] ?? null,
+            'remarks'          => $validated['georeference_remarks'] ?? null,
+            'country_code'     => $group->country_code,
+            'location_label'   => $locationLabel ?: null,
+            'created_at'       => now(),
+        ]);
+
+        // Log similar group georef events
+        if (!empty($validated['similar_group_ids'])) {
+            foreach (LocalityGroup::whereIn('id', $validated['similar_group_ids'])->get() as $simGroup) {
+                $simLabel = trim(implode(', ', array_filter([$simGroup->verbatim_locality, $simGroup->municipality, $simGroup->county])));
+                DB::table('activity_log')->insert([
+                    'type'             => 'georef',
+                    'user_id'          => auth()->id(),
+                    'locality_group_id'=> $simGroup->id,
+                    'occ_count'        => $simGroup->occurrence_count ?: 1,
+                    'lat'              => $validated['decimal_latitude'],
+                    'lng'              => $validated['decimal_longitude'],
+                    'uncertainty_m'    => $validated['coordinate_uncertainty_m'] ?? null,
+                    'remarks'          => $validated['georeference_remarks'] ?? null,
+                    'country_code'     => $simGroup->country_code,
+                    'location_label'   => $simLabel ?: null,
+                    'created_at'       => now(),
+                ]);
+            }
+        }
+
         return response()->json(['success' => true, 'suggestion_id' => $suggestion->id]);
     }
 
@@ -780,7 +819,7 @@ private function countryNameToIso2(): array
         }
     }
 
-    private function applyVote(GeorefSuggestion $suggestion, $user, string $vote): void
+    private function applyVote(GeorefSuggestion $suggestion, $user, string $vote, bool $logActivity = true): void
     {
         $weight = $user->getVoteWeight();
 
@@ -790,6 +829,21 @@ private function countryNameToIso2(): array
             'vote'           => $vote,
             'points_awarded' => $vote === 'agree' ? $weight : -$weight,
         ]);
+
+        // Log validation — skip auto-agree on own submission (suggestion owner == voter)
+        if ($logActivity && $suggestion->user_id !== $user->id) {
+            $group = $suggestion->localityGroup;
+            $locationLabel = $group ? trim(implode(', ', array_filter([$group->verbatim_locality, $group->municipality, $group->county]))) : null;
+            DB::table('activity_log')->insert([
+                'type'             => 'validation_' . $vote,
+                'user_id'          => $user->id,
+                'locality_group_id'=> $suggestion->locality_group_id,
+                'occ_count'        => 1,
+                'country_code'     => $group?->country_code,
+                'location_label'   => $locationLabel ?: null,
+                'created_at'       => now(),
+            ]);
+        }
 
         if ($vote === 'agree') {
             $suggestion->increment('total_points', $weight);

@@ -24,78 +24,19 @@ class ActivityController extends Controller
             }
         }
 
-        // Georefs query uses GROUP BY so needs aggregate wrapper
-        $userVisibilityAgg = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL))";
-        $userIdVisibleAgg  = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL))";
-        $userAvatarAgg     = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL))";
-        // Validations query has no GROUP BY — plain expression
-        $userVisibility = "IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL)";
-        $userIdVisible  = "IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL)";
-        $userAvatar     = "IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL)";
-
-        $userFilter    = $filterUserId ? "AND gs.user_id = {$filterUserId}" : '';
-        $countryFilter = $filterCountry ? "AND lg.country_code = '{$filterCountry}'" : '';
-
-        $userFilterV    = $filterUserId ? "AND gv.user_id = {$filterUserId}" : '';
-
-        // Georef suggestions — one row per (locality_group, user) event
-        $georefs = "
-            SELECT
-                'georef'                             AS type,
-                gs.locality_group_id,
-                gs.user_id,
-                MAX(gs.created_at)                   AS activity_at,
-                COUNT(*)                             AS occ_count,
-                MIN(gs.decimal_latitude)       AS lat,
-                MIN(gs.decimal_longitude)      AS lng,
-                MIN(gs.coordinate_uncertainty_m) AS uncertainty_m,
-                MIN(gs.georeference_remarks)   AS remarks,
-                MIN(gs.status)                 AS status,
-                NULL                                 AS vote,
-                NULL                                 AS suggestion_owner_id,
-                lg.verbatim_locality, lg.municipality, lg.county, lg.state_province, lg.country_code,
-                {$userVisibilityAgg}                 AS user_name,
-                {$userIdVisibleAgg}                  AS public_user_id,
-                {$userAvatarAgg}                     AS user_avatar
-            FROM georef_suggestions gs
-            JOIN locality_groups lg ON lg.id = gs.locality_group_id
-            LEFT JOIN users u ON u.id = gs.user_id
-            WHERE gs.locality_group_id IS NOT NULL
-            {$userFilter}
-            {$countryFilter}
-            GROUP BY gs.locality_group_id, gs.user_id,
-                     lg.verbatim_locality, lg.municipality, lg.county, lg.state_province, lg.country_code
-        ";
-
-        // Validations — one row per vote
-        $validations = "
-            SELECT
-                CASE gv.vote WHEN 'agree' THEN 'validation_agree' WHEN 'disagree' THEN 'validation_disagree' ELSE 'validation_abstain' END AS type,
-                gs.locality_group_id,
-                gv.user_id,
-                gv.created_at                        AS activity_at,
-                1                                    AS occ_count,
-                NULL AS lat, NULL AS lng, NULL AS uncertainty_m, NULL AS remarks,
-                gs.status,
-                gv.vote,
-                gs.user_id                           AS suggestion_owner_id,
-                lg.verbatim_locality, lg.municipality, lg.county, lg.state_province, lg.country_code,
-                {$userVisibility}                    AS user_name,
-                {$userIdVisible}                     AS public_user_id,
-                {$userAvatar}                        AS user_avatar
-            FROM georef_validations gv
-            JOIN georef_suggestions gs ON gs.id = gv.suggestion_id
-            JOIN locality_groups lg ON lg.id = gs.locality_group_id
-            LEFT JOIN users u ON u.id = gv.user_id
-            WHERE gs.locality_group_id IS NOT NULL
-            {$userFilterV}
-            {$countryFilter}
-        ";
-
-        $union = "({$georefs}) UNION ALL ({$validations})";
-
-        $activities = DB::table(DB::raw("({$union}) AS activity"))
-            ->orderByDesc('activity_at')
+        $activities = DB::table('activity_log as al')
+            ->select(
+                'al.id', 'al.type', 'al.locality_group_id', 'al.occ_count',
+                'al.lat', 'al.lng', 'al.uncertainty_m', 'al.remarks',
+                'al.country_code', 'al.location_label', 'al.created_at',
+                DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL) as user_name"),
+                DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL) as public_user_id"),
+                DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL) as user_avatar")
+            )
+            ->leftJoin('users as u', 'u.id', '=', 'al.user_id')
+            ->when($filterUserId, fn($q) => $q->where('al.user_id', $filterUserId))
+            ->when($filterCountry, fn($q) => $q->where('al.country_code', $filterCountry))
+            ->orderByDesc('al.created_at')
             ->simplePaginate(40)
             ->withQueryString();
 
