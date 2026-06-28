@@ -1,7 +1,7 @@
 <x-layouts.app>
     <x-slot name="title">{{ __('Profile') }} — georeference.it</x-slot>
 
-    <div class="max-w-2xl space-y-6">
+    <div class="max-w-3xl space-y-6">
 
         {{-- Header --}}
         <div class="flex items-center gap-4">
@@ -31,7 +31,7 @@
         </div>
 
         {{-- Stats --}}
-        <div class="grid grid-cols-5 gap-4">
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
                 <div class="text-2xl font-bold text-green-600">{{ number_format($user->suggestions_count) }}</div>
                 <div class="text-xs text-gray-500 mt-1">{{ __('Georefs') }}</div>
