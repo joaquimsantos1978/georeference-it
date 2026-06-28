@@ -191,7 +191,8 @@ public function next(Request $request)
     }
 
     // Priority: sibling of just-completed group (same normalized_locality + county + country)
-    if ($excludeId) {
+    // Skip when focus is active — the user explicitly changed context
+    if ($excludeId && $focus === '') {
         $sibling = LocalityGroup::where('id', '!=', $excludeId)
             ->whereNotIn('id', $seenIds)
             ->where(function ($q) use ($excludeId) {
