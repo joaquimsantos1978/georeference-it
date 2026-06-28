@@ -44,10 +44,11 @@
 
   .btn {
     display: block; text-align: center; padding: 6px 0; margin-top: 1px;
-    background: #4C9C2E; color: #fff; border-radius: 4px;
+    background: #fff; color: #4C9C2E; border-radius: 4px;
+    border: 1px solid #4C9C2E;
     font-size: 11.5px; font-weight: 600; text-decoration: none;
   }
-  .btn:hover { background: #3d8025; }
+  .btn:hover { background: #f0fdf4; }
 
   .not-found { display: flex; align-items: center; justify-content: center;
                height: 100%; color: #9ca3af; font-size: 11px; }
