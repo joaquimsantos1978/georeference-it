@@ -1290,7 +1290,8 @@ function clearPanel() {
     clearSuggestionLayers(); closeImgViewer();
     document.getElementById('submit-btn').disabled=true;
     var ms=document.getElementById('mob-submit-btn'); if(ms){ms.disabled=true;ms.style.opacity='0.4';}
-    pendingVotes={}; georefMode='new'; _currentSuggestions=[];
+    pendingVotes={}; georefMode='new'; _currentSuggestions=[]; _correctSuggestionIds=new Set(); _correctGbifOccurrenceIds=new Set();
+    var _dsr=document.getElementById('dismiss-system-row'); if(_dsr) _dsr.style.display='none';
     var wrap=document.getElementById('mode-toggle-wrap'); if(wrap) wrap.style.display='none';
     var hint=document.getElementById('map-click-hint'); if(hint) hint.style.display='block';
     document.getElementById('lat-input').value=''; document.getElementById('lng-input').value='';
@@ -1314,7 +1315,7 @@ function loadNextGroup() {
     if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
     if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
-    .then(r=>r.json())
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(data=>{
         hideOverlay();
         document.getElementById('occurrence-loading').classList.add('hidden');
@@ -1334,7 +1335,7 @@ function loadNextGroup() {
             document.getElementById('locality-fields').innerHTML=msg;
         }
     })
-    .catch(()=>{ hideOverlay(); document.getElementById('occurrence-loading').classList.add('hidden'); });
+    .catch(()=>{ window.location.reload(); });
 }
 
 function loadGroup(groupId) {
