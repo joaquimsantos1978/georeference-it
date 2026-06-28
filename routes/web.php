@@ -30,7 +30,7 @@ Route::get('/api-docs', function () {
 Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets');
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
-// Route::get('/stats', [\App\Http\Controllers\StatsController::class, 'index'])->name('stats');
+Route::get('/stats', [\App\Http\Controllers\StatsController::class, 'index'])->name('stats');
 
 // Georeferencing (public)
 Route::get('/georef', [GeorefController::class, 'index'])->name('georef.index');
