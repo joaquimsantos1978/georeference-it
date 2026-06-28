@@ -47,6 +47,15 @@
             @endif
         </div>
 
+        <div>
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="hidden" name="public_name" value="0">
+                <input type="checkbox" name="public_name" value="1" {{ old('public_name', $user->public_name) ? 'checked' : '' }}
+                    class="rounded border-gray-300 text-green-600 shadow-sm focus:ring-green-500">
+                <span class="text-sm text-gray-700">{{ __('Show my name publicly (leaderboard, activity feed)') }}</span>
+            </label>
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

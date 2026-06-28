@@ -26,6 +26,7 @@ class ProfileUpdateRequest extends FormRequest
             'orcid'                => ['nullable', 'string', 'regex:/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/'],
             'preferred_task'       => ['nullable', 'in:georef,validate,both'],
             'email_notifications'  => ['boolean'],
+            'public_name'          => ['boolean'],
         ];
     }
 
@@ -33,6 +34,7 @@ class ProfileUpdateRequest extends FormRequest
     {
         $this->merge([
             'email_notifications' => $this->boolean('email_notifications'),
+            'public_name'         => $this->boolean('public_name'),
         ]);
     }
 }
