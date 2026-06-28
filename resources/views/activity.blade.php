@@ -28,9 +28,9 @@
         @if($filterUser)
         <div class="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-5 py-4">
             @if($filterUser->avatar)
-                <img src="{{ $filterUser->avatar }}" class="w-10 h-10 rounded-full" alt="">
+                <img src="{{ $filterUser->avatar }}" class="w-10 h-10 shrink-0 rounded-full" alt="">
             @else
-                <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-700 dark:text-green-300 font-bold text-sm">{{ substr($filterUser->name, 0, 1) }}</div>
+                <div class="w-10 h-10 shrink-0 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-700 dark:text-green-300 font-bold text-sm">{{ substr($filterUser->name, 0, 1) }}</div>
             @endif
             <div>
                 <div class="font-semibold text-gray-900 dark:text-white">{{ $filterUser->name }}</div>
