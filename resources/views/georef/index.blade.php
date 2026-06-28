@@ -1158,6 +1158,7 @@ function hideOverlay() {
 
 function toggleCorrectSuggestion(id, checked) {
     if (checked) _correctSuggestionIds.add(id); else _correctSuggestionIds.delete(id);
+    updateSubmitBtn();
 }
 function toggleCorrectGbif(ids, checked) {
     ids.forEach(function(id){ if (checked) _correctGbifOccurrenceIds.add(id); else _correctGbifOccurrenceIds.delete(id); });
@@ -1168,7 +1169,7 @@ function updateSubmitBtn() {
     var voteableIds = _currentSuggestions.filter(function(s){ return !s.is_own; }).map(function(s){ return s.id; });
     var allVoted = voteableIds.length > 0 && voteableIds.every(function(id){ return pendingVotes[id]; });
     var hasPoint = !!marker;
-    var hasCorrection = !_isAllGeoref || _correctGbifOccurrenceIds.size > 0;
+    var hasCorrection = !_isAllGeoref || _correctGbifOccurrenceIds.size > 0 || _correctSuggestionIds.size > 0;
     var enabled = ((georefMode === 'vote' && allVoted) || (georefMode === 'new' && hasPoint)) && hasCorrection;
     var btn = document.getElementById('submit-btn');
     btn.disabled = !enabled;
