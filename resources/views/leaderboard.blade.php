@@ -29,15 +29,18 @@
                         </td>
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-3">
-                                @if($user->avatar)
+                                @php $isPublic = $user->public_name || (auth()->check() && auth()->id() === $user->id); @endphp
+                                @if($isPublic && $user->avatar)
                                     <img src="{{ $user->avatar }}" class="h-7 w-7 rounded-full">
                                 @else
-                                    <div class="h-7 w-7 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-bold">
-                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                    <div class="h-7 w-7 rounded-full {{ $isPublic ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600' }} flex items-center justify-center text-white text-xs font-bold">
+                                        {{ $isPublic ? strtoupper(substr($user->name, 0, 1)) : '?' }}
                                     </div>
                                 @endif
-                                <span class="font-medium text-gray-900 dark:text-white">{{ $user->name }}</span>
-                                @if($user->orcid)
+                                <span class="font-medium {{ $isPublic ? 'text-gray-900 dark:text-white' : 'text-gray-400 italic' }}">
+                                    {{ $isPublic ? $user->name : 'Anonymous' }}
+                                </span>
+                                @if($isPublic && $user->orcid)
                                     <a href="https://orcid.org/{{ $user->orcid }}" target="_blank" class="text-xs text-green-600 hover:underline">ORCID</a>
                                 @endif
                             </div>
