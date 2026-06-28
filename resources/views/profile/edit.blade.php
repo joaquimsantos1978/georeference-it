@@ -98,7 +98,7 @@
                             <span class="text-sm text-gray-700 dark:text-gray-300">{{ $user->orcid }}</span>
                             <span class="text-xs text-gray-400">({{ __('connected via ORCID OAuth') }})</span>
                             <form method="POST" action="{{ route('profile.orcid.disconnect') }}"
-                                onsubmit="return confirm('{{ __('Disconnect ORCID login? You will need a password to log in.') }}')">
+                                onsubmit="return confirm('{{ __('Disconnect ORCID login? You can reconnect at any time, or use password recovery to set a password.') }}')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
                             </form>
