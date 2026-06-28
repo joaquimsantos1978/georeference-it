@@ -60,14 +60,27 @@
 
     const container = document.createElement('div');
     container.id = 'georef-container';
-    container.innerHTML = `
-      <div id="georef-header">
-        <span>⠿ georeference.it</span>
-        <button id="georef-close">✕</button>
-      </div>
-      <iframe id="georef-frame" src="${BASE_URL}/embed/occurrence/${key}"></iframe>
-      <div id="georef-resize"></div>
-    `;
+
+    const header = document.createElement('div');
+    header.id = 'georef-header';
+    const logo = document.createElement('span');
+    logo.textContent = '⠿ georeference.it';
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'georef-close';
+    closeBtn.textContent = '✕';
+    header.appendChild(logo);
+    header.appendChild(closeBtn);
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'georef-frame';
+    iframe.src = BASE_URL + '/embed/occurrence/' + key;
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.id = 'georef-resize';
+
+    container.appendChild(header);
+    container.appendChild(iframe);
+    container.appendChild(resizeHandle);
 
     const { georef_pos: pos, georef_size: size } = await loadPrefs();
     if (pos) {
@@ -86,14 +99,11 @@
 
     document.body.appendChild(container);
 
-    container.querySelector('#georef-close').addEventListener('click', () => {
+    closeBtn.addEventListener('click', () => {
       container.style.display = 'none';
     });
-
-    // Drag
-    const header = container.querySelector('#georef-header');
     header.addEventListener('mousedown', e => {
-      if (e.target.id === 'georef-close') return;
+      if (e.target === closeBtn) return;
       e.preventDefault();
       header.style.cursor = 'grabbing';
       const rect = container.getBoundingClientRect();
@@ -120,7 +130,7 @@
     });
 
     // Resize
-    container.querySelector('#georef-resize').addEventListener('mousedown', e => {
+    resizeHandle.addEventListener('mousedown', e => {
       e.preventDefault(); e.stopPropagation();
       const rect  = container.getBoundingClientRect();
       const startX = e.clientX, startY = e.clientY;
