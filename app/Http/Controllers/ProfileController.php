@@ -71,6 +71,17 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
+    public function removeAvatar(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user->avatar && str_starts_with($user->avatar, '/storage/avatars/')) {
+            Storage::disk('public')->delete('avatars/' . basename($user->avatar));
+        }
+        $user->avatar = null;
+        $user->save();
+        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
+
     public function disconnectOrcid(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
     {
         $user = $request->user();

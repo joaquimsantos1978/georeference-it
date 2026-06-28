@@ -5,7 +5,7 @@
 
         {{-- Header --}}
         <div class="flex items-center gap-4">
-            <label for="avatar-upload" class="relative cursor-pointer group flex-shrink-0">
+            <div class="flex-shrink-0 flex flex-col items-center gap-1.5">
                 <div class="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
                     @if($user->avatar)
                         <img src="{{ $user->avatar }}" alt="{{ $user->name }}" class="w-16 h-16 object-cover">
@@ -13,10 +13,16 @@
                         {{ strtoupper(substr($user->name, 0, 1)) }}
                     @endif
                 </div>
-                <div class="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <span class="text-white text-xs font-medium">Change</span>
-                </div>
-            </label>
+                <label for="avatar-upload" class="text-xs text-green-600 hover:text-green-700 cursor-pointer font-medium">
+                    {{ $user->avatar ? __('Change photo') : __('Upload photo') }}
+                </label>
+                @if($user->avatar)
+                    <form method="POST" action="{{ route('profile.avatar.remove') }}">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-xs text-gray-400 hover:text-red-500">{{ __('Remove') }}</button>
+                    </form>
+                @endif
+            </div>
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $user->name }}</h1>
                 <div class="flex items-center gap-3 mt-1">
