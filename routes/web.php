@@ -31,6 +31,7 @@ Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets');
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
 Route::get('/stats', [\App\Http\Controllers\StatsController::class, 'index'])->name('stats');
+Route::get('/activity', [\App\Http\Controllers\ActivityController::class, 'index'])->name('activity');
 
 // Georeferencing (public)
 Route::get('/georef', [GeorefController::class, 'index'])->name('georef.index');
