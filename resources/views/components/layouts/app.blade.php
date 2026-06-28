@@ -32,6 +32,13 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        @media (max-width: 640px) {
+            .footer-inner { flex-direction: column !important; }
+            .footer-inner > div { flex: none !important; width: 100% !important; }
+            .footer-inner .footer-grid { grid-template-columns: repeat(2,1fr) !important; }
+        }
+    </style>
     @stack('styles')
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
@@ -59,18 +66,50 @@
     </main>
 
     <footer class="border-t border-gray-200 dark:border-gray-700 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between text-xs text-gray-400">
-            <span>georeference.it — {{ __('Crowdsourced georeferencing of natural history specimens') }}</span>
-            <div class="flex gap-4">
-                <a href="{{ route('about') }}" class="hover:text-green-600">About</a>
-                <a href="{{ route('how-it-works') }}" class="hover:text-green-600">How it works</a>
-                <a href="{{ route('georeferencing-guide') }}" class="hover:text-green-600">Georeferencing guide</a>
-                <a href="{{ route('extension') }}" class="hover:text-green-600">Extension</a>
-                <a href="{{ route('api-docs') }}" class="hover:text-green-600">API</a>
-                <a href="{{ route('cite') }}" class="hover:text-green-600">Cite</a>
-                <a href="{{ route('privacy') }}" class="hover:text-green-600">Privacy</a>
-                <a href="{{ route('terms') }}" class="hover:text-green-600">Terms</a>
-                <a href="https://github.com/joaquimsantos1978/georeference-it" target="_blank" class="hover:text-green-600">GitHub</a>
+        <div class="max-w-7xl mx-auto px-4 py-6 text-xs text-gray-400">
+            <div class="footer-inner" style="display:flex;gap:2rem;align-items:flex-start;">
+                {{-- Brand --}}
+                <div style="flex:0 0 50%;">
+                    <div class="font-semibold text-gray-600 dark:text-gray-300 mb-1">georeference.it</div>
+                    <p class="text-gray-400 leading-relaxed">{{ __('Crowdsourced georeferencing of natural history specimens') }}</p>
+                </div>
+                {{-- Links — 3/4 --}}
+                <div class="footer-grid" style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;">
+                    <div>
+                        <div class="font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ __('Platform') }}</div>
+                        <div class="flex flex-col gap-1.5">
+                            <a href="{{ route('georef.index') }}" class="hover:text-green-600">{{ __('Georeference') }}</a>
+                            <a href="{{ route('explore') }}" class="hover:text-green-600">{{ __('Explore') }}</a>
+                            <a href="{{ route('datasets') }}" class="hover:text-green-600">{{ __('Datasets') }}</a>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ __('Community') }}</div>
+                        <div class="flex flex-col gap-1.5">
+                            <a href="{{ route('leaderboard') }}" class="hover:text-green-600">{{ __('Leaderboard') }}</a>
+                            <a href="{{ route('activity') }}" class="hover:text-green-600">{{ __('Activity') }}</a>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ __('Docs') }}</div>
+                        <div class="flex flex-col gap-1.5">
+                            <a href="{{ route('about') }}" class="hover:text-green-600">{{ __('About') }}</a>
+                            <a href="{{ route('how-it-works') }}" class="hover:text-green-600">{{ __('How it works') }}</a>
+                            <a href="{{ route('georeferencing-guide') }}" class="hover:text-green-600">{{ __('Georeferencing guide') }}</a>
+                            <a href="{{ route('extension') }}" class="hover:text-green-600">{{ __('Extension') }}</a>
+                            <a href="{{ route('api-docs') }}" class="hover:text-green-600 font-mono">API</a>
+                            <a href="{{ route('cite') }}" class="hover:text-green-600">{{ __('Cite') }}</a>
+                            <a href="https://github.com/joaquimsantos1978/georeference-it" target="_blank" class="hover:text-green-600">GitHub</a>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ __('Legal') }}</div>
+                        <div class="flex flex-col gap-1.5">
+                            <a href="{{ route('privacy') }}" class="hover:text-green-600">{{ __('Privacy') }}</a>
+                            <a href="{{ route('terms') }}" class="hover:text-green-600">{{ __('Terms') }}</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </footer>
