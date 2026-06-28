@@ -232,10 +232,11 @@ public function next(Request $request)
 
     $scopes = [];
     if ($focus !== '') {
+        // Focus is an explicit user intent — don't restrict by country so "Braga" finds PT groups even if country=AT
         $scopes[] = fn($q) => $q->whereRaw(
             'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
             [$focus]
-        )->when($country, fn($q2) => $q2->where('country_code', $country));
+        );
     }
     if ($lastCounty) {
         $scopes[] = fn($q) => $q->where('county', $lastCounty)
