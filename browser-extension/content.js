@@ -20,20 +20,21 @@
         bottom: 24px; right: 24px;
         width: 300px; height: 420px;
         min-width: 220px; min-height: 120px;
-        border-radius: 10px; overflow: hidden;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-        border: 1px solid #d1fae5;
+        border-radius: 4px; overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+        border: 1px solid #e5e7eb;
         background: #fff;
         display: flex; flex-direction: column;
       }
       #georef-header {
-        background: #4C9C2E; padding: 7px 10px;
+        background: #fff; padding: 6px 10px;
+        border-bottom: 2px solid #4C9C2E;
         display: flex; align-items: center; justify-content: space-between;
         cursor: grab; user-select: none; flex-shrink: 0;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
-      #georef-header span { color: #fff; font-weight: 700; font-size: 12px; letter-spacing: .3px; }
-      #georef-close { background: none; border: none; color: #fff; cursor: pointer; font-size: 15px; line-height: 1; padding: 0; opacity: .7; }
+      #georef-header span { color: #4C9C2E; font-weight: 700; font-size: 12px; letter-spacing: .3px; }
+      #georef-close { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
       #georef-frame { flex: 1; border: none; width: 100%; display: block; }
       #georef-resize {
         position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize;

@@ -44,7 +44,7 @@
 
   .btn {
     display: block; text-align: center; padding: 6px 0; margin-top: 1px;
-    background: #4C9C2E; color: #fff; border-radius: 6px;
+    background: #4C9C2E; color: #fff; border-radius: 4px;
     font-size: 11.5px; font-weight: 600; text-decoration: none;
   }
   .btn:hover { background: #3d8025; }
