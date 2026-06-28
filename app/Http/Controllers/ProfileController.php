@@ -17,7 +17,12 @@ class ProfileController extends Controller
     public function edit(Request $request): View
     {
         $user = $request->user()->loadCount('suggestions');
-        return view('profile.edit', compact('user'));
+        $reviewsCount = \Illuminate\Support\Facades\DB::table('georef_validations as gv')
+            ->join('georef_suggestions as gs', 'gs.id', '=', 'gv.suggestion_id')
+            ->where('gv.user_id', $user->id)
+            ->where(fn($q) => $q->whereNull('gs.user_id')->orWhereColumn('gs.user_id', '!=', 'gv.user_id'))
+            ->count();
+        return view('profile.edit', compact('user', 'reviewsCount'));
     }
 
     /**
