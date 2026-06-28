@@ -966,7 +966,7 @@ public function dismissSystemSuggestions(Request $request, \App\Models\LocalityG
         ->update(['georef_status' => 'gbif_reviewed']);
 
     // Update group counters
-    $group->pending_suggestions_count = 0;
+    $group->pending_count = 0;
     $group->save();
 
     return response()->json(['success' => true]);
