@@ -1849,7 +1849,7 @@ function updateHistoryNav() {
             var dismissRow = document.getElementById('dismiss-system-row');
             if (dismissRow) {
                 var allSystem = suggestions.every(function(s){ return s.is_system; });
-                dismissRow.style.display = allSystem ? '' : 'none';
+                dismissRow.style.display = (allSystem && _ungeorefTotal === 0) ? '' : 'none';
             }
             renderVoteButtonStates();
             document.querySelectorAll('.remarks-btn').forEach(function(btn){
