@@ -24,9 +24,14 @@ class ActivityController extends Controller
             }
         }
 
-        $userVisibility = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL))";
-        $userIdVisible  = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL))";
-        $userAvatar     = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL))";
+        // Georefs query uses GROUP BY so needs aggregate wrapper
+        $userVisibilityAgg = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL))";
+        $userIdVisibleAgg  = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL))";
+        $userAvatarAgg     = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL))";
+        // Validations query has no GROUP BY — plain expression
+        $userVisibility = "IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL)";
+        $userIdVisible  = "IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL)";
+        $userAvatar     = "IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL)";
 
         $userFilter    = $filterUserId ? "AND gs.user_id = {$filterUserId}" : '';
         $countryFilter = $filterCountry ? "AND lg.country_code = '{$filterCountry}'" : '';
@@ -49,9 +54,9 @@ class ActivityController extends Controller
                 NULL                                 AS vote,
                 NULL                                 AS suggestion_owner_id,
                 lg.verbatim_locality, lg.municipality, lg.county, lg.state_province, lg.country_code,
-                {$userVisibility}                    AS user_name,
-                {$userIdVisible}                     AS public_user_id,
-                {$userAvatar}                        AS user_avatar
+                {$userVisibilityAgg}                 AS user_name,
+                {$userIdVisibleAgg}                  AS public_user_id,
+                {$userAvatarAgg}                     AS user_avatar
             FROM georef_suggestions gs
             JOIN locality_groups lg ON lg.id = gs.locality_group_id
             LEFT JOIN users u ON u.id = gs.user_id
