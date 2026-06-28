@@ -10,8 +10,8 @@
                 <select name="user" onchange="this.form.submit()"
                     class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg pl-2 pr-7 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
                     <option value="">All contributors</option>
-                    @foreach($publicUsers as $u)
-                        <option value="{{ $u->id }}" {{ request('user') == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+                    @foreach($dropdownUsers as $u)
+                        <option value="{{ $u->id }}" {{ request('user') == $u->id ? 'selected' : '' }}>{{ $u->display_name }}</option>
                     @endforeach
                 </select>
                 <input type="text" name="country" value="{{ request('country') }}" placeholder="Country (e.g. PT)"
