@@ -96,7 +96,7 @@ class ActivityController extends Controller
 
         $activities = DB::table(DB::raw("({$union}) AS activity"))
             ->orderByDesc('activity_at')
-            ->paginate(40)
+            ->simplePaginate(40)
             ->withQueryString();
 
         // Public users for filter dropdown

@@ -118,7 +118,7 @@
                 </div>
 
                 {{-- Pagination --}}
-                @if($activities->hasPages())
+                @if($activities->hasMorePages() || $activities->currentPage() > 1)
                 <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700">
                     {{ $activities->links() }}
                 </div>
