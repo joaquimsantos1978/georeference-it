@@ -11,7 +11,8 @@
                     class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg pl-2 pr-7 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
                     <option value="">All contributors</option>
                     @foreach($dropdownUsers as $u)
-                        <option value="{{ $u->id }}" {{ request('user') == $u->id ? 'selected' : '' }}>{{ $u->display_name }}</option>
+                        @php $label = ($u->public_name || auth()->id() === $u->id) ? $u->name : 'Hidden contributor'; @endphp
+                        <option value="{{ $u->id }}" {{ request('user') == $u->id ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
                 <input type="text" name="country" value="{{ request('country') }}" placeholder="Country (e.g. PT)"

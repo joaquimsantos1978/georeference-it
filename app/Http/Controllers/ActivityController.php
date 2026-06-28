@@ -43,16 +43,12 @@ class ActivityController extends Controller
             ->simplePaginate(40)
             ->withQueryString();
 
-        // Users for filter dropdown — all users with activity, name hidden if private
+        // Users for filter dropdown — all users with activity
         $dropdownUsers = DB::table('activity_log as al')
             ->join('users as u', 'u.id', '=', 'al.user_id')
-            ->select(
-                'u.id',
-                DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.name, 'Hidden contributor') as display_name"),
-                DB::raw('COUNT(*) as n')
-            )
+            ->select('u.id', 'u.name', 'u.public_name', DB::raw('COUNT(*) as n'))
             ->whereNotNull('al.user_id')
-            ->groupBy('u.id', 'u.public_name', 'u.name')
+            ->groupBy('u.id', 'u.name', 'u.public_name')
             ->orderByDesc('n')
             ->limit(50)
             ->get();
