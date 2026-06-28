@@ -23,7 +23,7 @@ class BackfillActivityLog extends Command
             SELECT
                 'georef',
                 CASE
-                    WHEN gs.georeference_sources = 'GBIF_CONSISTENCY_CHECK' THEN 'system'
+                    WHEN MIN(gs.georeference_sources) = 'GBIF_CONSISTENCY_CHECK' THEN 'system'
                     WHEN gs.user_id IS NULL THEN 'anonymous'
                     ELSE 'user'
                 END,
