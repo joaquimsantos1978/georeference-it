@@ -31,10 +31,14 @@
         </div>
 
         {{-- Stats --}}
-        <div class="grid grid-cols-4 gap-4">
+        <div class="grid grid-cols-5 gap-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
                 <div class="text-2xl font-bold text-green-600">{{ number_format($user->suggestions_count) }}</div>
                 <div class="text-xs text-gray-500 mt-1">{{ __('Georefs') }}</div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
+                <div class="text-2xl font-bold text-green-600">{{ number_format($user->total_validated) }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ __('Validated') }}</div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
                 <div class="text-2xl font-bold text-green-600">{{ number_format($reviewsCount) }}</div>
