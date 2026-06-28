@@ -46,9 +46,8 @@
                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
                     @foreach($activities as $row)
                     @php
-                        $locationParts = array_filter([$row->verbatim_locality, $row->municipality, $row->county, $row->state_province]);
-                        $location = implode(', ', array_slice($locationParts, 0, 2));
-                        $ago = \Carbon\Carbon::parse($row->submitted_at)->diffForHumans();
+                        $location = $row->location_label ?: 'unknown locality';
+                        $ago = \Carbon\Carbon::parse($row->created_at)->diffForHumans();
                     @endphp
                     <div class="flex items-start gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
 
