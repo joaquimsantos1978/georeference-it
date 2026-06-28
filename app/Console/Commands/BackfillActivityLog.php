@@ -62,6 +62,7 @@ class BackfillActivityLog extends Command
             JOIN georef_suggestions gs ON gs.id = gv.suggestion_id
             JOIN locality_groups lg ON lg.id = gs.locality_group_id
             WHERE gs.locality_group_id IS NOT NULL
+              AND gv.user_id != gs.user_id
         ");
         $this->info('  Done.');
 
