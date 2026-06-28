@@ -68,7 +68,7 @@
                                 @if($row->user_name)
                                     <a href="{{ route('activity') }}?user={{ $row->public_user_id }}" class="font-semibold hover:text-green-600">{{ $row->user_name }}</a>
                                 @else
-                                    <span class="font-semibold text-gray-500">Anonymous</span>
+                                    <span class="font-semibold text-gray-500">Hidden contributor</span>
                                 @endif
                                 @if($row->type === 'georef')
                                     georeferenced

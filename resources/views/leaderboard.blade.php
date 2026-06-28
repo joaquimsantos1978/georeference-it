@@ -38,7 +38,7 @@
                                     </div>
                                 @endif
                                 <span class="font-medium {{ $isPublic ? 'text-gray-900 dark:text-white' : 'text-gray-400 italic' }}">
-                                    {{ $isPublic ? $user->name : 'Anonymous' }}
+                                    {{ $isPublic ? $user->name : 'Hidden contributor' }}
                                 </span>
                                 @if($isPublic && $user->orcid)
                                     <a href="https://orcid.org/{{ $user->orcid }}" target="_blank" class="text-xs text-green-600 hover:underline">ORCID</a>
@@ -50,9 +50,7 @@
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->suggestions_count) }}</td>
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ number_format($user->reviews_count) }}</td>
                         <td class="px-5 py-3">
-                            @if($user->public_name || (auth()->check() && auth()->id() === $user->id))
                             <a href="{{ route('activity') }}?user={{ $user->id }}" class="text-xs text-green-600 hover:underline">Activity</a>
-                            @endif
                         </td>
                     </tr>
                     @empty
