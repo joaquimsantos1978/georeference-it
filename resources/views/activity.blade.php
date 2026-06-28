@@ -92,11 +92,6 @@
                                     @if($row->uncertainty_m)
                                         <span>±{{ $row->uncertainty_m >= 1000 ? round($row->uncertainty_m/1000).'km' : $row->uncertainty_m.'m' }}</span>
                                     @endif
-                                    @if($row->status === 'validated')
-                                        <span class="text-green-600 font-medium">Validated</span>
-                                    @elseif($row->status === 'pending')
-                                        <span class="text-orange-500">Pending review</span>
-                                    @endif
                                     @if($row->remarks)
                                         <span class="italic truncate max-w-xs" title="{{ $row->remarks }}">"{{ Str::limit($row->remarks, 60) }}"</span>
                                     @endif
