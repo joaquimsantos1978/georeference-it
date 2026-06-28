@@ -24,9 +24,9 @@ class ActivityController extends Controller
             }
         }
 
-        $userVisibility = "IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL)";
-        $userIdVisible  = "IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL)";
-        $userAvatar     = "IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL)";
+        $userVisibility = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL))";
+        $userIdVisible  = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL))";
+        $userAvatar     = "MIN(IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL))";
 
         $userFilter    = $filterUserId ? "AND gs.user_id = {$filterUserId}" : '';
         $countryFilter = $filterCountry ? "AND lg.country_code = '{$filterCountry}'" : '';
