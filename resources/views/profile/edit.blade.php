@@ -119,6 +119,14 @@
                             class="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
                         <span class="text-sm text-gray-700 dark:text-gray-300">{{ __('Receive email notifications') }}</span>
                     </label>
+
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="hidden" name="public_name" value="0">
+                        <input type="checkbox" name="public_name" value="1"
+                            @checked(old('public_name', $user->public_name))
+                            class="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ __('Show my name publicly (leaderboard & activity feed)') }}</span>
+                    </label>
                 </div>
 
                 <button type="submit" class="bg-green-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-green-700">
