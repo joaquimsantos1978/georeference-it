@@ -103,7 +103,7 @@ class GeorefController extends Controller
                 'cluster_occurrence_ids'   => $clusterIds,
                 'cluster_count'            => count($clusterIds),
                 'is_own'                   => $userId && $s->user_id === $userId,
-                'is_system'                => is_null($s->user_id),
+                'is_system'                => is_null($s->user_id) && $s->georeference_sources === 'GBIF_CONSISTENCY_CHECK',
                 'my_vote'                  => $myVotes->get($s->id),
             ];
         });
@@ -140,7 +140,7 @@ class GeorefController extends Controller
                         'submitted_by'             => $s->submitted_by,
                         'georeference_remarks'     => $s->georeference_remarks,
                         'total_points'             => $s->total_points,
-                        'is_system'                => is_null($s->user_id),
+                        'is_system'                => is_null($s->user_id) && $s->georeference_sources === 'GBIF_CONSISTENCY_CHECK',
                     ]);
 
                 $similarGroups[] = [
