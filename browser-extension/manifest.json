@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "georeference.it",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Shows georeference.it data on GBIF occurrence pages.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -16,26 +16,11 @@
     }
   },
   "permissions": ["storage"],
-  "background": {
-    "service_worker": "background.js",
-    "scripts": ["background.js"]
-  },
-  "host_permissions": [
-    "https://www.gbif.org/*",
-    "https://georeference.it/*"
-  ],
   "content_scripts": [
     {
       "matches": ["https://www.gbif.org/occurrence/*"],
-      "js": ["leaflet.js", "content.js"],
-      "css": ["leaflet.css"],
+      "js": ["content.js"],
       "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["map.html", "leaflet.js", "leaflet.css"],
-      "matches": ["https://www.gbif.org/*"]
     }
   ],
   "browser_specific_settings": {

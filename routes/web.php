@@ -56,6 +56,9 @@ Route::get('/georef/occurrence/{key}', [GeorefController::class, 'findByGbifKey'
 Route::post('/georef/sync', [GeorefController::class, 'sync'])->name('georef.sync');
 Route::get('/georef/iiif-proxy', [GeorefController::class, 'iiifProxy'])->name('georef.iiif-proxy');
 
+// Browser extension embed
+Route::get('/embed/occurrence/{gbifKey}', [\App\Http\Controllers\EmbedController::class, 'occurrence'])->name('embed.occurrence');
+
 // Auth routes
 Route::get('/auth/redirect/{provider}', [App\Http\Controllers\Auth\SocialiteController::class, 'redirect'])
     ->name('auth.social.redirect');
