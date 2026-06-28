@@ -71,7 +71,15 @@
                                 @else
                                     <span class="font-semibold text-gray-500">Anonymous</span>
                                 @endif
-                                georeferenced
+                                @if($row->type === 'georef')
+                                    georeferenced
+                                @elseif($row->type === 'validation_agree')
+                                    <span class="text-green-600">agreed with</span> a georef of
+                                @elseif($row->type === 'validation_disagree')
+                                    <span class="text-red-500">disagreed with</span> a georef of
+                                @else
+                                    abstained on a georef of
+                                @endif
                                 <a href="{{ route('georef.index') }}?group={{ $row->locality_group_id }}"
                                    class="text-green-700 dark:text-green-400 hover:underline font-medium">{{ $location ?: 'unknown locality' }}</a>
                                 @if($row->country_code)
@@ -80,17 +88,19 @@
                             </div>
                             <div class="flex items-center gap-3 mt-1 text-xs text-gray-400">
                                 <span>{{ $ago }}</span>
-                                <span>{{ number_format($row->occ_georeffed) }} {{ Str::plural('specimen', $row->occ_georeffed) }}</span>
-                                @if($row->uncertainty_m)
-                                    <span>±{{ $row->uncertainty_m >= 1000 ? round($row->uncertainty_m/1000).'km' : $row->uncertainty_m.'m' }}</span>
-                                @endif
-                                @if($row->status === 'validated')
-                                    <span class="text-green-600 font-medium">Validated</span>
-                                @elseif($row->status === 'pending')
-                                    <span class="text-orange-500">Pending review</span>
-                                @endif
-                                @if($row->remarks)
-                                    <span class="italic truncate max-w-xs" title="{{ $row->remarks }}">"{{ Str::limit($row->remarks, 60) }}"</span>
+                                @if($row->type === 'georef')
+                                    <span>{{ number_format($row->occ_count) }} {{ Str::plural('specimen', $row->occ_count) }}</span>
+                                    @if($row->uncertainty_m)
+                                        <span>±{{ $row->uncertainty_m >= 1000 ? round($row->uncertainty_m/1000).'km' : $row->uncertainty_m.'m' }}</span>
+                                    @endif
+                                    @if($row->status === 'validated')
+                                        <span class="text-green-600 font-medium">Validated</span>
+                                    @elseif($row->status === 'pending')
+                                        <span class="text-orange-500">Pending review</span>
+                                    @endif
+                                    @if($row->remarks)
+                                        <span class="italic truncate max-w-xs" title="{{ $row->remarks }}">"{{ Str::limit($row->remarks, 60) }}"</span>
+                                    @endif
                                 @endif
                             </div>
                         </div>
