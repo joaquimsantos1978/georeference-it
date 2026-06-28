@@ -93,10 +93,15 @@
                         <span class="text-xs font-normal text-gray-400">(formato: 0000-0000-0000-0000)</span>
                     </label>
                     @if($user->provider === 'orcid')
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-3">
                             <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-4 h-4">
                             <span class="text-sm text-gray-700 dark:text-gray-300">{{ $user->orcid }}</span>
                             <span class="text-xs text-gray-400">({{ __('connected via ORCID OAuth') }})</span>
+                            <form method="POST" action="{{ route('profile.orcid.disconnect') }}"
+                                onsubmit="return confirm('{{ __('Disconnect ORCID login? You will need a password to log in.') }}')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
+                            </form>
                         </div>
                     @else
                         <input type="text" name="orcid" value="{{ old('orcid', $user->orcid) }}"

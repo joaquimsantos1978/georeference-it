@@ -41,6 +41,18 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
+    public function disconnectOrcid(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $user = $request->user();
+
+        // Only disconnect OAuth link — keep orcid field so badge still shows
+        $user->provider    = null;
+        $user->provider_id = null;
+        $user->save();
+
+        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
+
     /**
      * Delete the user's account.
      */
