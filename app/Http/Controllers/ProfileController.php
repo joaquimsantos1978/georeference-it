@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -30,13 +31,42 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $user->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar if stored locally
+            if ($user->avatar && str_starts_with($user->avatar, '/storage/avatars/')) {
+                Storage::disk('public')->delete('avatars/' . basename($user->avatar));
+            }
+
+            $file   = $request->file('avatar');
+            $source = imagecreatefromstring(file_get_contents($file->getRealPath()));
+            [$w, $h] = getimagesize($file->getRealPath());
+
+            // Crop to square from center then resize to 200x200
+            $size   = min($w, $h);
+            $x      = (int)(($w - $size) / 2);
+            $y      = (int)(($h - $size) / 2);
+            $canvas = imagecreatetruecolor(200, 200);
+            imagecopyresampled($canvas, $source, 0, 0, $x, $y, 200, 200, $size, $size);
+            imagedestroy($source);
+
+            $filename = 'avatars/' . $user->id . '_' . time() . '.jpg';
+            ob_start();
+            imagejpeg($canvas, null, 85);
+            $data = ob_get_clean();
+            imagedestroy($canvas);
+
+            Storage::disk('public')->put($filename, $data);
+            $user->avatar = '/storage/' . $filename;
+        }
+
+        $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }

@@ -27,6 +27,7 @@ class ProfileUpdateRequest extends FormRequest
             'preferred_task'       => ['nullable', 'in:georef,validate,both'],
             'email_notifications'  => ['boolean'],
             'public_name'          => ['boolean'],
+            'avatar'               => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:2048'],
         ];
     }
 

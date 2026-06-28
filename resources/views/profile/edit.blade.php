@@ -5,13 +5,18 @@
 
         {{-- Header --}}
         <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
-                @if($user->avatar)
-                    <img src="{{ $user->avatar }}" alt="{{ $user->name }}" class="w-16 h-16 rounded-full object-cover">
-                @else
-                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                @endif
-            </div>
+            <label for="avatar-upload" class="relative cursor-pointer group flex-shrink-0">
+                <div class="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                    @if($user->avatar)
+                        <img src="{{ $user->avatar }}" alt="{{ $user->name }}" class="w-16 h-16 object-cover">
+                    @else
+                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                    @endif
+                </div>
+                <div class="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span class="text-white text-xs font-medium">Change</span>
+                </div>
+            </label>
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $user->name }}</h1>
                 <div class="flex items-center gap-3 mt-1">
@@ -62,8 +67,13 @@
         {{-- Profile information --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
             <h2 class="font-semibold text-gray-900 dark:text-white mb-4">{{ __('Profile information') }}</h2>
-            <form method="POST" action="{{ route('profile.update') }}" class="space-y-4">
+            <form method="POST" action="{{ route('profile.update') }}" class="space-y-4" enctype="multipart/form-data">
                 @csrf @method('PATCH')
+
+                {{-- Hidden avatar upload (triggered by clicking the avatar in the header) --}}
+                <input type="file" id="avatar-upload" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden"
+                    onchange="this.form.submit()">
+                @error('avatar')<p class="text-red-500 text-xs mb-2">{{ $message }}</p>@enderror
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Name') }}</label>
