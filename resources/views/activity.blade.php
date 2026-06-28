@@ -33,7 +33,7 @@
             @endif
             <div>
                 <div class="font-semibold text-gray-900 dark:text-white">{{ $filterUser->name }}</div>
-                <div class="text-xs text-gray-500">{{ number_format($activities->total()) }} georeferencing events</div>
+                <div class="text-xs text-gray-500">Georeferencing activity</div>
             </div>
         </div>
         @endif
@@ -56,8 +56,8 @@
                             @if($row->user_avatar)
                                 <img src="{{ $row->user_avatar }}" class="w-8 h-8 rounded-full" alt="">
                             @else
-                                <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-300 text-xs font-bold">
-                                    {{ $row->user_name ? strtoupper(substr($row->user_name, 0, 1)) : '?' }}
+                                <div class="w-8 h-8 rounded-full {{ is_null($row->user_id) ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-200 dark:bg-gray-600' }} flex items-center justify-center text-gray-500 dark:text-gray-300 text-xs font-bold">
+                                    {{ $row->user_name ? strtoupper(substr($row->user_name, 0, 1)) : (is_null($row->user_id) ? 'S' : '?') }}
                                 </div>
                             @endif
                         </div>
@@ -67,6 +67,8 @@
                             <div class="text-sm text-gray-800 dark:text-gray-200">
                                 @if($row->user_name)
                                     <a href="{{ route('activity') }}?user={{ $row->public_user_id }}" class="font-semibold hover:text-green-600">{{ $row->user_name }}</a>
+                                @elseif(is_null($row->user_id))
+                                    <span class="font-semibold text-gray-400">System</span>
                                 @else
                                     <span class="font-semibold text-gray-500">Hidden contributor</span>
                                 @endif

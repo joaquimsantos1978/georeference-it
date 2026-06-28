@@ -14,21 +14,24 @@ class ActivityController extends Controller
         $filterCountry = strtoupper(trim($request->get('country', ''))) ?: null;
         $authId        = (int) auth()->id();
 
-        // Resolve filtered user (must have public_name or be the auth user)
+        // Resolve filtered user — any registered user can be filtered by ID,
+        // but $filterUser (used for the header label) is only set when public or self.
         $filterUser = null;
         if ($filterUserId) {
-            $filterUser = User::find($filterUserId);
-            if ($filterUser && !$filterUser->public_name && $authId !== $filterUser->id) {
-                $filterUser   = null;
-                $filterUserId = null;
+            $u = User::find($filterUserId);
+            if (!$u) {
+                $filterUserId = null; // non-existent user
+            } elseif ($u->public_name || $authId === $u->id) {
+                $filterUser = $u; // show name in header
             }
+            // hidden users: filterUserId stays, filterUser stays null → shows "Hidden contributor"
         }
 
         $activities = DB::table('activity_log as al')
             ->select(
                 'al.id', 'al.type', 'al.locality_group_id', 'al.occ_count',
                 'al.lat', 'al.lng', 'al.uncertainty_m', 'al.remarks',
-                'al.country_code', 'al.location_label', 'al.created_at',
+                'al.country_code', 'al.location_label', 'al.created_at', 'al.user_id',
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL) as user_name"),
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL) as public_user_id"),
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL) as user_avatar")
