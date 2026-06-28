@@ -8,17 +8,22 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 12px; color: #374151; background: #fff; }
-  body { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  html, body { height: 100%; background: #fff; color: #111827;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px; line-height: 1.4; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
 
   #map { flex: 1; min-height: 0; }
 
-  .info { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .footer { padding: 9px 11px 8px; display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; border-top: 1px solid #f3f4f6; }
+
+  .row-status { display: flex; align-items: center; justify-content: space-between; }
+
+  .logo { font-size: 10px; font-weight: 600; color: #4C9C2E; letter-spacing: .3px; }
 
   .pill {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
-    align-self: flex-start;
+    display: inline-flex; align-items: center;
+    padding: 1px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600;
   }
   .pill.ungeoreferenced   { color: #dc2626; background: #fef2f2; border: 1px solid #fca5a5; }
   .pill.has_suggestion    { color: #d97706; background: #fffbeb; border: 1px solid #fcd34d; }
@@ -26,57 +31,60 @@
   .pill.validated         { color: #16a34a; background: #f0fdf4; border: 1px solid #86efac; }
   .pill.gbif_georeferenced,
   .pill.gbif_reviewed     { color: #1d4ed8; background: #eff6ff; border: 1px solid #93c5fd; }
-  .pill.default           { color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; }
+  .pill.unknown           { color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; }
 
-  .coords { font-size: 10.5px; color: #6b7280; }
-  .coords strong { font-family: monospace; color: #111; font-size: 11px; }
-  .coords .uncertainty { color: #9ca3af; }
-
-  .warn { font-size: 10px; color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 4px; padding: 4px 8px; }
+  .coords { font-size: 11px; color: #374151; }
+  .coords code { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; }
+  .uncertainty { color: #9ca3af; font-size: 10.5px; margin-left: 3px; }
 
   .remarks { font-size: 10px; color: #6b7280; font-style: italic; }
 
+  .warn { display: flex; align-items: flex-start; gap: 4px; font-size: 10px; color: #92400e;
+          background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; padding: 3px 7px; }
+
   .btn {
-    display: block; text-align: center; padding: 7px 0;
-    background: #4C9C2E; color: #fff; border-radius: 7px;
-    font-size: 12px; font-weight: 600; text-decoration: none;
-    flex-shrink: 0; margin: 0 12px 10px;
+    display: block; text-align: center; padding: 6px 0; margin-top: 1px;
+    background: #4C9C2E; color: #fff; border-radius: 6px;
+    font-size: 11.5px; font-weight: 600; text-decoration: none;
   }
   .btn:hover { background: #3d8025; }
 
-  .not-found { display: flex; align-items: center; justify-content: center; height: 100%; color: #9ca3af; font-size: 12px; }
+  .not-found { display: flex; align-items: center; justify-content: center;
+               height: 100%; color: #9ca3af; font-size: 11px; }
 
-  .leaflet-control-zoom a { width: 22px !important; height: 22px !important; line-height: 22px !important; }
+  .leaflet-control-zoom a { width: 22px !important; height: 22px !important; line-height: 22px !important; font-size: 13px !important; }
+  .leaflet-control-attribution { display: none; }
 </style>
 </head>
 <body>
 
 @if (!$data)
-  <div class="not-found">Occurrence not found in georeference.it</div>
+  <div class="not-found">Not found in georeference.it</div>
 @else
 
 @php
   $hasCoords = $data['decimalLatitude'] !== null && $data['georeferenceSources'] !== 'GBIF';
   $isUngeoref = $data['georef_status'] === 'ungeoreferenced';
-  $actionLabel = $isUngeoref ? 'Georeference on georeference.it →' : 'View / correct on georeference.it →';
-  $pillClass = match($data['georef_status']) {
-      'ungeoreferenced', 'has_suggestion', 'conflicted', 'validated', 'gbif_georeferenced', 'gbif_reviewed' => $data['georef_status'],
-      default => 'default',
-  };
+  $actionLabel = $isUngeoref ? 'Georeference on georeference.it →' : 'View / correct →';
+  $pillClass = in_array($data['georef_status'], ['ungeoreferenced','has_suggestion','conflicted','validated','gbif_georeferenced','gbif_reviewed'])
+    ? $data['georef_status'] : 'unknown';
 @endphp
 
 @if ($hasCoords)
 <div id="map"></div>
 @endif
 
-<div class="info">
-  <span class="pill {{ $pillClass }}">{{ $data['status_label'] }}</span>
+<div class="footer">
+  <div class="row-status">
+    <span class="logo">georeference.it</span>
+    <span class="pill {{ $pillClass }}">{{ $data['status_label'] }}</span>
+  </div>
 
   @if ($hasCoords)
     <div class="coords">
-      <strong>{{ number_format((float)$data['decimalLatitude'], 5) }}, {{ number_format((float)$data['decimalLongitude'], 5) }}</strong>
+      <code>{{ number_format((float)$data['decimalLatitude'], 5) }}, {{ number_format((float)$data['decimalLongitude'], 5) }}</code>
       @if ($data['coordinateUncertaintyInMeters'])
-        <span class="uncertainty"> ±{{ number_format($data['coordinateUncertaintyInMeters']) }}m</span>
+        <span class="uncertainty">±{{ number_format($data['coordinateUncertaintyInMeters']) }}m</span>
       @endif
     </div>
   @endif
@@ -88,11 +96,11 @@
   @if ($data['georeferenceRemarks'])
     <div class="remarks">{{ $data['georeferenceRemarks'] }}</div>
   @endif
-</div>
 
-@if ($data['georef_url'])
-  <a href="{{ $data['georef_url'] }}" target="_blank" class="btn">{{ $actionLabel }}</a>
-@endif
+  @if ($data['georef_url'])
+    <a href="{{ $data['georef_url'] }}" target="_blank" class="btn">{{ $actionLabel }}</a>
+  @endif
+</div>
 
 @if ($hasCoords)
 <script>
@@ -106,18 +114,17 @@
     : 13;
 
   var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([lat, lng], zoom);
-
   L.tileLayer('https://georeference.it/api/v1/tiles/{z}/{x}/{y}', { maxZoom: 18 }).addTo(map);
 
   if (uncertainty) {
     L.circle([lat, lng], {
-      radius: uncertainty,
-      color: '#4C9C2E', fillColor: '#4C9C2E', fillOpacity: 0.12, weight: 1.5
+      radius: uncertainty, color: '#4C9C2E', fillColor: '#4C9C2E',
+      fillOpacity: 0.1, weight: 1.5
     }).addTo(map);
   }
 
   L.circleMarker([lat, lng], {
-    radius: 6, color: '#4C9C2E', fillColor: '#4C9C2E', fillOpacity: 0.9, weight: 2
+    radius: 5, color: '#fff', fillColor: '#4C9C2E', fillOpacity: 1, weight: 2
   }).addTo(map);
 })();
 </script>
