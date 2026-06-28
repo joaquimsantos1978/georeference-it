@@ -942,6 +942,36 @@ private function countryNameToIso2(): array
         }
     }
 
+public function dismissSystemSuggestions(Request $request, \App\Models\LocalityGroup $group): \Illuminate\Http\JsonResponse
+{
+    // Only dismiss if ALL pending suggestions are system-generated (user_id IS NULL)
+    $pendingHuman = $group->suggestions()
+        ->where('status', 'pending')
+        ->whereNotNull('user_id')
+        ->count();
+
+    if ($pendingHuman > 0) {
+        return response()->json(['error' => 'Human suggestions exist — cannot dismiss.'], 422);
+    }
+
+    // Reject all pending system suggestions
+    $group->suggestions()
+        ->where('status', 'pending')
+        ->whereNull('user_id')
+        ->update(['status' => 'rejected']);
+
+    // Mark occurrences as gbif_reviewed (coordinates confirmed as-is)
+    $group->occurrences()
+        ->where('georef_status', 'gbif_georeferenced')
+        ->update(['georef_status' => 'gbif_reviewed']);
+
+    // Update group counters
+    $group->pending_suggestions_count = 0;
+    $group->save();
+
+    return response()->json(['success' => true]);
+}
+
 public function destroySuggestion(Request $request, GeorefSuggestion $suggestion): \Illuminate\Http\JsonResponse
 {
     if ($suggestion->user_id !== auth()->id()) {

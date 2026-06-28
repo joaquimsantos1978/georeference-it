@@ -534,6 +534,11 @@
                 <button id="skip-btn" class="flex-1 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 rounded-lg py-2 hover:bg-gray-50">{{ __('Skip') }}</button>
                 <button id="submit-btn" class="flex-1 text-sm bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>{{ __('Submit') }}</button>
             </div>
+            <div id="dismiss-system-row" style="display:none" class="px-3 pb-3">
+                <button id="dismiss-system-btn" class="w-full text-xs border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-600 hover:border-gray-400 rounded-lg py-1.5">
+                    {{ __('No conflict — dismiss system suggestions') }}
+                </button>
+            </div>
             <p id="submit-hint" style="display:none;font-size:10px;color:#9ca3af;text-align:center;margin-top:4px">{{ __('Check "Correct georef. occurrences" on at least one card to enable submit.') }}</p>
         </div>
 
@@ -1838,6 +1843,12 @@ function updateHistoryNav() {
                     '</div></div></div>';
             });
             document.getElementById('suggestions-list').innerHTML=sugHtml;
+            // Show dismiss button only when all pending suggestions are system-generated
+            var dismissRow = document.getElementById('dismiss-system-row');
+            if (dismissRow) {
+                var allSystem = suggestions.every(function(s){ return s.is_system; });
+                dismissRow.style.display = allSystem ? '' : 'none';
+            }
             renderVoteButtonStates();
             document.querySelectorAll('.remarks-btn').forEach(function(btn){
                 btn.addEventListener('click', function(e){
@@ -1858,6 +1869,7 @@ function updateHistoryNav() {
             });
         } else if (!allGeoref) {
             document.getElementById('suggestions-list').innerHTML='<p style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
+            var _dr = document.getElementById('dismiss-system-row'); if (_dr) _dr.style.display = 'none';
         }
 
         // Restore user's previous submission if present
@@ -2322,6 +2334,21 @@ function deleteSuggestion(id) {
         headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
     }).then(r => r.json()).then(d => {
         if (d.success && currentGroup) loadGroup(currentGroup.id);
+    });
+}
+
+var _dismissBtn = document.getElementById('dismiss-system-btn');
+if (_dismissBtn) {
+    _dismissBtn.addEventListener('click', function() {
+        if (!currentGroup) return;
+        if (!confirm('{{ __("No conflict — dismiss all system suggestions for this group?") }}')) return;
+        fetch(APP_URL+'/georef/group/'+currentGroup.id+'/dismiss-system-suggestions', {
+            method: 'POST',
+            headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
+        }).then(function(r){ return r.json(); }).then(function(d) {
+            if (d.success) loadNextGroup();
+            else if (d.error) alert(d.error);
+        });
     });
 }
 

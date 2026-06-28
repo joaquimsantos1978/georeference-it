@@ -37,6 +37,7 @@ Route::get('/activity', [\App\Http\Controllers\ActivityController::class, 'index
 Route::get('/georef', [GeorefController::class, 'index'])->name('georef.index');
 Route::get('/georef/next', [GeorefController::class, 'next'])->name('georef.next');
 Route::post('/georef/submit', [GeorefController::class, 'submit'])->name('georef.submit');
+Route::post('/georef/group/{group}/dismiss-system-suggestions', [GeorefController::class, 'dismissSystemSuggestions'])->name('georef.dismiss-system-suggestions')->middleware('auth');
 Route::post('/georef/validate/{suggestion}', [GeorefController::class, 'validate'])->name('georef.validate');
 Route::post('/georef/agree-with/{suggestion}', [GeorefController::class, 'agreeWith'])->name('georef.agree-with');
 Route::delete('/georef/suggestion/{suggestion}', [GeorefController::class, 'destroySuggestion'])->name('georef.suggestion.destroy')->middleware('auth');
