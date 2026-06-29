@@ -38,9 +38,8 @@
                         <tr>
                             <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Specimen</th>
                             <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Locality</th>
-                            <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Coordinates</th>
+                            <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">GBIF coords</th>
                             <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
-                            <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Last activity</th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
@@ -57,7 +56,6 @@
                                 'gbif_reviewed'  => ['label' => 'GBIF reviewed', 'class' => 'text-blue-600 bg-blue-50 border-blue-200'],
                             ];
                             $pill = $pills[$occ->georef_status] ?? ['label' => $occ->georef_status, 'class' => 'text-gray-500 bg-gray-50 border-gray-200'];
-                            $ago  = $occ->last_activity ? \Carbon\Carbon::parse($occ->last_activity)->diffForHumans() : '—';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                             <td class="px-4 py-3">
@@ -70,9 +68,9 @@
                                 {{ $locality ?: '—' }}
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">
-                                @if($occ->decimal_latitude !== null)
-                                    {{ number_format((float)$occ->decimal_latitude, 4) }},
-                                    {{ number_format((float)$occ->decimal_longitude, 4) }}
+                                @if($occ->gbif_decimal_latitude !== null)
+                                    {{ number_format((float)$occ->gbif_decimal_latitude, 4) }},
+                                    {{ number_format((float)$occ->gbif_decimal_longitude, 4) }}
                                 @else
                                     —
                                 @endif
@@ -82,7 +80,6 @@
                                     {{ $pill['label'] }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{{ $ago }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 justify-end">
                                     @if($occ->locality_group_id)
