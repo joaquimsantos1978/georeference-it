@@ -96,9 +96,6 @@
                                 @if($interpreted)
                                     <div class="text-gray-400 mt-0.5 line-clamp-2" title="{{ $interpreted }}">{{ $interpreted }}</div>
                                 @endif
-                                @if($occ->location_remarks)
-                                    <div class="text-gray-400 italic mt-0.5 line-clamp-1" title="{{ $occ->location_remarks }}">{{ $occ->location_remarks }}</div>
-                                @endif
                                 @if($country)
                                     <div class="text-gray-400 mt-0.5 font-mono">{{ $country }}</div>
                                 @endif
