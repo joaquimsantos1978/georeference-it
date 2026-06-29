@@ -851,9 +851,11 @@ private function countryNameToIso2(): array
                 'occ_count'        => 1,
                 'lat'              => $suggestion->decimal_latitude,
                 'lng'              => $suggestion->decimal_longitude,
-                'uncertainty_m'      => $suggestion->coordinate_uncertainty_m,
-                'suggestion_user_id' => $suggestion->user_id,
-                'country_code'       => $group?->country_code,
+                'uncertainty_m'       => $suggestion->coordinate_uncertainty_m,
+                'suggestion_user_id'  => $suggestion->user_id,
+                'suggestion_source'   => $suggestion->user_id !== null ? 'user'
+                    : ($suggestion->georeference_sources === 'GBIF_CONSISTENCY_CHECK' ? 'system' : 'anonymous'),
+                'country_code'        => $group?->country_code,
                 'location_label'     => $locationLabel ?: null,
                 'created_at'         => now(),
             ]);

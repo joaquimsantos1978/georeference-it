@@ -86,10 +86,14 @@
                                     @if($row->lat !== null)
                                         <span class="font-mono text-xs text-gray-500">{{ number_format((float)$row->lat,5) }}, {{ number_format((float)$row->lng,5) }}{{ $row->uncertainty_m ? ' ±'.number_format($row->uncertainty_m).'m' : '' }}</span>
                                     @endif
-                                    @if($row->suggestion_user_id !== null)
+                                    @if($row->suggestion_source)
                                         <span class="text-gray-400">by</span>
-                                        @if($row->suggestion_author_name)
-                                            <a href="{{ route('activity') }}?user={{ $row->suggestion_author_id }}" class="text-gray-500 hover:text-green-600">{{ $row->suggestion_author_name }}</a>
+                                        @if($row->suggestion_source === 'user' && $row->suggestion_author_name)
+                                            <a href="{{ route('user.profile', $row->suggestion_author_id) }}" class="text-gray-500 hover:text-green-600">{{ $row->suggestion_author_name }}</a>
+                                        @elseif($row->suggestion_source === 'user')
+                                            <span class="text-gray-400">Hidden contributor</span>
+                                        @elseif($row->suggestion_source === 'system')
+                                            <span class="text-blue-400">System</span>
                                         @else
                                             <span class="text-gray-400">Anonymous</span>
                                         @endif
@@ -100,10 +104,14 @@
                                     @if($row->lat !== null)
                                         <span class="font-mono text-xs text-gray-500">{{ number_format((float)$row->lat,5) }}, {{ number_format((float)$row->lng,5) }}{{ $row->uncertainty_m ? ' ±'.number_format($row->uncertainty_m).'m' : '' }}</span>
                                     @endif
-                                    @if($row->suggestion_user_id !== null)
+                                    @if($row->suggestion_source)
                                         <span class="text-gray-400">by</span>
-                                        @if($row->suggestion_author_name)
-                                            <a href="{{ route('activity') }}?user={{ $row->suggestion_author_id }}" class="text-gray-500 hover:text-green-600">{{ $row->suggestion_author_name }}</a>
+                                        @if($row->suggestion_source === 'user' && $row->suggestion_author_name)
+                                            <a href="{{ route('user.profile', $row->suggestion_author_id) }}" class="text-gray-500 hover:text-green-600">{{ $row->suggestion_author_name }}</a>
+                                        @elseif($row->suggestion_source === 'user')
+                                            <span class="text-gray-400">Hidden contributor</span>
+                                        @elseif($row->suggestion_source === 'system')
+                                            <span class="text-blue-400">System</span>
                                         @else
                                             <span class="text-gray-400">Anonymous</span>
                                         @endif

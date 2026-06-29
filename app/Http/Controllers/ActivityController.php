@@ -36,6 +36,7 @@ class ActivityController extends Controller
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL) as public_user_id"),
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL) as user_avatar"),
                 'al.suggestion_user_id',
+                'al.suggestion_source',
                 DB::raw("IF(su.public_name = 1, su.name, NULL) as suggestion_author_name"),
                 DB::raw("IF(su.public_name = 1, su.id, NULL) as suggestion_author_id")
             )
