@@ -45,38 +45,71 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($occurrences as $occ)
                         @php
-                            $locality = trim(implode(', ', array_filter([
-                                $occ->verbatim_locality, $occ->municipality, $occ->county
+                            $localityParts = array_filter([
+                                $occ->verbatim_locality,
+                                $occ->municipality,
+                                $occ->county,
+                                $occ->state_province,
+                            ]);
+                            $locality = trim(implode(', ', $localityParts));
+
+                            $catalogRef = trim(implode(' ', array_filter([
+                                $occ->institution_code,
+                                $occ->collection_code,
+                                $occ->catalog_number,
                             ])));
+
                             $pills = [
                                 'has_suggestion' => ['label' => 'Pending',       'class' => 'text-amber-600 bg-amber-50 border-amber-200'],
                                 'validated'      => ['label' => 'Validated',     'class' => 'text-green-600 bg-green-50 border-green-200'],
                                 'gbif_reviewed'  => ['label' => 'GBIF reviewed', 'class' => 'text-blue-600 bg-blue-50 border-blue-200'],
                             ];
                             $pill = $pills[$occ->georef_status] ?? ['label' => $occ->georef_status, 'class' => 'text-gray-500 bg-gray-50 border-gray-200'];
+
+                            $eventYear = $occ->event_date ? substr($occ->event_date, 0, 4) : null;
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 max-w-[200px]">
                                 <div class="font-medium italic text-gray-900 dark:text-white text-xs leading-snug">{{ $occ->scientific_name }}</div>
-                                @if($occ->country_code)
-                                    <span class="font-mono text-xs text-gray-400">{{ strtoupper($occ->country_code) }}</span>
+                                <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5">
+                                    @if($occ->country_code)
+                                        <span class="font-mono text-xs text-gray-400">{{ strtoupper($occ->country_code) }}</span>
+                                    @endif
+                                    @if($catalogRef)
+                                        <span class="text-xs text-gray-400">·</span>
+                                        <span class="text-xs text-gray-500 font-mono">{{ $catalogRef }}</span>
+                                    @endif
+                                    @if($eventYear)
+                                        <span class="text-xs text-gray-400">·</span>
+                                        <span class="text-xs text-gray-400">{{ $eventYear }}</span>
+                                    @endif
+                                </div>
+                                @if($occ->recorded_by)
+                                    <div class="text-xs text-gray-400 truncate max-w-[180px]" title="{{ $occ->recorded_by }}">{{ $occ->recorded_by }}</div>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-xs truncate" title="{{ $locality }}">
-                                {{ $locality ?: '—' }}
+                            <td class="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-xs">
+                                @if($locality)
+                                    <div class="line-clamp-2" title="{{ $locality }}">{{ $locality }}</div>
+                                @else
+                                    <span class="text-gray-300">—</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">
                                 @if($occ->gbif_decimal_latitude !== null)
                                     {{ number_format((float)$occ->gbif_decimal_latitude, 4) }},
                                     {{ number_format((float)$occ->gbif_decimal_longitude, 4) }}
                                 @else
-                                    —
+                                    <span class="text-gray-300">—</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border {{ $pill['class'] }}">
                                     {{ $pill['label'] }}
                                 </span>
+                                @if($occ->updated_at)
+                                    <div class="text-xs text-gray-400 mt-0.5">{{ \Carbon\Carbon::parse($occ->updated_at)->diffForHumans() }}</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 justify-end">
@@ -107,19 +140,18 @@
                 </table>
                 </div>
 
-                @if($beforeId || $nextId)
+                @if($nextTs || request()->has('before'))
                 <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
                     @php
                         $baseParams = array_filter(['status' => $status, 'country' => $country]);
                     @endphp
                     <div>
-                        @if($beforeId)
-                            {{-- No clean "prev" with keyset — link back to start --}}
+                        @if(request()->has('before'))
                             <a href="{{ route('impact', $baseParams) }}" class="text-xs text-gray-500 hover:text-green-600">← Back to start</a>
                         @endif
                     </div>
-                    @if($nextId)
-                        <a href="{{ route('impact', array_merge($baseParams, ['before' => $nextId])) }}"
+                    @if($nextTs && $nextId)
+                        <a href="{{ route('impact', array_merge($baseParams, ['before' => $nextTs, 'before_id' => $nextId])) }}"
                            class="text-xs bg-white border border-gray-200 hover:border-green-500 text-gray-600 hover:text-green-600 rounded-lg px-4 py-1.5 transition-colors">
                             Next →
                         </a>
