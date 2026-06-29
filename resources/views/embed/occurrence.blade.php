@@ -64,7 +64,7 @@
 @else
 
 @php
-  $hasCoords = $data['decimalLatitude'] !== null && $data['georeferenceSources'] !== 'GBIF';
+  $hasCoords = $data['decimalLatitude'] !== null;
   $isUngeoref = $data['georef_status'] === 'ungeoreferenced';
   $actionLabel = $isUngeoref ? 'Georeference on georeference.it →' : 'View / correct →';
   $pillClass = in_array($data['georef_status'], ['ungeoreferenced','has_suggestion','conflicted','validated','gbif_georeferenced','gbif_reviewed'])
