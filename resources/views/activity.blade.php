@@ -82,9 +82,17 @@
                                 @if($row->type === 'georef')
                                     georeferenced
                                 @elseif($row->type === 'validation_agree')
-                                    <span class="text-green-600">agreed with</span> a georef of
+                                    <span class="text-green-600">agreed with</span>
+                                    @if($row->lat !== null)
+                                        <span class="font-mono text-xs text-gray-500">{{ number_format((float)$row->lat,5) }}, {{ number_format((float)$row->lng,5) }}{{ $row->uncertainty_m ? ' ±'.number_format($row->uncertainty_m).'m' : '' }}</span>
+                                    @endif
+                                    as georef of
                                 @elseif($row->type === 'validation_disagree')
-                                    <span class="text-red-500">disagreed with</span> a georef of
+                                    <span class="text-red-500">disagreed with</span>
+                                    @if($row->lat !== null)
+                                        <span class="font-mono text-xs text-gray-500">{{ number_format((float)$row->lat,5) }}, {{ number_format((float)$row->lng,5) }}{{ $row->uncertainty_m ? ' ±'.number_format($row->uncertainty_m).'m' : '' }}</span>
+                                    @endif
+                                    as georef of
                                 @else
                                     abstained on a georef of
                                 @endif
