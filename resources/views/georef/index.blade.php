@@ -483,9 +483,9 @@
                     40%     { background:#4C9C2E; color:#fff; }
                 }
                 .btn-flash { animation: btn-flash 0.5s ease 2; }
-                .occ-taxon { color: #111827; }
+                .dark-text { color: #111827; }
                 @media (prefers-color-scheme: dark) {
-                    .occ-taxon { color: #f9fafb; }
+                    .dark-text { color: #f9fafb; }
                 }
                 </style>
                 <p id="map-click-hint" class="text-xs text-gray-400 mb-3 mt-0" style="display:none;">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
@@ -1458,7 +1458,7 @@ function updateHistoryNav() {
             '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
             cbHtml+
             '<div style="flex:1;min-width:0">'+
-            (taxon?'<div class="occ-taxon" style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
+            (taxon?'<div class="dark-text" style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
             '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
             (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
             '</div>'+badge+
@@ -1718,7 +1718,6 @@ function updateHistoryNav() {
             {key:'continent',         label:'Continent'},
             {key:'higher_geography',  label:'Higher geography'},
             {key:'location_remarks',  label:'Location remarks'},
-            {key:'water_body',        label:'Water body'},
             {key:'country_code',      label:'Country'},
         ];
         document.getElementById('locality-fields').innerHTML=fieldDefs
@@ -1726,7 +1725,7 @@ function updateHistoryNav() {
             .map(d=>
                 '<div style="margin-bottom:5px">'+
                 '<div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;font-weight:500">'+d.label+'</div>'+
-                '<div style="font-size:12px;font-weight:500;line-height:1.3;word-break:break-word">'+group[d.key]+'</div>'+
+                '<div class="dark-text" style="font-size:12px;font-weight:500;line-height:1.3;word-break:break-word">'+group[d.key]+'</div>'+
                 '</div>'
             ).join('');
         document.getElementById('nominatim-input').value=buildLocalityString(group);
