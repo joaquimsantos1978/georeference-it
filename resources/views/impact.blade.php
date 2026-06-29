@@ -67,30 +67,34 @@
                             $pill = $pills[$occ->georef_status] ?? ['label' => $occ->georef_status, 'class' => 'text-gray-500 bg-gray-50 border-gray-200'];
 
                             $eventYear = $occ->event_date ? substr($occ->event_date, 0, 4) : null;
+                            $country = $occ->country_code ? strtoupper($occ->country_code) : null;
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
-                            <td class="px-4 py-3 max-w-[200px]">
+                            <td class="px-4 py-3 max-w-[220px]">
                                 <div class="font-medium italic text-gray-900 dark:text-white text-xs leading-snug">{{ $occ->scientific_name }}</div>
-                                <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5">
-                                    @if($occ->country_code)
-                                        <span class="font-mono text-xs text-gray-400">{{ strtoupper($occ->country_code) }}</span>
+                                <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
+                                    @if($country)
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">{{ $country }}</span>
                                     @endif
                                     @if($catalogRef)
-                                        <span class="text-xs text-gray-400">·</span>
                                         <span class="text-xs text-gray-500 font-mono">{{ $catalogRef }}</span>
                                     @endif
                                     @if($eventYear)
-                                        <span class="text-xs text-gray-400">·</span>
                                         <span class="text-xs text-gray-400">{{ $eventYear }}</span>
                                     @endif
                                 </div>
                                 @if($occ->recorded_by)
-                                    <div class="text-xs text-gray-400 truncate max-w-[180px]" title="{{ $occ->recorded_by }}">{{ $occ->recorded_by }}</div>
+                                    <div class="text-xs text-gray-400 truncate max-w-[200px] mt-0.5" title="{{ $occ->recorded_by }}">{{ $occ->recorded_by }}</div>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-xs">
                                 @if($locality)
                                     <div class="line-clamp-2" title="{{ $locality }}">{{ $locality }}</div>
+                                    @if($country)
+                                        <div class="text-gray-400 mt-0.5">{{ $country }}</div>
+                                    @endif
+                                @elseif($country)
+                                    <span class="text-gray-500">{{ $country }}</span>
                                 @else
                                     <span class="text-gray-300">—</span>
                                 @endif
