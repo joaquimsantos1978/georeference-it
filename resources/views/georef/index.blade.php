@@ -1132,7 +1132,29 @@ function buildLocalityString(g) {
             document.getElementById('uncertainty-slider').value=unc;
             document.getElementById('uncertainty-display').textContent=unc.toLocaleString()+'m';
             placeMarker(mecLat,mecLon); map.fitBounds(bounds,{padding:[20,20]});
-        } else { placeMarker(lat,lon); map.flyTo([lat,lon],12); }
+        } else {
+            placeMarker(lat,lon);
+            // Estimate uncertainty from boundingbox when no polygon is available
+            if (r.boundingbox && r.boundingbox.length === 4) {
+                const RE=6371000;
+                const minLat=parseFloat(r.boundingbox[0]),maxLat=parseFloat(r.boundingbox[1]);
+                const minLon=parseFloat(r.boundingbox[2]),maxLon=parseFloat(r.boundingbox[3]);
+                const cLat=(minLat+maxLat)/2, cLon=(minLon+maxLon)/2;
+                const cosLat=Math.cos(cLat*Math.PI/180);
+                const dy=(maxLat-minLat)*Math.PI/180*RE/2;
+                const dx=(maxLon-minLon)*Math.PI/180*RE*cosLat/2;
+                const unc=Math.round(Math.sqrt(dx*dx+dy*dy));
+                if (unc > 0) {
+                    document.getElementById('uncertainty-input').value=unc;
+                    document.getElementById('uncertainty-slider').max=Math.max(500000,Math.round(unc*1.5));
+                    document.getElementById('uncertainty-slider').value=unc;
+                    document.getElementById('uncertainty-display').textContent=unc.toLocaleString()+'m';
+                }
+                map.fitBounds([[minLat,minLon],[maxLat,maxLon]],{padding:[20,20]});
+            } else {
+                map.flyTo([lat,lon],12);
+            }
+        }
         document.getElementById('nominatim-results').innerHTML='';
     }
     document.getElementById('nominatim-btn').addEventListener('click', ()=>searchNominatim(document.getElementById('nominatim-input').value.trim()));
