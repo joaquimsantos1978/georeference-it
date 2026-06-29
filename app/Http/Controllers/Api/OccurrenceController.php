@@ -74,6 +74,10 @@ class OccurrenceController extends Controller
             $query->where('scientific_name', 'like', '%' . $request->scientific_name . '%');
         }
 
+        if ($request->get('format') === 'csv') {
+            return $this->csvResponse($query, $request);
+        }
+
         $perPage = min((int) $request->get('per_page', 100), 500);
         $results = $query->paginate($perPage);
         $records = $results->getCollection()->map(fn($o) => $this->format($o))->all();
@@ -99,6 +103,44 @@ class OccurrenceController extends Controller
                 'prev_page_url' => $results->previousPageUrl(),
             ],
             'data' => $records,
+        ]);
+    }
+
+    private function csvResponse($query, Request $request): Response
+    {
+        $columns = [
+            'occurrenceID', 'datasetKey', 'institutionCode', 'collectionCode', 'catalogNumber',
+            'basisOfRecord', 'scientificName', 'taxonRank', 'kingdom', 'family',
+            'eventDate', 'recordedBy',
+            'country', 'countryCode', 'stateProvince', 'county', 'municipality',
+            'island', 'islandGroup', 'waterBody', 'verbatimLocality',
+            'decimalLatitude', 'decimalLongitude', 'geodeticDatum',
+            'coordinateUncertaintyInMeters', 'georeferencedBy', 'georeferencedDate',
+            'georeferenceProtocol', 'georeferenceSources', 'georeferenceRemarks',
+            'georeferenceVerificationStatus',
+        ];
+
+        $filename = 'georeference-it-occurrences-' . now()->format('Y-m-d') . '.csv';
+
+        $callback = function () use ($query, $columns) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM for Excel
+            fputcsv($out, $columns);
+
+            $query->with(['localityGroup'])->chunk(500, function ($occurrences) use ($out, $columns) {
+                foreach ($occurrences as $o) {
+                    $record = $this->format($o);
+                    fputcsv($out, array_map(fn($col) => $record[$col] ?? '', $columns));
+                }
+            });
+
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'X-Accel-Buffering'   => 'no',
         ]);
     }
 

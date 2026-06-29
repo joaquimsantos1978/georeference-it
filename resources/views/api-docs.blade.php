@@ -65,7 +65,7 @@
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">scientific_name</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Partial match on scientific name</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">per_page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Records per page — default 100, max 500</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Page number — default 1</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">format</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Set to <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">jsonld</code> for JSON-LD output</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">format</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Set to <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">csv</code> to download all matching records as a UTF-8 CSV file (ignores <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">per_page</code>/<code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">page</code>), or <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">jsonld</code> for JSON-LD output</td></tr>
                         </tbody>
                     </table>
                     <div class="bg-gray-50 dark:bg-gray-900 rounded-lg px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-300">
@@ -107,7 +107,7 @@
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">Response format</h2>
             <p class="text-sm text-gray-500 mb-4">Coordinates reflect the best available georeference: community-validated → pending suggestion → original GBIF coordinates.</p>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">JSON (default)</p>
                     <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">{
@@ -157,6 +157,19 @@
     }
   ]
 }</code></pre>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">CSV</p>
+                    <p class="text-xs text-gray-400 mb-2">Add <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">?format=csv</code> — downloads all matching records (no pagination)</p>
+                    <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">occurrenceID,scientificName,
+  countryCode,decimalLatitude,
+  decimalLongitude,
+  georeferenceVerificationStatus
+3014169604,Quercus robur L.,
+  PT,39.8812,-8.5234,
+  verified by contributor
+...</code></pre>
+                    <p class="text-xs text-gray-400 mt-2">UTF-8 with BOM (Excel-compatible). All DwC georeference fields included.</p>
                 </div>
             </div>
         </section>

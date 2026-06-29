@@ -10,12 +10,12 @@
                 <a href="{{ route('georef.index') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Georeference') }}</a>
                 <a href="{{ route('explore') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Explore') }}</a>
                 <a href="{{ route('datasets') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Datasets') }}</a>
-                {{-- <a href="{{ route('stats') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Stats') }}</a> --}}
                 {{-- Community --}}
                 <span class="text-gray-200 dark:text-gray-700 select-none">|</span>
+                <a href="{{ route('stats') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Stats') }}</a>
+                <a href="{{ route('impact') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Impact') }}</a>
                 <a href="{{ route('leaderboard') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Leaderboard') }}</a>
                 <a href="{{ route('activity') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Activity') }}</a>
-                <a href="{{ route('impact') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('Impact') }}</a>
                 {{-- Info --}}
                 <span class="text-gray-200 dark:text-gray-700 select-none">|</span>
                 <a href="{{ route('about') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('About') }}</a>
@@ -101,11 +101,11 @@
                     <a href="{{ route('georef.index') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Georeference') }}</a>
                     <a href="{{ route('explore') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Explore') }}</a>
                     <a href="{{ route('datasets') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Datasets') }}</a>
-                    {{-- <a href="{{ route('stats') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Stats') }}</a> --}}
                     <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                    <a href="{{ route('stats') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Stats') }}</a>
+                    <a href="{{ route('impact') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Impact') }}</a>
                     <a href="{{ route('leaderboard') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Leaderboard') }}</a>
                     <a href="{{ route('activity') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Activity') }}</a>
-                    <a href="{{ route('impact') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Impact') }}</a>
                     <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                     <a href="{{ route('about') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('About') }}</a>
                     <a href="{{ route('api-docs') }}" class="block px-4 py-2 text-sm font-mono text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">API</a>

@@ -81,6 +81,8 @@
                             <a href="{{ route('georef.index') }}" class="hover:text-green-600">{{ __('Georeference') }}</a>
                             <a href="{{ route('explore') }}" class="hover:text-green-600">{{ __('Explore') }}</a>
                             <a href="{{ route('datasets') }}" class="hover:text-green-600">{{ __('Datasets') }}</a>
+                            <a href="{{ route('stats') }}" class="hover:text-green-600">{{ __('Stats') }}</a>
+                            <a href="{{ route('impact') }}" class="hover:text-green-600">{{ __('Impact') }}</a>
                         </div>
                     </div>
                     <div>
