@@ -50,12 +50,14 @@ class EmbedController extends Controller
                 ? rtrim(config('app.url'), '/') . '/georef?group=' . $o->locality_group_id
                 : null,
             'diverges_from_gbif'            => $this->divergesFromGbif($o, $georef),
+            'gbif_lat'                      => $o->gbif_decimal_latitude,
+            'gbif_lng'                      => $o->gbif_decimal_longitude,
         ];
     }
 
     private function resolveGeoref(Occurrence $o): array
     {
-        if (in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted'])) {
+        if (in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted', 'gbif_georeferenced'])) {
             $suggestion = GeorefSuggestion::where('locality_group_id', $o->locality_group_id)
                 ->whereNotNull('decimal_latitude')
                 ->where(function ($q) {

@@ -209,7 +209,7 @@ class OccurrenceController extends Controller
 
     private function resolveGeoref(Occurrence $o): array
     {
-        if (in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted'])) {
+        if (in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted', 'gbif_georeferenced'])) {
             $suggestion = GeorefSuggestion::with('user:id,name,public_name,orcid')
                 ->where('locality_group_id', $o->locality_group_id)
                 ->whereNotNull('decimal_latitude')

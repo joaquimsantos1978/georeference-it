@@ -127,6 +127,14 @@
   L.circleMarker([lat, lng], {
     radius: 5, color: '#fff', fillColor: '#4C9C2E', fillOpacity: 1, weight: 2
   }).addTo(map);
+
+  @if ($data['gbif_lat'] && $data['diverges_from_gbif'])
+  var gbifLat = {{ (float)$data['gbif_lat'] }};
+  var gbifLng = {{ (float)$data['gbif_lng'] }};
+  L.circleMarker([gbifLat, gbifLng], {
+    radius: 4, color: '#fff', fillColor: '#9ca3af', fillOpacity: 0.8, weight: 2
+  }).bindTooltip('GBIF', {permanent: false, direction: 'top'}).addTo(map);
+  @endif
 })();
 </script>
 @endif
