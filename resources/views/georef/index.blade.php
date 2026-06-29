@@ -493,27 +493,27 @@
                     <div class="flex gap-2 items-end">
                         <div class="flex-1">
                             <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Latitude') }}</label>
-                            <input type="number" id="lat-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
+                            <input type="number" id="lat-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
                         </div>
                         <div class="flex-1">
                             <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Longitude') }}</label>
-                            <input type="number" id="lng-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
+                            <input type="number" id="lng-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
                         </div>
-                        <button type="button" id="reset-point-btn" onclick="resetPoint()" title="{{ __('Clear point') }}" style="flex-shrink:0;padding:5px 8px;border-radius:6px;border:1px solid #e5e7eb;background:white;color:#9ca3af;cursor:pointer;font-size:12px;line-height:1;" class="hover:text-red-400 hover:border-red-300">✕</button>
+                        <button type="button" id="reset-point-btn" onclick="resetPoint()" title="{{ __('Clear point') }}" style="flex-shrink:0;padding:5px 8px;border-radius:6px;border:1px solid #e5e7eb;cursor:pointer;font-size:12px;line-height:1;" class="hover:text-red-400 hover:border-red-300 bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-400">✕</button>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Uncertainty') }} <span id="uncertainty-display" class="text-green-600 font-semibold"></span></label>
-                        <input type="number" id="uncertainty-input" min="1" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="1000">
+                        <input type="number" id="uncertainty-input" min="1" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="1000">
                         <input type="range" id="uncertainty-slider" min="100" max="500000" step="1000" value="1000" class="w-full mt-1 accent-green-600">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Remarks') }}</label>
-                        <textarea id="remarks-input" rows="2" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Optional notes...') }}"></textarea>
+                        <textarea id="remarks-input" rows="2" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Optional notes...') }}"></textarea>
                     </div>
                     @guest
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Your name (optional)') }}</label>
-                        <input type="text" id="anon-name" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Anonymous') }}">
+                        <input type="text" id="anon-name" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Anonymous') }}">
                     </div>
                     @endguest
                 </form>
