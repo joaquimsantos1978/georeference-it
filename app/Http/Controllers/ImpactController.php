@@ -14,6 +14,8 @@ class ImpactController extends Controller
 
         $validStatuses = ['has_suggestion', 'conflicted', 'validated', 'gbif_reviewed'];
 
+        $beforeId = $request->integer('before') ?: null;
+
         $occurrences = DB::table('occurrences as o')
             ->select(
                 'o.id', 'o.gbif_occurrence_key', 'o.scientific_name',
@@ -24,9 +26,14 @@ class ImpactController extends Controller
             ->whereIn('o.georef_status', $validStatuses)
             ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('o.georef_status', $status))
             ->when($country, fn($q) => $q->where('o.country_code', $country))
+            ->when($beforeId, fn($q) => $q->where('o.id', '<', $beforeId))
             ->orderByDesc('o.id')
-            ->simplePaginate(50)
-            ->withQueryString();
+            ->limit(51)
+            ->get();
+
+        $hasMore   = $occurrences->count() > 50;
+        $occurrences = $occurrences->take(50);
+        $nextId    = $hasMore ? $occurrences->last()->id : null;
 
         $totalCount = DB::table('occurrences')
             ->whereIn('georef_status', $validStatuses)
@@ -34,6 +41,6 @@ class ImpactController extends Controller
             ->when($country, fn($q) => $q->where('country_code', $country))
             ->count();
 
-        return view('impact', compact('occurrences', 'totalCount', 'status', 'country'));
+        return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'nextId', 'beforeId'));
     }
 }
