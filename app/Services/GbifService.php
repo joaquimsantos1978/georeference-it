@@ -98,7 +98,8 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         $gbifKey = (string) ($record['key'] ?? $record['gbifID'] ?? null);
         if (!$gbifKey) return null;
 
-        $hasCoords = isset($record['decimalLatitude']) && isset($record['decimalLongitude']);
+        $hasCoords = isset($record['decimalLatitude']) && isset($record['decimalLongitude'])
+            && !($record['decimalLatitude'] == 0 && $record['decimalLongitude'] == 0);
         $georefStatus = $hasCoords ? 'gbif_georeferenced' : 'ungeoreferenced';
 
         $groupFields = [
@@ -197,6 +198,8 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             ->where('georef_status', 'gbif_georeferenced')
             ->whereNotNull('gbif_decimal_latitude')
             ->whereNotNull('gbif_decimal_longitude')
+            ->where('gbif_decimal_latitude', '!=', 0)
+            ->where('gbif_decimal_longitude', '!=', 0)
             ->limit(500) // clusterByOverlap is O(n²) — cap at 500 to stay fast
             ->get(['id', 'gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m']);
 
@@ -316,6 +319,8 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             ->where('georef_status', 'gbif_georeferenced')
             ->whereNotNull('gbif_decimal_latitude')
             ->whereNotNull('gbif_decimal_longitude')
+            ->where('gbif_decimal_latitude', '!=', 0)
+            ->where('gbif_decimal_longitude', '!=', 0)
             ->limit(500) // clusterByOverlap is O(n²) — cap to stay fast
             ->get(['gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m']);
 
