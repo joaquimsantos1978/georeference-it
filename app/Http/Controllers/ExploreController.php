@@ -29,12 +29,15 @@ class ExploreController extends Controller
         }
 
         if ($request->filled('dataset_key')) {
-            $query->whereIn('id', function ($sub) use ($request) {
-                $sub->select('locality_group_id')
-                    ->from('occurrences')
+            $query->joinSub(
+                \Illuminate\Support\Facades\DB::table('occurrences')
+                    ->select('locality_group_id')
                     ->where('dataset_key', $request->dataset_key)
-                    ->whereNotNull('locality_group_id');
-            });
+                    ->whereNotNull('locality_group_id')
+                    ->distinct(),
+                'ds_occ',
+                'locality_groups.id', '=', 'ds_occ.locality_group_id'
+            );
         }
 
         if ($request->filled('status')) {
