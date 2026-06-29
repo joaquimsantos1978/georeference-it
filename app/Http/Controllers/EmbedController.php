@@ -38,9 +38,14 @@ class EmbedController extends Controller
             'gbif_reviewed'      => 'GBIF reviewed',
         ];
 
+        $hasSuggestion = $georef['sources'] !== null && $georef['sources'] !== 'GBIF';
+        $displayStatus = ($o->georef_status === 'gbif_georeferenced' && $hasSuggestion)
+            ? 'has_suggestion'
+            : $o->georef_status;
+
         return [
-            'georef_status'                 => $o->georef_status,
-            'status_label'                  => $statusLabels[$o->georef_status] ?? $o->georef_status,
+            'georef_status'                 => $displayStatus,
+            'status_label'                  => $statusLabels[$displayStatus] ?? $displayStatus,
             'decimalLatitude'               => $georef['lat'],
             'decimalLongitude'              => $georef['lng'],
             'coordinateUncertaintyInMeters' => $georef['uncertainty'],

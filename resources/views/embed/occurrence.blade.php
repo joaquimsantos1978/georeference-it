@@ -91,7 +91,10 @@
   @endif
 
   @if ($data['diverges_from_gbif'])
-    <div class="warn">⚠ Differs from GBIF coordinates</div>
+    <div class="coords" style="color:#9ca3af;font-size:10px;margin-top:-2px">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#9ca3af;margin-right:3px;vertical-align:middle"></span>GBIF
+      <code style="font-size:10px">{{ number_format((float)$data['gbif_lat'], 5) }}, {{ number_format((float)$data['gbif_lng'], 5) }}</code>
+    </div>
   @endif
 
   @if ($data['georeferenceRemarks'])
