@@ -45,8 +45,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($occurrences as $occ)
                         @php
-                            $localityParts = array_filter([
-                                $occ->verbatim_locality,
+                            $interpretedParts = array_filter([
                                 $occ->municipality,
                                 $occ->county,
                                 $occ->state_province,
@@ -54,7 +53,7 @@
                                 $occ->water_body,
                                 $occ->higher_geography,
                             ]);
-                            $locality = trim(implode(', ', $localityParts));
+                            $interpreted = trim(implode(', ', $interpretedParts));
 
                             $catalogRef = trim(implode(' ', array_filter([
                                 $occ->institution_code,
@@ -90,17 +89,20 @@
                                     <div class="text-xs text-gray-400 truncate max-w-[200px] mt-0.5" title="{{ $occ->recorded_by }}">{{ $occ->recorded_by }}</div>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-xs">
-                                @if($locality)
-                                    <div class="line-clamp-3" title="{{ $locality }}">{{ $locality }}</div>
+                            <td class="px-4 py-3 text-xs max-w-xs">
+                                @if($occ->verbatim_locality)
+                                    <div class="text-gray-700 dark:text-gray-200 line-clamp-2" title="{{ $occ->verbatim_locality }}">{{ $occ->verbatim_locality }}</div>
+                                @endif
+                                @if($interpreted)
+                                    <div class="text-gray-400 mt-0.5 line-clamp-2" title="{{ $interpreted }}">{{ $interpreted }}</div>
                                 @endif
                                 @if($occ->location_remarks)
                                     <div class="text-gray-400 italic mt-0.5 line-clamp-1" title="{{ $occ->location_remarks }}">{{ $occ->location_remarks }}</div>
                                 @endif
                                 @if($country)
-                                    <div class="text-gray-400 mt-0.5">{{ $country }}</div>
+                                    <div class="text-gray-400 mt-0.5 font-mono">{{ $country }}</div>
                                 @endif
-                                @if(!$locality && !$country)
+                                @if(!$occ->verbatim_locality && !$interpreted && !$country)
                                     <span class="text-gray-300">—</span>
                                 @endif
                             </td>
