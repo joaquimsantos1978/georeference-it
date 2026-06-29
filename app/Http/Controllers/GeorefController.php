@@ -427,9 +427,19 @@ public function next(Request $request)
             'georeferenced_date'       => now(),
         ]);
 
+        // Create the creator's agree validation first so exclusions can reference it
+        $creatorValidation = auth()->check()
+            ? $this->applyVote($suggestion, auth()->user(), 'agree')
+            : null;
+
         if (!empty($validated['excluded_occurrence_ids'])) {
+            $weight = $creatorValidation ? auth()->user()->getVoteWeight() : 1;
             foreach ($validated['excluded_occurrence_ids'] as $occurrenceId) {
-                $suggestion->exclusions()->create(['occurrence_id' => $occurrenceId]);
+                $suggestion->exclusions()->create([
+                    'occurrence_id' => $occurrenceId,
+                    'validation_id' => $creatorValidation?->id,
+                    'weight'        => $weight,
+                ]);
             }
         }
 
@@ -510,10 +520,6 @@ public function next(Request $request)
 
         }
 
-        if (auth()->check()) {
-            $this->applyVote($suggestion, auth()->user(), 'agree');
-        }
-
         // Log the georef event
         $locationLabel = trim(implode(', ', array_filter([
             $group->verbatim_locality, $group->municipality, $group->county,
@@ -578,13 +584,19 @@ public function next(Request $request)
             return response()->json(['success' => false, 'message' => 'Cannot validate your own suggestion']);
         }
 
-        $this->applyVote($suggestion, auth()->user(), $validated['vote']);
+        $user = auth()->user();
+        $validation = $this->applyVote($suggestion, $user, $validated['vote']);
 
         if ($validated['vote'] === 'agree' && !empty($validated['excluded_occurrence_ids'])) {
             $existing = $suggestion->exclusions()->pluck('occurrence_id')->all();
+            $weight = $user->getVoteWeight();
             foreach ($validated['excluded_occurrence_ids'] as $occId) {
                 if (!in_array($occId, $existing)) {
-                    $suggestion->exclusions()->create(['occurrence_id' => $occId]);
+                    $suggestion->exclusions()->create([
+                        'occurrence_id' => $occId,
+                        'validation_id' => $validation->id,
+                        'weight'        => $weight,
+                    ]);
                 }
             }
         }
@@ -615,13 +627,18 @@ public function next(Request $request)
             'excluded_occurrence_ids.*' => 'integer',
         ]);
 
-        $this->applyVote($suggestion, $user, 'agree');
+        $validation = $this->applyVote($suggestion, $user, 'agree');
 
         if (!empty($validated['excluded_occurrence_ids'])) {
             $existing = $suggestion->exclusions()->pluck('occurrence_id')->all();
+            $weight = $user->getVoteWeight();
             foreach ($validated['excluded_occurrence_ids'] as $occId) {
                 if (!in_array($occId, $existing)) {
-                    $suggestion->exclusions()->create(['occurrence_id' => $occId]);
+                    $suggestion->exclusions()->create([
+                        'occurrence_id' => $occId,
+                        'validation_id' => $validation->id,
+                        'weight'        => $weight,
+                    ]);
                 }
             }
         }
@@ -853,11 +870,11 @@ private function countryNameToIso2(): array
         }
     }
 
-    private function applyVote(GeorefSuggestion $suggestion, $user, string $vote, bool $logActivity = true): void
+    private function applyVote(GeorefSuggestion $suggestion, $user, string $vote, bool $logActivity = true): GeorefValidation
     {
         $weight = $user->getVoteWeight();
 
-        GeorefValidation::create([
+        $validation = GeorefValidation::create([
             'suggestion_id'  => $suggestion->id,
             'user_id'        => $user->id,
             'vote'           => $vote,
@@ -903,6 +920,8 @@ private function countryNameToIso2(): array
                 $this->conflictSuggestion($suggestion);
             }
         }
+
+        return $validation;
     }
 
     private function conflictSuggestion(GeorefSuggestion $suggestion): void
@@ -920,7 +939,23 @@ private function countryNameToIso2(): array
     {
         $suggestion->update(['status' => 'validated']);
 
-        $excludedIds = $suggestion->exclusions()->pluck('occurrence_id')->toArray();
+        // Weighted majority exclusion: exclude occurrence if exclude_weight > total_agree_weight / 2
+        $totalAgreeWeight = $suggestion->total_points; // already desnormalized
+        $excludedIds = [];
+
+        if ($totalAgreeWeight > 0) {
+            $excludeWeights = $suggestion->exclusions()
+                ->selectRaw('occurrence_id, SUM(weight) as exclude_weight')
+                ->groupBy('occurrence_id')
+                ->pluck('exclude_weight', 'occurrence_id')
+                ->toArray();
+
+            foreach ($excludeWeights as $occId => $excludeWeight) {
+                if ($excludeWeight * 2 > $totalAgreeWeight) {
+                    $excludedIds[] = $occId;
+                }
+            }
+        }
 
         $suggestion->localityGroup->occurrences()
             ->whereNotIn('id', $excludedIds)
