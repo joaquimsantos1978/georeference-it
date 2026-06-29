@@ -140,7 +140,7 @@
                 </table>
                 </div>
 
-                @if($nextTs || request()->has('before'))
+                @if(request()->has('before') || $nextId)
                 <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
                     @php
                         $baseParams = array_filter(['status' => $status, 'country' => $country]);
@@ -150,8 +150,8 @@
                             <a href="{{ route('impact', $baseParams) }}" class="text-xs text-gray-500 hover:text-green-600">← Back to start</a>
                         @endif
                     </div>
-                    @if($nextTs && $nextId)
-                        <a href="{{ route('impact', array_merge($baseParams, ['before' => $nextTs, 'before_id' => $nextId])) }}"
+                    @if($nextId)
+                        <a href="{{ route('impact', array_merge($baseParams, ['before' => $nextId])) }}"
                            class="text-xs bg-white border border-gray-200 hover:border-green-500 text-gray-600 hover:text-green-600 rounded-lg px-4 py-1.5 transition-colors">
                             Next →
                         </a>

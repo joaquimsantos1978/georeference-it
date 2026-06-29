@@ -14,8 +14,7 @@ class ImpactController extends Controller
 
         $validStatuses = ['has_suggestion', 'validated', 'gbif_reviewed'];
 
-        $beforeTs = $request->get('before') ?: null;
-        $beforeId = $request->integer('before_id') ?: null;
+        $beforeId = $request->integer('before') ?: null;
 
         $occurrences = DB::table('occurrences as o')
             ->select(
@@ -30,18 +29,14 @@ class ImpactController extends Controller
             ->whereIn('o.georef_status', $validStatuses)
             ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('o.georef_status', $status))
             ->when($country, fn($q) => $q->where('o.country_code', $country))
-            ->when($beforeTs && $beforeId, fn($q) => $q->where(
-                fn($q2) => $q2->where('o.updated_at', '<', $beforeTs)
-                    ->orWhere(fn($q3) => $q3->where('o.updated_at', '=', $beforeTs)->where('o.id', '<', $beforeId))
-            ))
-            ->orderByDesc('o.updated_at')
+            ->when($beforeId, fn($q) => $q->where('o.id', '<', $beforeId))
             ->orderByDesc('o.id')
             ->limit(51)
             ->get();
 
         $hasMore     = $occurrences->count() > 50;
         $occurrences = $occurrences->take(50);
-        $nextTs      = $hasMore ? $occurrences->last()->updated_at : null;
+        $nextTs      = null;
         $nextId      = $hasMore ? $occurrences->last()->id : null;
 
         $totalCount = DB::table('occurrences')
