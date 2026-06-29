@@ -14,7 +14,7 @@
                 <div style="display:flex;align-items:center;gap:6px;position:relative;">
                     <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
                         autocomplete="off"
-                        class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500">
+                        class="flex-1 text-xs panel-input border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500">
                     <button id="focus-clear" title="{{ __('Clear focus') }}" style="display:none;font-size:14px;background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
                     <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
                 </div>
@@ -231,7 +231,7 @@
                     </div>
                     <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">{{ __('Find coordinates on map:') }}</div>
                     <div class="flex gap-1">
-                        <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
+                        <input type="text" id="nominatim-input" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
                         <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
                     </div>
                     <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
@@ -491,6 +491,7 @@
                 .vote-disagree-btn { color:#ef4444;border:1px solid #ef4444;background:#fff1f2; }
                 .delete-sug-btn    { color:#ef4444;border:1px solid #ef4444;background:#fff1f2; }
                 .use-similar-btn   { color:#4C9C2E;border:1.5px solid #4C9C2E;background:#fff; }
+                .panel-input { color: #111827; background: #ffffff; }
                 @media (prefers-color-scheme: dark) {
                     .dark-text  { color: #f9fafb; }
                     .sugg-card  { border-color: #374151; background: #1f2937; }
@@ -500,6 +501,8 @@
                     .vote-disagree-btn { background: #2d1515; }
                     .delete-sug-btn    { background: #2d1515; }
                     .use-similar-btn   { background: #1f2937; }
+                    .panel-input { color: #f9fafb; background: #1f2937; border-color: #374151; }
+                    #focus-dropdown { background: #1f2937; border-color: #374151; color: #f9fafb; }
                 }
                 </style>
                 <p id="map-click-hint" class="text-xs text-gray-400 mb-3 mt-0" style="display:none;">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
@@ -507,27 +510,27 @@
                     <div class="flex gap-2 items-end">
                         <div class="flex-1">
                             <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Latitude') }}</label>
-                            <input type="number" id="lat-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
+                            <input type="number" id="lat-input" step="0.0000001" class="w-full text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
                         </div>
                         <div class="flex-1">
                             <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Longitude') }}</label>
-                            <input type="number" id="lng-input" step="0.0000001" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
+                            <input type="number" id="lng-input" step="0.0000001" class="w-full text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0.0000000">
                         </div>
                         <button type="button" id="reset-point-btn" onclick="resetPoint()" title="{{ __('Clear point') }}" style="flex-shrink:0;padding:5px 8px;border-radius:6px;border:1px solid #e5e7eb;cursor:pointer;font-size:12px;line-height:1;" class="hover:text-red-400 hover:border-red-300 bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-400">✕</button>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Uncertainty') }} <span id="uncertainty-display" class="text-green-600 font-semibold"></span></label>
-                        <input type="number" id="uncertainty-input" min="1" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="1000">
+                        <input type="number" id="uncertainty-input" min="1" class="w-full text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="1000">
                         <input type="range" id="uncertainty-slider" min="100" max="500000" step="1000" value="1000" class="w-full mt-1 accent-green-600">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Remarks') }}</label>
-                        <textarea id="remarks-input" rows="2" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Optional notes...') }}"></textarea>
+                        <textarea id="remarks-input" rows="2" class="w-full text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Optional notes...') }}"></textarea>
                     </div>
                     @guest
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Your name (optional)') }}</label>
-                        <input type="text" id="anon-name" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Anonymous') }}">
+                        <input type="text" id="anon-name" class="w-full text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Anonymous') }}">
                     </div>
                     @endguest
                 </form>
@@ -539,7 +542,7 @@
                 <div id="comments-list" class="mt-1 space-y-1 max-h-20 overflow-y-auto"></div>
                 @auth
                 <div class="mt-2 flex gap-1">
-                    <input type="text" id="comment-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Add a comment...') }}">
+                    <input type="text" id="comment-input" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Add a comment...') }}">
                     <button id="comment-submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200">{{ __('Send') }}</button>
                 </div>
                 @else
