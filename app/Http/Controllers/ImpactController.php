@@ -21,7 +21,10 @@ class ImpactController extends Controller
                 'o.id', 'o.gbif_occurrence_key', 'o.scientific_name',
                 'o.georef_status', 'o.country_code', 'o.locality_group_id',
                 'o.verbatim_locality', 'o.municipality', 'o.county',
-                'o.state_province', 'o.recorded_by', 'o.event_date',
+                'o.state_province', 'o.continent', 'o.water_body',
+                'o.higher_geography', 'o.location_remarks',
+                'o.island', 'o.island_group',
+                'o.recorded_by', 'o.event_date',
                 'o.institution_code', 'o.collection_code', 'o.catalog_number',
                 'o.gbif_decimal_latitude', 'o.gbif_decimal_longitude',
                 'o.updated_at'

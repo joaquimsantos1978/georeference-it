@@ -50,6 +50,9 @@
                                 $occ->municipality,
                                 $occ->county,
                                 $occ->state_province,
+                                $occ->island ?: ($occ->island_group ?: null),
+                                $occ->water_body,
+                                $occ->higher_geography,
                             ]);
                             $locality = trim(implode(', ', $localityParts));
 
@@ -89,13 +92,15 @@
                             </td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-xs">
                                 @if($locality)
-                                    <div class="line-clamp-2" title="{{ $locality }}">{{ $locality }}</div>
-                                    @if($country)
-                                        <div class="text-gray-400 mt-0.5">{{ $country }}</div>
-                                    @endif
-                                @elseif($country)
-                                    <span class="text-gray-500">{{ $country }}</span>
-                                @else
+                                    <div class="line-clamp-3" title="{{ $locality }}">{{ $locality }}</div>
+                                @endif
+                                @if($occ->location_remarks)
+                                    <div class="text-gray-400 italic mt-0.5 line-clamp-1" title="{{ $occ->location_remarks }}">{{ $occ->location_remarks }}</div>
+                                @endif
+                                @if($country)
+                                    <div class="text-gray-400 mt-0.5">{{ $country }}</div>
+                                @endif
+                                @if(!$locality && !$country)
                                     <span class="text-gray-300">—</span>
                                 @endif
                             </td>
