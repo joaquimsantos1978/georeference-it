@@ -565,7 +565,9 @@ public function next(Request $request)
         }
 
         $validated = $request->validate([
-            'vote' => 'required|in:agree,disagree,abstain',
+            'vote'                    => 'required|in:agree,disagree,abstain',
+            'excluded_occurrence_ids' => 'nullable|array',
+            'excluded_occurrence_ids.*' => 'integer',
         ]);
 
         if ($suggestion->validations()->where('user_id', auth()->id())->exists()) {
@@ -577,6 +579,15 @@ public function next(Request $request)
         }
 
         $this->applyVote($suggestion, auth()->user(), $validated['vote']);
+
+        if ($validated['vote'] === 'agree' && !empty($validated['excluded_occurrence_ids'])) {
+            $existing = $suggestion->exclusions()->pluck('occurrence_id')->all();
+            foreach ($validated['excluded_occurrence_ids'] as $occId) {
+                if (!in_array($occId, $existing)) {
+                    $suggestion->exclusions()->create(['occurrence_id' => $occId]);
+                }
+            }
+        }
 
         return response()->json(['success' => true]);
     }
@@ -599,7 +610,21 @@ public function next(Request $request)
             return response()->json(['success' => false, 'message' => 'Already voted']);
         }
 
+        $validated = $request->validate([
+            'excluded_occurrence_ids'   => 'nullable|array',
+            'excluded_occurrence_ids.*' => 'integer',
+        ]);
+
         $this->applyVote($suggestion, $user, 'agree');
+
+        if (!empty($validated['excluded_occurrence_ids'])) {
+            $existing = $suggestion->exclusions()->pluck('occurrence_id')->all();
+            foreach ($validated['excluded_occurrence_ids'] as $occId) {
+                if (!in_array($occId, $existing)) {
+                    $suggestion->exclusions()->create(['occurrence_id' => $occId]);
+                }
+            }
+        }
 
         // Auto-disagree with all other pending suggestions in the same group
         $competing = GeorefSuggestion::where('locality_group_id', $suggestion->locality_group_id)

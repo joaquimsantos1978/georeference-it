@@ -1971,8 +1971,14 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
             var vote = pendingVotes[id];
             var hasCompeting = _currentSuggestions.length > 1;
             var url = (vote==='agree' && hasCompeting) ? APP_URL+'/georef/agree-with/'+id : APP_URL+'/georef/validate/'+id;
-            var body = (vote==='agree' && hasCompeting) ? '{}' : JSON.stringify({vote:vote});
-            return fetch(url,{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},body:body});
+            var bodyObj = (vote==='agree' && hasCompeting) ? {} : {vote: vote};
+            if (vote === 'agree') {
+                var sug = _currentSuggestions.find(function(s){ return s.id == id; });
+                if (sug && sug.cluster_occurrence_ids && sug.cluster_occurrence_ids.length > 0 && !_correctSuggestionIds.has(parseInt(id))) {
+                    bodyObj.excluded_occurrence_ids = sug.cluster_occurrence_ids;
+                }
+            }
+            return fetch(url,{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(bodyObj)});
         });
 
         Promise.all(votePromises).then(function(){
