@@ -5,17 +5,20 @@
         <div class="flex items-center justify-between gap-4 flex-wrap">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Impact</h1>
-                <p class="text-sm text-gray-500 mt-0.5">{{ number_format($totalCount) }} specimens georeferenced or improved on this platform</p>
+                <p class="text-sm text-gray-500 mt-0.5">
+                    {{ number_format($totalGroups) }} {{ Str::plural('locality', $totalGroups) }} &middot;
+                    {{ number_format($totalSpecimens) }} {{ Str::plural('specimen', $totalSpecimens) }} georeferenced or improved
+                </p>
             </div>
 
             <form method="GET" action="{{ route('impact') }}" class="flex items-center gap-2 flex-wrap">
                 <select name="status" onchange="this.form.submit()"
                     class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg pl-2 pr-7 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
                     <option value="">All statuses</option>
-                    <option value="validated"     {{ $status === 'validated'     ? 'selected' : '' }}>Validated</option>
+                    <option value="validated"      {{ $status === 'validated'      ? 'selected' : '' }}>Validated</option>
                     <option value="has_suggestion" {{ $status === 'has_suggestion' ? 'selected' : '' }}>Suggestion pending</option>
-                    <option value="conflicted"    {{ $status === 'conflicted'    ? 'selected' : '' }}>Conflicted</option>
-                    <option value="gbif_reviewed" {{ $status === 'gbif_reviewed' ? 'selected' : '' }}>GBIF reviewed</option>
+                    <option value="conflicted"     {{ $status === 'conflicted'     ? 'selected' : '' }}>Conflicted</option>
+                    <option value="gbif_reviewed"  {{ $status === 'gbif_reviewed'  ? 'selected' : '' }}>GBIF reviewed</option>
                 </select>
                 <input type="text" name="country" value="{{ $country }}" placeholder="Country (e.g. PT)"
                     maxlength="2"
@@ -29,50 +32,50 @@
 
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
 
-            @if($occurrences->isEmpty())
-                <div class="px-5 py-12 text-center text-sm text-gray-400">No specimens found.</div>
+            @if($groups->isEmpty())
+                <div class="px-5 py-12 text-center text-sm text-gray-400">No localities found.</div>
             @else
                 <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                         <tr>
-                            <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Specimen</th>
                             <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Locality</th>
                             <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Coordinates</th>
                             <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+                            <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Specimens</th>
                             <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Last activity</th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @foreach($occurrences as $occ)
+                        @foreach($groups as $grp)
                         @php
                             $locality = trim(implode(', ', array_filter([
-                                $occ->verbatim_locality, $occ->municipality, $occ->county
+                                $grp->verbatim_locality, $grp->municipality, $grp->county
                             ])));
-                            $statusLabels = [
-                                'has_suggestion' => ['label' => 'Pending',   'class' => 'text-amber-600 bg-amber-50 border-amber-200'],
-                                'conflicted'     => ['label' => 'Conflicted','class' => 'text-purple-600 bg-purple-50 border-purple-200'],
-                                'validated'      => ['label' => 'Validated', 'class' => 'text-green-600 bg-green-50 border-green-200'],
-                                'gbif_reviewed'  => ['label' => 'GBIF reviewed','class' => 'text-blue-600 bg-blue-50 border-blue-200'],
+                            $pills = [
+                                'has_suggestion' => ['label' => 'Pending',       'class' => 'text-amber-600 bg-amber-50 border-amber-200'],
+                                'conflicted'     => ['label' => 'Conflicted',    'class' => 'text-purple-600 bg-purple-50 border-purple-200'],
+                                'validated'      => ['label' => 'Validated',     'class' => 'text-green-600 bg-green-50 border-green-200'],
+                                'gbif_reviewed'  => ['label' => 'GBIF reviewed', 'class' => 'text-blue-600 bg-blue-50 border-blue-200'],
                             ];
-                            $pill = $statusLabels[$occ->georef_status] ?? ['label' => $occ->georef_status, 'class' => 'text-gray-500 bg-gray-50 border-gray-200'];
-                            $ago = $occ->last_activity ? \Carbon\Carbon::parse($occ->last_activity)->diffForHumans() : '—';
+                            $pill = $pills[$grp->georef_status] ?? ['label' => $grp->georef_status, 'class' => 'text-gray-500 bg-gray-50 border-gray-200'];
+                            $ago  = $grp->last_activity ? \Carbon\Carbon::parse($grp->last_activity)->diffForHumans() : '—';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                             <td class="px-4 py-3">
-                                <div class="font-medium italic text-gray-900 dark:text-white text-xs">{{ $occ->scientific_name }}</div>
-                                @if($occ->country_code)
-                                    <span class="font-mono text-xs text-gray-400">{{ strtoupper($occ->country_code) }}</span>
+                                <a href="{{ route('georef.index') }}?group={{ $grp->locality_group_id }}"
+                                   class="font-medium text-gray-900 dark:text-white hover:text-green-600 leading-snug block">
+                                    {{ $locality ?: 'Unknown locality' }}
+                                </a>
+                                @if($grp->country_code)
+                                    <span class="font-mono text-xs text-gray-400">{{ strtoupper($grp->country_code) }}</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-xs truncate" title="{{ $locality }}">
-                                {{ $locality ?: '—' }}
-                            </td>
-                            <td class="px-4 py-3 font-mono text-xs text-gray-500">
-                                @if($occ->decimal_latitude !== null)
-                                    {{ number_format((float)$occ->decimal_latitude, 4) }},
-                                    {{ number_format((float)$occ->decimal_longitude, 4) }}
+                            <td class="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">
+                                @if($grp->decimal_latitude !== null)
+                                    {{ number_format((float)$grp->decimal_latitude, 4) }},
+                                    {{ number_format((float)$grp->decimal_longitude, 4) }}
                                 @else
                                     —
                                 @endif
@@ -82,28 +85,20 @@
                                     {{ $pill['label'] }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-xs text-gray-400">{{ $ago }}</td>
+                            <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
+                                {{ number_format($grp->occurrence_count) }}
+                            </td>
+                            <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{{ $ago }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 justify-end">
-                                    @if($occ->locality_group_id)
-                                        <a href="{{ route('georef.index') }}?group={{ $occ->locality_group_id }}"
-                                           title="Open in georeference.it"
-                                           class="text-gray-400 hover:text-green-600 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            </svg>
-                                        </a>
-                                    @endif
-                                    @if($occ->gbif_occurrence_key)
-                                        <a href="https://www.gbif.org/occurrence/{{ $occ->gbif_occurrence_key }}"
-                                           target="_blank" title="View on GBIF"
-                                           class="text-gray-400 hover:text-green-600 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                                            </svg>
-                                        </a>
-                                    @endif
+                                    <a href="{{ route('georef.index') }}?group={{ $grp->locality_group_id }}"
+                                       title="Open in georeference.it"
+                                       class="text-gray-400 hover:text-green-600 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </a>
                                 </div>
                             </td>
                         </tr>
@@ -112,9 +107,9 @@
                 </table>
                 </div>
 
-                @if($occurrences->hasMorePages() || $occurrences->currentPage() > 1)
+                @if($groups->hasMorePages() || $groups->currentPage() > 1)
                 <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700">
-                    {{ $occurrences->links() }}
+                    {{ $groups->links() }}
                 </div>
                 @endif
             @endif
