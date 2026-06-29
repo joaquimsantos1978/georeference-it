@@ -484,7 +484,9 @@
                 }
                 .btn-flash { animation: btn-flash 0.5s ease 2; }
                 .occ-taxon { color: #111827; }
-                .dark .occ-taxon { color: #f9fafb; }
+                @media (prefers-color-scheme: dark) {
+                    .occ-taxon { color: #f9fafb; }
+                }
                 </style>
                 <p id="map-click-hint" class="text-xs text-gray-400 mb-3 mt-0" style="display:none;">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
                 <form id="georef-form" class="space-y-2">
