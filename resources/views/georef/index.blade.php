@@ -231,7 +231,7 @@
                     </div>
                     <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">{{ __('Find coordinates on map:') }}</div>
                     <div class="flex gap-1">
-                        <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
+                        <input type="text" id="nominatim-input" class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
                         <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
                     </div>
                     <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
@@ -483,9 +483,23 @@
                     40%     { background:#4C9C2E; color:#fff; }
                 }
                 .btn-flash { animation: btn-flash 0.5s ease 2; }
-                .dark-text { color: #111827; }
+                .dark-text  { color: #111827; }
+                .sugg-card  { border: 1px solid #e5e7eb; background: #ffffff; }
+                .sugg-divider { border-top: 1px solid #f3f4f6; }
+                .sugg-bar-bg  { background: #f3f4f6; }
+                .vote-agree-btn    { color:#16a34a;border:1px solid #16a34a;background:#f0fdf4; }
+                .vote-disagree-btn { color:#ef4444;border:1px solid #ef4444;background:#fff1f2; }
+                .delete-sug-btn    { color:#ef4444;border:1px solid #ef4444;background:#fff1f2; }
+                .use-similar-btn   { color:#4C9C2E;border:1.5px solid #4C9C2E;background:#fff; }
                 @media (prefers-color-scheme: dark) {
-                    .dark-text { color: #f9fafb; }
+                    .dark-text  { color: #f9fafb; }
+                    .sugg-card  { border-color: #374151; background: #1f2937; }
+                    .sugg-divider { border-top-color: #374151; }
+                    .sugg-bar-bg  { background: #374151; }
+                    .vote-agree-btn    { background: #052e16; }
+                    .vote-disagree-btn { background: #2d1515; }
+                    .delete-sug-btn    { background: #2d1515; }
+                    .use-similar-btn   { background: #1f2937; }
                 }
                 </style>
                 <p id="map-click-hint" class="text-xs text-gray-400 mb-3 mt-0" style="display:none;">{{ __('Click on the map to place a point. Drag to adjust.') }}</p>
@@ -1616,9 +1630,9 @@ function updateHistoryNav() {
                 const remarksHtml = (!s.is_system && s.georeference_remarks)
                     ? '<span class="remarks-btn" data-remarks="'+escHtml(s.georeference_remarks).replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>'
                     : '';
-                return '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-top:4px;">'
+                return '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-top:4px;">'
                     + '<div style="display:flex;justify-content:space-between">'
-                    + '<span style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span>'
+                    + '<span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span>'
                     + '<span style="color:#9ca3af">±'+uncM+'m</span>'
                     + '</div>'
                     + '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af">'
@@ -1626,7 +1640,7 @@ function updateHistoryNav() {
                     + '</div>'
                     + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
                     + '<button onclick="previewSuggestion('+parseFloat(s.decimal_latitude)+','+parseFloat(s.decimal_longitude)+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
-                    + '<button onclick="useSimilarSuggestion(\''+key+'\')" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;border:1.5px solid #4C9C2E;color:#4C9C2E;background:#fff;cursor:pointer;">Use this</button>'
+                    + '<button onclick="useSimilarSuggestion(\''+key+'\')" class="use-similar-btn" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;">Use this</button>'
                     + '</div>'
                     + '</div>';
             }).join('') : '';
@@ -1798,20 +1812,20 @@ function updateHistoryNav() {
                 var lng = parseFloat(o.gbif_decimal_longitude);
                 var color = _gbifCoordColors[key] || clusterColors[0];
                 var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
-                gbifHtml += '<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">' +
+                gbifHtml += '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-bottom:4px">' +
                     '<div style="display:flex;align-items:flex-start;gap:4px">' + dot +
                     '<div style="flex:1">' +
                     '<div style="display:flex;justify-content:space-between">' +
-                    '<span style="font-weight:500">' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</span>' +
+                    '<span class="dark-text" style="font-weight:500">' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</span>' +
                     '<span style="color:#9ca3af">'+cnt+' {{ __("occ.") }}</span>' +
                     '</div>' +
                     '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af">' +
                     '<span style="display:flex;align-items:center;gap:5px;">GBIF</span>' +
                     '<div style="display:flex;gap:8px"><span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Georeferenced by GBIF") }}</span></div>' +
                     '</div>' +
-                    '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:100%"></div></div>' +
+                    '<div class="sugg-bar-bg" style="border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:100%"></div></div>' +
                     '<button onclick="previewSuggestion('+lat+','+lng+',0)" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>' +
-                    '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6;">' +
+                    '<div class="sugg-divider" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;">' +
                     '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:#6b7280;">' +
                     '<input type="checkbox" id="correct-gbif-chk-'+key.replace(',','-')+'" onchange="toggleCorrectGbif('+JSON.stringify(ids)+',this.checked)" style="cursor:pointer;">' +
                     '{{ __("Correct") }} '+cnt+' {{ __("georef. occurrences") }}' +
@@ -1854,12 +1868,12 @@ function updateHistoryNav() {
                 var valButtons = IS_AUTH
                     ? (s.is_own
                         ? '<span style="font-size:10px;color:#9ca3af;font-style:italic">{{ __("Your submission") }}</span>'+
-                          '<button onclick="deleteSuggestion('+s.id+')" style="font-size:10px;padding:2px 8px;border-radius:999px;border:1px solid #ef4444;color:#ef4444;background:#fff1f2;cursor:pointer;">{{ __("Delete") }}</button>'
-                        : '<button id="agree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'agree\')" style="'+pillBase+'color:#16a34a;border-color:#16a34a;background:#f0fdf4;">'+TXT.agree+'</button>'+
-                          '<button id="disagree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'disagree\')" style="'+pillBase+'color:#ef4444;border-color:#ef4444;background:#fff1f2;">'+TXT.disagree+'</button>')
+                          '<button onclick="deleteSuggestion('+s.id+')" class="delete-sug-btn" style="font-size:10px;padding:2px 8px;border-radius:999px;cursor:pointer;">{{ __("Delete") }}</button>'
+                        : '<button id="agree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'agree\')" class="vote-agree-btn" style="'+pillBase+'">'+TXT.agree+'</button>'+
+                          '<button id="disagree-btn-'+s.id+'" onclick="toggleVote('+s.id+',\'disagree\')" class="vote-disagree-btn" style="'+pillBase+'">'+TXT.disagree+'</button>')
                     : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
                 var correctRow = s.cluster_count > 0
-                    ? '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6;">'+
+                    ? '<div class="sugg-divider" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;">'+
                       '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:#6b7280;">'+
                       '<input type="checkbox" id="correct-chk-'+s.id+'" onchange="toggleCorrectSuggestion('+s.id+',this.checked)" style="cursor:pointer;">'+
                       '{{ __("Correct") }} '+s.cluster_count+' {{ __("georef. occurrences") }}'+
@@ -1867,12 +1881,12 @@ function updateHistoryNav() {
                       '<button onclick="openOccPopup('+s.id+','+s.cluster_count+','+JSON.stringify(s.cluster_occurrence_ids)+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">{{ __("see list") }} ↗</button>'+
                       '</div>'
                     : '';
-                sugHtml+='<div style="font-size:11px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;margin-bottom:4px">'+
+                sugHtml+='<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-bottom:4px">'+
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
                     '<div style="flex:1">'+
-                    '<div style="display:flex;justify-content:space-between"><span style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
+                    '<div style="display:flex;justify-content:space-between"><span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
                     '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af"><span style="display:flex;align-items:center;gap:5px;">'+s.submitted_by+(!s.is_system && s.georeference_remarks?'<span class="remarks-btn" data-remarks="'+s.georeference_remarks.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>':'')+'</span><div style="display:flex;gap:8px">'+valButtons+'</div></div>'+
-                    '<div style="background:#f3f4f6;border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:'+pct+'%"></div></div>'+
+                    '<div class="sugg-bar-bg" style="border-radius:4px;height:4px;margin-top:6px"><div style="background:'+color+';height:4px;border-radius:4px;width:'+pct+'%"></div></div>'+
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
                     correctRow+
                     '</div></div></div>';
