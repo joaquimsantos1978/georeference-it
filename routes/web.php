@@ -34,6 +34,7 @@ Route::get('/user/{id}', [UserProfileController::class, 'show'])->name('user.pro
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
 Route::get('/stats', [\App\Http\Controllers\StatsController::class, 'index'])->name('stats');
 Route::get('/activity', [\App\Http\Controllers\ActivityController::class, 'index'])->name('activity');
+Route::get('/impact', [\App\Http\Controllers\ImpactController::class, 'index'])->name('impact');
 
 // Georeferencing (public)
 Route::get('/georef', [GeorefController::class, 'index'])->name('georef.index');
