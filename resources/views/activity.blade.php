@@ -86,11 +86,27 @@
                                     @if($row->lat !== null)
                                         <span class="font-mono text-xs text-gray-500">{{ number_format((float)$row->lat,5) }}, {{ number_format((float)$row->lng,5) }}{{ $row->uncertainty_m ? ' ±'.number_format($row->uncertainty_m).'m' : '' }}</span>
                                     @endif
+                                    @if($row->suggestion_user_id !== null)
+                                        <span class="text-gray-400">by</span>
+                                        @if($row->suggestion_author_name)
+                                            <a href="{{ route('activity') }}?user={{ $row->suggestion_author_id }}" class="text-gray-500 hover:text-green-600">{{ $row->suggestion_author_name }}</a>
+                                        @else
+                                            <span class="text-gray-400">Anonymous</span>
+                                        @endif
+                                    @endif
                                     as georef of
                                 @elseif($row->type === 'validation_disagree')
                                     <span class="text-red-500">disagreed with</span>
                                     @if($row->lat !== null)
                                         <span class="font-mono text-xs text-gray-500">{{ number_format((float)$row->lat,5) }}, {{ number_format((float)$row->lng,5) }}{{ $row->uncertainty_m ? ' ±'.number_format($row->uncertainty_m).'m' : '' }}</span>
+                                    @endif
+                                    @if($row->suggestion_user_id !== null)
+                                        <span class="text-gray-400">by</span>
+                                        @if($row->suggestion_author_name)
+                                            <a href="{{ route('activity') }}?user={{ $row->suggestion_author_id }}" class="text-gray-500 hover:text-green-600">{{ $row->suggestion_author_name }}</a>
+                                        @else
+                                            <span class="text-gray-400">Anonymous</span>
+                                        @endif
                                     @endif
                                     as georef of
                                 @else

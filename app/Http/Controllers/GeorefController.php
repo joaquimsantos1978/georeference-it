@@ -851,10 +851,11 @@ private function countryNameToIso2(): array
                 'occ_count'        => 1,
                 'lat'              => $suggestion->decimal_latitude,
                 'lng'              => $suggestion->decimal_longitude,
-                'uncertainty_m'    => $suggestion->coordinate_uncertainty_m,
-                'country_code'     => $group?->country_code,
-                'location_label'   => $locationLabel ?: null,
-                'created_at'       => now(),
+                'uncertainty_m'      => $suggestion->coordinate_uncertainty_m,
+                'suggestion_user_id' => $suggestion->user_id,
+                'country_code'       => $group?->country_code,
+                'location_label'     => $locationLabel ?: null,
+                'created_at'         => now(),
             ]);
         }
 

@@ -34,9 +34,13 @@ class ActivityController extends Controller
                 'al.country_code', 'al.location_label', 'al.created_at', 'al.user_id',
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.name, NULL) as user_name"),
                 DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.id, NULL) as public_user_id"),
-                DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL) as user_avatar")
+                DB::raw("IF(u.public_name = 1 OR u.id = {$authId}, u.avatar, NULL) as user_avatar"),
+                'al.suggestion_user_id',
+                DB::raw("IF(su.public_name = 1, su.name, NULL) as suggestion_author_name"),
+                DB::raw("IF(su.public_name = 1, su.id, NULL) as suggestion_author_id")
             )
             ->leftJoin('users as u', 'u.id', '=', 'al.user_id')
+            ->leftJoin('users as su', 'su.id', '=', 'al.suggestion_user_id')
             ->when($filterUserId, fn($q) => $q->where('al.user_id', $filterUserId))
             ->when($filterCountry, fn($q) => $q->where('al.country_code', $filterCountry))
             ->orderByDesc('al.created_at')
