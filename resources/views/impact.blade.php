@@ -49,6 +49,7 @@
                                 $occ->municipality,
                                 $occ->county,
                                 $occ->state_province,
+                                $occ->continent,
                                 $occ->island ?: ($occ->island_group ?: null),
                                 $occ->water_body,
                                 $occ->higher_geography,
@@ -96,10 +97,13 @@
                                 @if($interpreted)
                                     <div class="text-gray-400 mt-0.5 line-clamp-2" title="{{ $interpreted }}">{{ $interpreted }}</div>
                                 @endif
-                                @if($country)
-                                    <div class="text-gray-400 mt-0.5 font-mono">{{ $country }}</div>
+                                @if($occ->location_remarks)
+                                    <div class="text-gray-400 italic mt-0.5 line-clamp-1" title="{{ $occ->location_remarks }}">{{ $occ->location_remarks }}</div>
                                 @endif
-                                @if(!$occ->verbatim_locality && !$interpreted && !$country)
+                                @if($occ->country || $country)
+                                    <div class="text-gray-400 mt-0.5">{{ $occ->country }}@if($occ->country && $country) <span class="font-mono">({{ $country }})</span>@elseif($country)<span class="font-mono">{{ $country }}</span>@endif</div>
+                                @endif
+                                @if(!$occ->verbatim_locality && !$interpreted && !$occ->country && !$country)
                                     <span class="text-gray-300">—</span>
                                 @endif
                             </td>
