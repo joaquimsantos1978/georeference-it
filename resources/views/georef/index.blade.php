@@ -1711,6 +1711,10 @@ function updateHistoryNav() {
             {key:'island',            label:'Island'},
             {key:'island_group',      label:'Island group'},
             {key:'water_body',        label:'Water body'},
+            {key:'continent',         label:'Continent'},
+            {key:'higher_geography',  label:'Higher geography'},
+            {key:'location_remarks',  label:'Location remarks'},
+            {key:'water_body',        label:'Water body'},
             {key:'country_code',      label:'Country'},
         ];
         document.getElementById('locality-fields').innerHTML=fieldDefs
