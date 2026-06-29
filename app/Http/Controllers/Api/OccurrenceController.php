@@ -217,6 +217,20 @@ class OccurrenceController extends Controller
                     $q->where('status', 'accepted')->orWhere('status', 'pending');
                 })
                 ->orderByRaw("FIELD(status, 'accepted', 'pending')")
+                ->orderByRaw("
+                    (SELECT COALESCE(SUM(CASE WHEN gv.vote='agree' THEN ul.vote_weight ELSE 0 END), 0)
+                     FROM georef_validations gv
+                     JOIN users u ON u.id = gv.user_id
+                     LEFT JOIN user_levels ul ON ul.id = u.user_level_id
+                     WHERE gv.suggestion_id = georef_suggestions.id)
+                    -
+                    (SELECT COALESCE(SUM(CASE WHEN gv.vote='disagree' THEN ul.vote_weight ELSE 0 END), 0)
+                     FROM georef_validations gv
+                     JOIN users u ON u.id = gv.user_id
+                     LEFT JOIN user_levels ul ON ul.id = u.user_level_id
+                     WHERE gv.suggestion_id = georef_suggestions.id)
+                    DESC
+                ")
                 ->first();
 
             if ($suggestion) {
