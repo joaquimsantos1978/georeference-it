@@ -107,7 +107,7 @@
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">Response format</h2>
             <p class="text-sm text-gray-500 mb-4">Coordinates reflect the best available georeference: community-validated → pending suggestion → original GBIF coordinates.</p>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">JSON (default)</p>
                     <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">{
@@ -158,18 +158,12 @@
   ]
 }</code></pre>
                 </div>
-                <div>
+                <div class="md:col-span-2">
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">CSV</p>
-                    <p class="text-xs text-gray-400 mb-2">Add <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">?format=csv</code> — downloads all matching records (no pagination)</p>
-                    <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">occurrenceID,scientificName,
-  countryCode,decimalLatitude,
-  decimalLongitude,
-  georeferenceVerificationStatus
-3014169604,Quercus robur L.,
-  PT,39.8812,-8.5234,
-  verified by contributor
-...</code></pre>
-                    <p class="text-xs text-gray-400 mt-2">UTF-8 with BOM (Excel-compatible). All DwC georeference fields included.</p>
+                    <p class="text-xs text-gray-400 mb-2">Add <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">?format=csv</code> — downloads all matching records as a file (no pagination). UTF-8 with BOM (Excel-compatible).</p>
+                    <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">occurrenceID,datasetKey,institutionCode,collectionCode,catalogNumber,scientificName,countryCode,decimalLatitude,decimalLongitude,coordinateUncertaintyInMeters,georeferencedBy,georeferenceVerificationStatus,...
+3014169604,8a863029-...,MHNC,COL,12345,Quercus robur L.,PT,39.8812,-8.5234,500,Jane Smith (https://orcid.org/...),verified by contributor,...
+4729103821,8a863029-...,MHNC,COL,67890,Pinus pinaster Aiton,PT,37.1523,-8.9014,1000,,requires verification,...</code></pre>
                 </div>
             </div>
         </section>
