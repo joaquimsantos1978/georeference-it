@@ -113,18 +113,15 @@
   var lng = {{ (float)$data['decimalLongitude'] }};
   var uncertainty = {{ $data['coordinateUncertaintyInMeters'] ? (float)$data['coordinateUncertaintyInMeters'] : 'null' }};
 
-  var zoom = uncertainty
-    ? Math.max(3, Math.min(14, Math.round(14 - Math.log2(uncertainty / 100))))
-    : 13;
-
-  var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([lat, lng], zoom);
+  var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([lat, lng], 13);
   L.tileLayer('https://georeference.it/api/v1/tiles/{z}/{x}/{y}', { maxZoom: 18 }).addTo(map);
 
   if (uncertainty) {
-    L.circle([lat, lng], {
+    var circle = L.circle([lat, lng], {
       radius: uncertainty, color: '#4C9C2E', fillColor: '#4C9C2E',
       fillOpacity: 0.1, weight: 1.5
     }).addTo(map);
+    map.fitBounds(circle.getBounds(), { padding: [10, 10] });
   }
 
   L.circleMarker([lat, lng], {

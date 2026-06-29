@@ -1962,8 +1962,12 @@ if (window._suggestionLayers && window._suggestionLayers.length > 0) {
     }
     function previewSuggestion(lat,lng,unc) {
         if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;} if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
-        if(unc) circle=L.circle([lat,lng],{radius:unc,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
-        map.flyTo([lat,lng],12);
+        if(unc) {
+            circle=L.circle([lat,lng],{radius:unc,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
+            map.fitBounds(circle.getBounds(),{padding:[30,30]});
+        } else {
+            map.flyTo([lat,lng],12);
+        }
     }
     function validateSuggestion(id, vote, hasCompeting) {
         const url = (vote === 'agree' && hasCompeting)
