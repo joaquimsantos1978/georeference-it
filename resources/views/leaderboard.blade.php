@@ -37,9 +37,11 @@
                                         {{ $isPublic ? strtoupper(substr($user->name, 0, 1)) : '?' }}
                                     </div>
                                 @endif
-                                <span class="font-medium {{ $isPublic ? 'text-gray-900 dark:text-white' : 'text-gray-400 italic' }}">
-                                    {{ $isPublic ? $user->name : 'Hidden contributor' }}
-                                </span>
+                                @if($isPublic)
+                                    <a href="{{ route('user.profile', $user->id) }}" class="font-medium text-gray-900 dark:text-white hover:text-green-600">{{ $user->name }}</a>
+                                @else
+                                    <span class="font-medium text-gray-400 italic">Hidden contributor</span>
+                                @endif
                                 @if($isPublic && $user->orcid)
                                     <a href="https://orcid.org/{{ $user->orcid }}" target="_blank" class="text-xs text-green-600 hover:underline">ORCID</a>
                                 @endif

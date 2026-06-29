@@ -7,6 +7,7 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatasetController;
+use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [GeorefController::class, 'index'])->name('home');
@@ -29,6 +30,7 @@ Route::get('/api-docs', function () {
 
 Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets');
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
+Route::get('/user/{id}', [UserProfileController::class, 'show'])->name('user.profile')->where('id', '[0-9]+');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
 Route::get('/stats', [\App\Http\Controllers\StatsController::class, 'index'])->name('stats');
 Route::get('/activity', [\App\Http\Controllers\ActivityController::class, 'index'])->name('activity');

@@ -71,7 +71,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="text-sm text-gray-800 dark:text-gray-200">
                                 @if($row->user_name)
-                                    <a href="{{ route('activity') }}?user={{ $row->public_user_id }}" class="font-semibold hover:text-green-600">{{ $row->user_name }}</a>
+                                    <a href="{{ route('user.profile', $row->public_user_id) }}" class="font-semibold hover:text-green-600">{{ $row->user_name }}</a>
                                 @elseif($row->source === 'system')
                                     <span class="font-semibold text-blue-400">System</span>
                                 @elseif($row->source === 'anonymous')
