@@ -12,7 +12,7 @@ class ImpactController extends Controller
         $status  = $request->get('status');
         $country = strtoupper(trim($request->get('country', ''))) ?: null;
 
-        $validStatuses = ['has_suggestion', 'conflicted', 'validated', 'gbif_reviewed'];
+        $validStatuses = ['has_suggestion', 'validated', 'gbif_reviewed'];
 
         $beforeId = $request->integer('before') ?: null;
 

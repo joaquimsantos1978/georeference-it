@@ -14,7 +14,6 @@
                     <option value="">All statuses</option>
                     <option value="validated"      {{ $status === 'validated'      ? 'selected' : '' }}>Validated</option>
                     <option value="has_suggestion" {{ $status === 'has_suggestion' ? 'selected' : '' }}>Suggestion pending</option>
-                    <option value="conflicted"     {{ $status === 'conflicted'     ? 'selected' : '' }}>Conflicted</option>
                     <option value="gbif_reviewed"  {{ $status === 'gbif_reviewed'  ? 'selected' : '' }}>GBIF reviewed</option>
                 </select>
                 <input type="text" name="country" value="{{ $country }}" placeholder="Country (e.g. PT)"
@@ -51,7 +50,6 @@
                             ])));
                             $pills = [
                                 'has_suggestion' => ['label' => 'Pending',       'class' => 'text-amber-600 bg-amber-50 border-amber-200'],
-                                'conflicted'     => ['label' => 'Conflicted',    'class' => 'text-purple-600 bg-purple-50 border-purple-200'],
                                 'validated'      => ['label' => 'Validated',     'class' => 'text-green-600 bg-green-50 border-green-200'],
                                 'gbif_reviewed'  => ['label' => 'GBIF reviewed', 'class' => 'text-blue-600 bg-blue-50 border-blue-200'],
                             ];
