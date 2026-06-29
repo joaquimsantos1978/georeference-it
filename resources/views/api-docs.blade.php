@@ -17,7 +17,6 @@
     </div>
 </div>
 
-<div class="max-w-4xl mx-auto">
 <div class="flex gap-8">
 
     {{-- Sticky sidebar --}}
@@ -314,5 +313,4 @@ print(f"{len(records)} records")</code></pre>
 
     </div>{{-- /main --}}
 </div>{{-- /flex --}}
-</div>{{-- /max-w --}}
 </x-layouts.app>

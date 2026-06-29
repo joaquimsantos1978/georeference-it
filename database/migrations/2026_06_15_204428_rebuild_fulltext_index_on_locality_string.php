@@ -11,7 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        \Illuminate\Support\Facades\DB::statement('ALTER TABLE locality_groups DROP INDEX ft_locality');
+        try {
+            \Illuminate\Support\Facades\DB::statement('ALTER TABLE locality_groups DROP INDEX ft_locality');
+        } catch (\Exception $e) {
+            // Index may not exist
+        }
         \Illuminate\Support\Facades\DB::statement('ALTER TABLE locality_groups ADD FULLTEXT INDEX ft_locality (locality_string)');
     }
 
