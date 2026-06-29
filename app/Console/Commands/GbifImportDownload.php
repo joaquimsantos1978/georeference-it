@@ -325,27 +325,41 @@ class GbifImportDownload extends Command
         // column in locality_groups for grouping and display.
         DB::statement("
             INSERT IGNORE INTO locality_groups
-                (group_hash, country_code, state_province, county, municipality,
-                 verbatim_locality, locality_string, created_at, updated_at)
+                (group_hash, country_code, continent, state_province, county, municipality,
+                 verbatim_locality, location_remarks, higher_geography, locality_string, created_at, updated_at)
             SELECT
                 SHA1(CONCAT_WS('|',
+                    NULLIF(LOWER(TRIM(COALESCE(continent, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(country_code, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(state_province, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(county, ''))), ''),
                     NULLIF(LOWER(TRIM(COALESCE(municipality, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''), ''))), '')
+                    NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''), ''))), ''),
+                    NULLIF(LOWER(TRIM(COALESCE(water_body, ''))), ''),
+                    NULLIF(LOWER(TRIM(COALESCE(island_group, ''))), ''),
+                    NULLIF(LOWER(TRIM(COALESCE(island, ''))), ''),
+                    NULLIF(LOWER(TRIM(COALESCE(higher_geography, ''))), ''),
+                    NULLIF(LOWER(TRIM(COALESCE(location_remarks, ''))), '')
                 )) AS group_hash,
                 MIN(country_code),
+                MIN(continent),
                 MIN(state_province),
                 MIN(county),
                 MIN(municipality),
                 MIN(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''))) ,
+                MIN(location_remarks),
+                MIN(higher_geography),
                 MIN(TRIM(CONCAT_WS(', ',
+                    NULLIF(continent, ''),
                     NULLIF(country_code, ''),
                     NULLIF(state_province, ''),
                     NULLIF(county, ''),
                     NULLIF(municipality, ''),
-                    NULLIF(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),'')), '')
+                    NULLIF(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),'')), ''),
+                    NULLIF(water_body, ''),
+                    NULLIF(island_group, ''),
+                    NULLIF(island, ''),
+                    NULLIF(location_remarks, '')
                 ))),
                 NOW(),
                 NOW()
@@ -401,11 +415,17 @@ class GbifImportDownload extends Command
                 NOW(), NOW(), NOW()
             FROM gbif_staging s
             JOIN locality_groups lg ON lg.group_hash = SHA1(CONCAT_WS('|',
+                NULLIF(LOWER(TRIM(COALESCE(s.continent, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.country_code, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.state_province, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.county, ''))), ''),
                 NULLIF(LOWER(TRIM(COALESCE(s.municipality, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),''), ''))), '')
+                NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),''), ''))), ''),
+                NULLIF(LOWER(TRIM(COALESCE(s.water_body, ''))), ''),
+                NULLIF(LOWER(TRIM(COALESCE(s.island_group, ''))), ''),
+                NULLIF(LOWER(TRIM(COALESCE(s.island, ''))), ''),
+                NULLIF(LOWER(TRIM(COALESCE(s.higher_geography, ''))), ''),
+                NULLIF(LOWER(TRIM(COALESCE(s.location_remarks, ''))), '')
             ))
             WHERE s.basis_of_record = 'PRESERVED_SPECIMEN'
             ON DUPLICATE KEY UPDATE
@@ -592,6 +612,9 @@ class GbifImportDownload extends Command
             'island'                        => 'island',
             'islandGroup'                   => 'island_group',
             'waterBody'                     => 'water_body',
+            'continent'                     => 'continent',
+            'higherGeography'               => 'higher_geography',
+            'locationRemarks'               => 'location_remarks',
             'scientificName'                => 'scientific_name',
             'taxonRank'                     => 'taxon_rank',
             'kingdom'                       => 'kingdom',

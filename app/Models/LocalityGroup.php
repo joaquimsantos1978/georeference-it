@@ -50,11 +50,17 @@ class LocalityGroup extends Model
             : ($fields['locality'] ?? '');
 
         $parts = array_filter([
+            strtolower(trim($fields['continent'] ?? '')),
             strtolower(trim($fields['country_code'] ?? '')),
             strtolower(trim($fields['state_province'] ?? '')),
             strtolower(trim($fields['county'] ?? '')),
             strtolower(trim($fields['municipality'] ?? '')),
             strtolower(trim($verbatimLocality)),
+            strtolower(trim($fields['water_body'] ?? '')),
+            strtolower(trim($fields['island_group'] ?? '')),
+            strtolower(trim($fields['island'] ?? '')),
+            strtolower(trim($fields['higher_geography'] ?? '')),
+            strtolower(trim($fields['location_remarks'] ?? '')),
         ]);
 
         return sha1(implode('|', $parts));

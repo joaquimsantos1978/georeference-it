@@ -103,11 +103,17 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         $georefStatus = $hasCoords ? 'gbif_georeferenced' : 'ungeoreferenced';
 
         $groupFields = [
-            'country_code' => $record['countryCode'] ?? null,
-            'state_province' => $record['stateProvince'] ?? null,
-            'county' => $record['county'] ?? null,
-            'municipality' => $record['municipality'] ?? null,
+            'continent'         => $record['continent'] ?? null,
+            'country_code'      => $record['countryCode'] ?? null,
+            'state_province'    => $record['stateProvince'] ?? null,
+            'county'            => $record['county'] ?? null,
+            'municipality'      => $record['municipality'] ?? null,
             'verbatim_locality' => $record['verbatimLocality'] ?? $record['locality'] ?? null,
+            'water_body'        => $record['waterBody'] ?? null,
+            'island_group'      => $record['islandGroup'] ?? null,
+            'island'            => $record['island'] ?? null,
+            'higher_geography'  => $record['higherGeography'] ?? null,
+            'location_remarks'  => $record['locationRemarks'] ?? null,
         ];
 
         $groupHash = LocalityGroup::hashFromOccurrence($groupFields);
@@ -118,12 +124,15 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             ['group_hash' => $groupHash],
             [
                 'locality_string'     => implode(', ', array_filter(array_values($groupFields))),
-                'verbatim_locality'   => $groupFields['verbatim_locality'],
-                'normalized_locality' => LocalityGroup::normalizeLocality($groupFields['verbatim_locality'] ?? ''),
+                'continent'           => $groupFields['continent'],
                 'country_code'        => $groupFields['country_code'],
                 'state_province'      => $groupFields['state_province'],
                 'county'              => $groupFields['county'],
                 'municipality'        => $groupFields['municipality'],
+                'verbatim_locality'   => $groupFields['verbatim_locality'],
+                'location_remarks'    => $groupFields['location_remarks'],
+                'higher_geography'    => $groupFields['higher_geography'],
+                'normalized_locality' => LocalityGroup::normalizeLocality($groupFields['verbatim_locality'] ?? ''),
             ]
         );
 
