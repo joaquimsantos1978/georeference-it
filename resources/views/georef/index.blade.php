@@ -14,11 +14,11 @@
                 <div style="display:flex;align-items:center;gap:6px;position:relative;">
                     <input type="text" id="focus-input" placeholder="{{ __('e.g. Redinha, Serra da Estrela...') }}"
                         autocomplete="off"
-                        class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                        class="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500">
                     <button id="focus-clear" title="{{ __('Clear focus') }}" style="display:none;font-size:14px;background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
                     <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
                 </div>
-                <div id="focus-dropdown" style="display:none;position:absolute;left:0;right:0;background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 6px 6px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.08);max-height:200px;overflow-y:auto;"></div>
+                <div id="focus-dropdown" class="bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100" style="display:none;position:absolute;left:0;right:0;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 6px 6px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.08);max-height:200px;overflow-y:auto;"></div>
                 {{-- hidden country select kept for auto-detect --}}
                 <select id="country-select" style="display:none;" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
     <option value="">{{ __('All countries') }}</option>
