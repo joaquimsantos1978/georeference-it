@@ -65,6 +65,17 @@ class ImpactController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        return view('impact', compact('occurrences', 'totalCount', 'status', 'country'));
+        $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
+            return DB::table('locality_groups')
+                ->select('country_code')
+                ->whereNotNull('country_code')
+                ->where('occurrence_count', '>', 0)
+                ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
+                ->distinct()
+                ->orderBy('country_code')
+                ->pluck('country_code');
+        });
+
+        return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries'));
     }
 }

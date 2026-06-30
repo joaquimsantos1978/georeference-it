@@ -15,9 +15,21 @@
                         <option value="{{ $u->id }}" {{ request('user') == $u->id ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
-                <input type="text" name="country" value="{{ request('country') }}" placeholder="{{ __('Country (e.g. PT)') }}"
-                    maxlength="2"
-                    class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 w-28 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 uppercase placeholder:normal-case placeholder:text-gray-400">
+                <select name="country" onchange="this.form.submit()"
+                    class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg pl-2 pr-7 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
+                    <option value="">{{ __('All countries') }}</option>
+                    @php
+                        $countryOptions = $countries->map(function ($code) {
+                            $name = class_exists('Locale')
+                                ? (\Locale::getDisplayRegion('-'.$code, app()->getLocale()) ?: $code)
+                                : $code;
+                            return ['code' => $code, 'name' => $name];
+                        })->sortBy('name', SORT_FLAG_CASE | SORT_STRING);
+                    @endphp
+                    @foreach($countryOptions as $opt)
+                        <option value="{{ $opt['code'] }}" {{ request('country') === $opt['code'] ? 'selected' : '' }}>{{ $opt['name'] }}</option>
+                    @endforeach
+                </select>
                 <button type="submit" class="text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 transition-colors">{{ __('Filter') }}</button>
                 @if(request('user') || request('country'))
                     <a href="{{ route('activity') }}" class="text-xs text-gray-400 hover:text-gray-600 py-1.5">{{ __('Clear') }}</a>
