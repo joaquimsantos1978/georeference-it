@@ -8,9 +8,9 @@
     </div>
 
     <p class="text-sm text-gray-500">
-        {{ number_format($datasets->total()) }} datasets imported from
+        {{ __(':count datasets imported from', ['count' => number_format($datasets->total())]) }}
         <a href="https://www.gbif.org" target="_blank" class="text-green-600 hover:underline">GBIF</a>.
-        Browse, filter by title or publisher, query via API, or download as CSV.
+        {{ __('Browse, filter by title or publisher, query via API, or download as CSV.') }}
     </p>
 
     <form method="GET" action="{{ route('datasets') }}" class="flex flex-wrap gap-2 items-end">
@@ -29,9 +29,9 @@
     {{-- Actions bar --}}
     <div class="flex items-center justify-between mb-4">
         <p class="text-sm text-gray-500">
-            Showing <strong>{{ $datasets->firstItem() }}–{{ $datasets->lastItem() }}</strong>
-            of <strong>{{ number_format($datasets->total()) }}</strong> datasets
-            @if($q) matching "<em>{{ $q }}</em>"@endif
+            {{ __('Showing') }} <strong>{{ $datasets->firstItem() }}–{{ $datasets->lastItem() }}</strong>
+            {{ __('of') }} <strong>{{ number_format($datasets->total()) }}</strong> {{ __('datasets') }}
+            @if($q) {{ __('matching') }} "<em>{{ $q }}</em>"@endif
         </p>
         <div class="flex items-center gap-2">
             <a href="{{ route('api.datasets') }}" target="_blank"
@@ -51,11 +51,11 @@
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                        <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Institution / Collection</th>
-                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">Total</th>
-                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-28">Georeferenced</th>
-                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">Validated</th>
-                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">Missing</th>
+                        <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Institution / Collection') }}</th>
+                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Total') }}</th>
+                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-28">{{ __('Georeferenced') }}</th>
+                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Validated') }}</th>
+                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Missing') }}</th>
                         <th class="px-4 py-3 w-20 text-xs font-medium text-gray-500 uppercase tracking-wide">%</th>
                         <th class="px-4 py-3 w-32"></th>
                     </tr>
@@ -108,7 +108,7 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2 justify-end">
                                 <a href="{{ route('explore') }}?dataset_key={{ $ds->dataset_key }}"
-                                   class="text-xs text-green-600 hover:underline whitespace-nowrap">Browse</a>
+                                   class="text-xs text-green-600 hover:underline whitespace-nowrap">{{ __('Browse') }}</a>
                                 <a href="{{ url('/api/v1/occurrences') }}?dataset_key={{ $ds->dataset_key }}&status=validated"
                                    target="_blank"
                                    class="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap">API</a>

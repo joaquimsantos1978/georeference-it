@@ -3,8 +3,8 @@
     <div class="space-y-8 max-w-5xl mx-auto">
 
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Georeferencing Progress</h1>
-            <p class="text-sm text-gray-500 mt-1">How much is left to georeference across all collections.</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Georeferencing Progress') }}</h1>
+            <p class="text-sm text-gray-500 mt-1">{{ __('How much is left to georeference across all collections.') }}</p>
         </div>
 
         {{-- Global summary cards --}}
@@ -25,19 +25,19 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($totalOcc) }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Total occurrences</div>
+                <div class="text-xs text-gray-500 mt-0.5">{{ __('Total occurrences') }}</div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                 <div class="text-2xl font-bold text-green-600">{{ number_format($hasCoords) }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Have coordinates</div>
+                <div class="text-xs text-gray-500 mt-0.5">{{ __('Have coordinates') }}</div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                 <div class="text-2xl font-bold text-orange-500">{{ number_format($needsGeoref) }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Need georeferencing</div>
+                <div class="text-xs text-gray-500 mt-0.5">{{ __('Need georeferencing') }}</div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $pctDone }}%</div>
-                <div class="text-xs text-gray-500 mt-0.5">Have coordinates</div>
+                <div class="text-xs text-gray-500 mt-0.5">{{ __('Have coordinates') }}</div>
             </div>
         </div>
 
@@ -49,42 +49,42 @@
             $pctUngeoref  = $totalOcc > 0 ? number_format($needsGeoref  / $totalOcc * 100, 1, '.', '') : '0';
         @endphp
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-            <div class="text-xs text-gray-500 mb-2">{{ number_format($pendingGroups) }} locality groups with work remaining</div>
+            <div class="text-xs text-gray-500 mb-2">{{ __(':count locality groups with work remaining', ['count' => number_format($pendingGroups)]) }}</div>
             <div class="w-full rounded-full h-4 overflow-hidden flex" style="background:#e5e7eb">
                 <div style="width:{{ $pctGbif }}%;background:#22c55e;height:100%"></div>
                 <div style="width:{{ $pctValidated }}%;background:#15803d;height:100%"></div>
                 <div style="width:{{ $pctPending }}%;background:#fb923c;height:100%"></div>
             </div>
             <div class="flex flex-wrap items-center gap-y-3 mt-4 text-xs text-gray-500" style="gap-x:0">
-                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#22c55e"></span> Coordinates from GBIF <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($gbifOcc) }}</strong>&nbsp;({{ $pctGbif }}%)</span>
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#22c55e"></span> {{ __('Coordinates from GBIF') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($gbifOcc) }}</strong>&nbsp;({{ $pctGbif }}%)</span>
                 <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
-                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#15803d"></span> Validated by community <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($validatedOcc) }}</strong>&nbsp;({{ $pctValidated }}%)</span>
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#15803d"></span> {{ __('Validated by community') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($validatedOcc) }}</strong>&nbsp;({{ $pctValidated }}%)</span>
                 <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
-                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#fb923c"></span> Pending review <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($pendingOcc) }}</strong>&nbsp;({{ $pctPending }}%)</span>
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#fb923c"></span> {{ __('Pending review') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($pendingOcc) }}</strong>&nbsp;({{ $pctPending }}%)</span>
                 <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#e5e7eb"></span> No coordinates <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($needsGeoref) }}</strong>&nbsp;({{ $pctUngeoref }}%)</span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#e5e7eb"></span> {{ __('No coordinates') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($needsGeoref) }}</strong>&nbsp;({{ $pctUngeoref }}%)</span>
             </div>
         </div>
 
         {{-- Per-country table --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
-                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">By country</h2>
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ __('By country') }}</h2>
                 <select id="sort-select" onchange="sortTable(this.value)" class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg pl-2 pr-7 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
-                    <option value="remaining">Most work remaining</option>
-                    <option value="alpha">Alphabetical</option>
-                    <option value="progress">Progress (low → high)</option>
-                    <option value="total">Total occurrences</option>
+                    <option value="remaining">{{ __('Most work remaining') }}</option>
+                    <option value="alpha">{{ __('Alphabetical') }}</option>
+                    <option value="progress">{{ __('Progress (low → high)') }}</option>
+                    <option value="total">{{ __('Total occurrences') }}</option>
                 </select>
             </div>
             <div class="overflow-x-auto">
                 <table id="country-table" class="w-full text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Country</th>
-                            <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Total</th>
-                            <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Remaining</th>
-                            <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-48">Progress</th>
+                            <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Country') }}</th>
+                            <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Total') }}</th>
+                            <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Remaining') }}</th>
+                            <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-48">{{ __('Progress') }}</th>
                             <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide"></th>
                         </tr>
                     </thead>
@@ -101,7 +101,7 @@
                             $pctVal  = $tot > 0 ? number_format($val / $tot * 100, 2, '.', '') : 0;
                             $pctPen  = $tot > 0 ? number_format($pen / $tot * 100, 2, '.', '') : 0;
                             $cc      = strtoupper($row->country_code ?? '');
-                            $name    = $cc ? (\Locale::getDisplayRegion('-'.$cc, 'en') ?: $cc) : '—';
+                            $name    = $cc ? (\Locale::getDisplayRegion('-'.$cc, app()->getLocale()) ?: $cc) : '—';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
                             data-name="{{ $name }}"
@@ -130,13 +130,13 @@
                                 @if($ung > 0 || $pen > 0)
                                 <a href="{{ route('georef.index') }}?country={{ $cc }}"
                                    class="inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors">
-                                    Georeference
+                                    {{ __('Georeference') }}
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                     </svg>
                                 </a>
                                 @else
-                                <span class="text-xs text-green-600 font-medium">Complete</span>
+                                <span class="text-xs text-green-600 font-medium">{{ __('Complete') }}</span>
                                 @endif
                             </td>
                         </tr>

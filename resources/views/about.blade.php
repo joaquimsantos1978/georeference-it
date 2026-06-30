@@ -40,7 +40,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
             <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ __('Maintainer') }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                georeference.it is developed and maintained by
+                {{ __('georeference.it is developed and maintained by') }}
                 <a href="https://orcid.org/0000-0002-2160-4968" target="_blank" class="text-green-600 hover:underline">Joaquim Santos</a>.
             </p>
         </div>
