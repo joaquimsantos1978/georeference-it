@@ -580,7 +580,7 @@
     </div>{{-- end #georef-wrap --}}
 
     {{-- Help button injected into map by JS --}}
-    <button id="tut-btn" onclick="tutStart();event.stopPropagation();" title="{{ __('How to use') }}" style="display:none;position:absolute;top:10px;right:10px;z-index:999;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? Help</button>
+    <button id="tut-btn" onclick="tutStart();event.stopPropagation();" title="{{ __('How to use') }}" style="display:none;position:absolute;top:10px;right:10px;z-index:999;font-size:11px;font-weight:600;color:#16a34a;background:rgba(255,255,255,0.92);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);line-height:1.6;">? {{ __('Help') }}</button>
 
     {{-- Tutorial overlay --}}
     <div id="tut-overlay" style="display:none;position:fixed;inset:0;z-index:1000;">
@@ -595,9 +595,9 @@
             <h3 id="tut-title" style="font-size:15px;font-weight:700;color:#111827;margin:0 0 8px;"></h3>
             <p id="tut-text" style="font-size:13px;color:#6b7280;margin:0 0 16px;line-height:1.55;"></p>
             <div style="display:flex;align-items:center;justify-content:space-between;">
-                <button id="tut-prev" onclick="tutStep(-1)" style="font-size:12px;border:1px solid #e5e7eb;background:white;color:#374151;padding:6px 14px;border-radius:7px;cursor:pointer;">← Back</button>
+                <button id="tut-prev" onclick="tutStep(-1)" style="font-size:12px;border:1px solid #e5e7eb;background:white;color:#374151;padding:6px 14px;border-radius:7px;cursor:pointer;">← {{ __('Back') }}</button>
                 <div id="tut-dots" style="display:flex;gap:5px;"></div>
-                <button id="tut-next" onclick="tutStep(1)" style="font-size:12px;background:#16a34a;color:white;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;">Next →</button>
+                <button id="tut-next" onclick="tutStep(1)" style="font-size:12px;background:#16a34a;color:white;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;">{{ __('Next') }} →</button>
             </div>
             <button onclick="tutEnd()" style="display:block;width:100%;margin-top:10px;font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">Skip tutorial</button>
             <button onclick="tutEnd();videoOpen()" style="display:block;width:100%;margin-top:4px;font-size:11px;color:#16a34a;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">▶ Watch video tutorial</button>
@@ -2490,68 +2490,68 @@ document.getElementById('share-btn').addEventListener('click', function() {
     var TUT_STEPS = [
         {
             sel: '',
-            title: 'Welcome to Georeferencer!',
-            text: 'This quick tutorial walks you through the main tools. You can reopen it at any time by clicking the ? Help button in the top-right corner of the map.',
+            title: {!! json_encode(__('Welcome to Georeferencer!')) !!},
+            text: {!! json_encode(__('This quick tutorial walks you through the main tools. You can reopen it at any time by clicking the ? Help button in the top-right corner of the map.')) !!},
             pos: 'bottom'
         },
         {
             sel: '#focus-input',
-            title: 'Focus Area',
-            text: 'Type a place name, region or country to narrow down which localities appear. Leave empty for a random global selection.',
+            title: {!! json_encode(__('Focus Area')) !!},
+            text: {!! json_encode(__('Type a place name, region or country to narrow down which localities appear. Leave empty for a random global selection.')) !!},
             pos: 'right'
         },
         {
             sel: '#occurrence-info',
-            title: 'Locality Data',
-            text: 'This is the written locality description from the specimen label — the text you\'ll interpret to place a point on the map.',
+            title: {!! json_encode(__('Locality Data')) !!},
+            text: {!! json_encode(__('This is the written locality description from the specimen label — the text you\'ll interpret to place a point on the map.')) !!},
             pos: 'right'
         },
         {
             sel: '#nominatim-input',
-            title: 'Location Search',
-            text: 'Type a place name and press Enter (or 🔍) to search OpenStreetMap. Selecting a result automatically centres the map and places the marker — a great starting point when the locality name is recognisable.',
+            title: {!! json_encode(__('Location Search')) !!},
+            text: {!! json_encode(__('Type a place name and press Enter (or 🔍) to search OpenStreetMap. Selecting a result automatically centres the map and places the marker — a great starting point when the locality name is recognisable.')) !!},
             pos: 'left'
         },
         {
             sel: '#map',
-            title: 'Place a point',
-            text: 'Click anywhere on the map to drop a marker. Drag it to adjust. The coordinates fill in automatically on the right. The uncertainty circle shows the precision — drag its edge to resize it.',
+            title: {!! json_encode(__('Place a point')) !!},
+            text: {!! json_encode(__('Click anywhere on the map to drop a marker. Drag it to adjust. The coordinates fill in automatically on the right. The uncertainty circle shows the precision — drag its edge to resize it.')) !!},
             pos: 'left'
         },
         {
             sel: '#occurrences-list',
-            title: 'Specimens',
-            text: 'These are all the specimens that share this locality description. Check or uncheck them to include or exclude individual records from your georeference.',
+            title: {!! json_encode(__('Specimens')) !!},
+            text: {!! json_encode(__('These are all the specimens that share this locality description. Check or uncheck them to include or exclude individual records from your georeference.')) !!},
             pos: 'right'
         },
         {
             sel: '#existing-suggestions',
-            title: 'Existing Suggestions',
-            text: 'If someone has already submitted coordinates, you can agree with their suggestion (adding your vote) or submit a competing one if you disagree.',
+            title: {!! json_encode(__('Existing Suggestions')) !!},
+            text: {!! json_encode(__('If someone has already submitted coordinates, you can agree with their suggestion (adding your vote) or submit a competing one if you disagree.')) !!},
             pos: 'left'
         },
         {
             sel: '#remarks-input',
-            title: 'Remarks',
-            text: 'Add a note explaining your georeferencing decision — especially useful for ambiguous or difficult localities. This will be stored with your suggestion.',
+            title: {!! json_encode(__('Remarks')) !!},
+            text: {!! json_encode(__('Add a note explaining your georeferencing decision — especially useful for ambiguous or difficult localities. This will be stored with your suggestion.')) !!},
             pos: 'left'
         },
         {
             sel: '#discussion-section',
-            title: 'Discussion',
-            text: 'Use the comment box to discuss with the community if you\'re uncertain. Other georefencers can reply and help reach a consensus.',
+            title: {!! json_encode(__('Discussion')) !!},
+            text: {!! json_encode(__('Use the comment box to discuss with the community if you\'re uncertain. Other georefencers can reply and help reach a consensus.')) !!},
             pos: 'left'
         },
         {
             sel: '#submit-btn',
-            title: 'Submit',
-            text: 'When you\'re satisfied with the point and uncertainty radius, click Submit to save your georeferencing suggestion.',
+            title: {!! json_encode(__('Submit')) !!},
+            text: {!! json_encode(__('When you\'re satisfied with the point and uncertainty radius, click Submit to save your georeferencing suggestion.')) !!},
             pos: 'top'
         },
         {
             sel: '#skip-btn',
-            title: 'Skip',
-            text: 'Not sure about this locality? Skip it — you\'ll move on to the next one. Skipped localities may appear again later.',
+            title: {!! json_encode(__('Skip')) !!},
+            text: {!! json_encode(__('Not sure about this locality? Skip it — you\'ll move on to the next one. Skipped localities may appear again later.')) !!},
             pos: 'top'
         },
     ];
@@ -2597,7 +2597,7 @@ document.getElementById('share-btn').addEventListener('click', function() {
         var mobile = tutIsMobile();
 
         // update text
-        document.getElementById('tut-step-label').textContent = 'Step ' + (_tutIdx + 1) + ' of ' + TUT_STEPS.length;
+        document.getElementById('tut-step-label').textContent = {!! json_encode(__('Step')) !!} + ' ' + (_tutIdx + 1) + ' ' + {!! json_encode(__('of')) !!} + ' ' + TUT_STEPS.length;
         document.getElementById('tut-title').textContent = step.title;
         document.getElementById('tut-text').textContent  = step.text;
         document.getElementById('tut-prev').style.visibility = _tutIdx === 0 ? 'hidden' : 'visible';
