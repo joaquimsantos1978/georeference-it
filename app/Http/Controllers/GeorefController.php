@@ -616,6 +616,16 @@ public function next(Request $request)
                 if (!$existing->validations()->where('user_id', auth()->id())->exists()) {
                     $this->applyVote($existing, auth()->user(), 'agree', true);
                 }
+                // Disagree on all other pending suggestions in this group
+                GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                    ->where('status', 'pending')
+                    ->where('id', '!=', $existing->id)
+                    ->get()
+                    ->each(function ($other) {
+                        if (!$other->validations()->where('user_id', auth()->id())->exists()) {
+                            $this->applyVote($other, auth()->user(), 'disagree', true);
+                        }
+                    });
                 $simGroup->recalculateCounters();
                 continue;
             }
@@ -643,6 +653,17 @@ public function next(Request $request)
             ]);
 
             $this->applyVote($simSuggestion, auth()->user(), 'agree', false);
+
+            // Disagree on all other existing pending suggestions in this group
+            GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                ->where('status', 'pending')
+                ->where('id', '!=', $simSuggestion->id)
+                ->get()
+                ->each(function ($other) {
+                    if (!$other->validations()->where('user_id', auth()->id())->exists()) {
+                        $this->applyVote($other, auth()->user(), 'disagree', true);
+                    }
+                });
 
             $simGroup->occurrences()
                 ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
