@@ -2072,13 +2072,13 @@ function updateHistoryNav() {
                     body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl,correct_suggestion_ids:Array.from(_correctSuggestionIds),correct_occurrence_ids:Array.from(_correctGbifOccurrenceIds),similar_group_ids:simIds})})
                     .then(r=>r.json());
             }
-            // If voted Agree on an existing suggestion and similars are checked, propagate to similars
+            // If voted Agree on an existing suggestion and similars are checked, propagate to similars only
             var agreedId = Object.keys(pendingVotes).find(function(id){ return pendingVotes[id]==='agree'; });
             if(agreedId && simIds.length){
                 var agreedSug = _currentSuggestions.find(function(s){ return s.id == agreedId; });
                 if(agreedSug){
-                    return fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
-                        body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:agreedSug.decimal_latitude,decimal_longitude:agreedSug.decimal_longitude,coordinate_uncertainty_m:agreedSug.coordinate_uncertainty_m,georeference_remarks:agreedSug.georeference_remarks||null,similar_group_ids:simIds})})
+                    return fetch(APP_URL+'/georef/propagate-similar',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
+                        body:JSON.stringify({decimal_latitude:agreedSug.decimal_latitude,decimal_longitude:agreedSug.decimal_longitude,coordinate_uncertainty_m:agreedSug.coordinate_uncertainty_m,georeference_remarks:agreedSug.georeference_remarks||null,similar_group_ids:simIds})})
                         .then(r=>r.json());
                 }
             }

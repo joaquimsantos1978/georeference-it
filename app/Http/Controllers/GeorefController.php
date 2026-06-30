@@ -587,6 +587,74 @@ public function next(Request $request)
         return response()->json(['success' => true, 'suggestion_id' => $suggestion->id]);
     }
 
+    // Propagate an agreed suggestion's coordinates to similar groups only (no suggestion created for the main group)
+    public function propagateSimilar(Request $request)
+    {
+        if (!auth()->check()) {
+            return response()->json(['success' => false, 'message' => 'Login required'], 401);
+        }
+
+        $validated = $request->validate([
+            'decimal_latitude'         => 'required|numeric|between:-90,90',
+            'decimal_longitude'        => 'required|numeric|between:-180,180',
+            'coordinate_uncertainty_m' => 'nullable|integer|min:1',
+            'georeference_remarks'     => 'nullable|string|max:1000',
+            'similar_group_ids'        => 'required|array|min:1',
+            'similar_group_ids.*'      => 'integer|exists:locality_groups,id',
+        ]);
+
+        $similarGroups = LocalityGroup::whereIn('id', $validated['similar_group_ids'])->get();
+
+        foreach ($similarGroups as $simGroup) {
+            $existing = GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                ->where('status', 'pending')
+                ->whereRaw('ABS(decimal_latitude  - ?) < 0.0001', [$validated['decimal_latitude']])
+                ->whereRaw('ABS(decimal_longitude - ?) < 0.0001', [$validated['decimal_longitude']])
+                ->first();
+
+            if ($existing) {
+                if (!$existing->validations()->where('user_id', auth()->id())->exists()) {
+                    $this->applyVote($existing, auth()->user(), 'agree', true);
+                }
+                $simGroup->recalculateCounters();
+                continue;
+            }
+
+            GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                ->where('user_id', auth()->id())
+                ->where('status', 'pending')
+                ->delete();
+
+            $simSuggestion = GeorefSuggestion::create([
+                'locality_group_id'        => $simGroup->id,
+                'locality_group_hash'      => $simGroup->group_hash,
+                'occurrence_id'            => $simGroup->occurrences()->first()?->id,
+                'user_id'                  => auth()->id(),
+                'decimal_latitude'         => $validated['decimal_latitude'],
+                'decimal_longitude'        => $validated['decimal_longitude'],
+                'geodetic_datum'           => 'epsg:4326',
+                'coordinate_uncertainty_m' => $validated['coordinate_uncertainty_m'] ?? null,
+                'georeference_remarks'     => $validated['georeference_remarks'] ?? null,
+                'georeference_protocol'    => 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020)',
+                'georeference_sources'     => 'georeference.it',
+                'status'                   => 'pending',
+                'total_points'             => 0,
+                'georeferenced_date'       => now(),
+            ]);
+
+            $this->applyVote($simSuggestion, auth()->user(), 'agree', false);
+
+            $simGroup->occurrences()
+                ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
+                ->update(['georef_status' => 'has_suggestion']);
+
+            $simGroup->recalculateCounters();
+        }
+
+        return response()->json(['success' => true]);
+
+    }
+
     public function validate(Request $request, GeorefSuggestion $suggestion)
     {
         if (!auth()->check()) {
