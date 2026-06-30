@@ -217,7 +217,7 @@
             </div>
 
             {{-- Locality + Nominatim --}}
-            <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <div class="p-3 border-b border-gray-300 dark:border-gray-700 shrink-0">
                 <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
                 <div id="occurrence-info" class="hidden">
                     <div style="margin-bottom:5px;">
@@ -542,7 +542,7 @@
             </div>
 
             {{-- Discussion --}}
-            <div id="discussion-section" class="p-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <div id="discussion-section" class="p-3 border-t border-gray-300 dark:border-gray-700 shrink-0">
                 <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Discussion') }}</span>
                 <div id="comments-list" class="mt-1 space-y-1 max-h-20 overflow-y-auto"></div>
                 @auth
