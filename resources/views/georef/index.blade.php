@@ -630,7 +630,7 @@
         </span>
     </div>
 
-    <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:white;border-top:1px solid #e5e7eb;height:52px;"
+    <div id="mobile-tabs" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:white;border-top:1px solid #d1d5db;height:52px;"
         class="dark:bg-gray-900 dark:border-gray-700">
         <div style="display:flex;align-items:stretch;height:100%;">
 
@@ -643,7 +643,7 @@
                     </svg>
                     Location
                 </button>
-                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+                <div style="width:1px;background:#d1d5db;flex-shrink:0;" class="dark:bg-gray-700"></div>
                 <button id="mob-btn-specimens" onclick="mobileToggle('specimens')"
                     style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;flex:1;position:relative;">
                     <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -652,7 +652,7 @@
                     <span id="mob-occ-badge" style="display:none;position:absolute;top:4px;right:calc(50% - 18px);background:#6b7280;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
                     Specimens
                 </button>
-                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+                <div style="width:1px;background:#d1d5db;flex-shrink:0;" class="dark:bg-gray-700"></div>
                 <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
                     style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;flex:1;position:relative;">
                     <span style="position:relative;display:inline-block;">
