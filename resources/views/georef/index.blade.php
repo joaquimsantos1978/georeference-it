@@ -599,8 +599,8 @@
                 <div id="tut-dots" style="display:flex;gap:5px;"></div>
                 <button id="tut-next" onclick="tutStep(1)" style="font-size:12px;background:#16a34a;color:white;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;">{{ __('Next') }} →</button>
             </div>
-            <button onclick="tutEnd()" style="display:block;width:100%;margin-top:10px;font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">Skip tutorial</button>
-            <button onclick="tutEnd();videoOpen()" style="display:block;width:100%;margin-top:4px;font-size:11px;color:#16a34a;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">▶ Watch video tutorial</button>
+            <button onclick="tutEnd()" style="display:block;width:100%;margin-top:10px;font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">{{ __('Skip tutorial') }}</button>
+            <button onclick="tutEnd();videoOpen()" style="display:block;width:100%;margin-top:4px;font-size:11px;color:#16a34a;background:none;border:none;cursor:pointer;text-align:center;padding:4px 0;">▶ {{ __('Watch video tutorial') }}</button>
         </div>
     </div>
 
