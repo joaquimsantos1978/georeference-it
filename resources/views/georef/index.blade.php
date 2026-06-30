@@ -1886,9 +1886,7 @@ function updateHistoryNav() {
                 var m=L.circleMarker([s.decimal_latitude,s.decimal_longitude],{radius:6,color:color,fillColor:color,fillOpacity:0.8,weight:2}).bindTooltip(parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'<br>'+s.submitted_by+' · ±'+s.coordinate_uncertainty_m+'m · '+s.total_points+'pts',{permanent:false}).addTo(map);
                 window._suggestionLayers.push(c,m);
                 var pts=s.total_points||0;
-                var halfPct=Math.min(50,Math.abs(pts)/THRESHOLD*50);
-                var barColor=pts>=0?color:'#ef4444';
-                var barStyle=pts>=0?'left:50%;width:'+halfPct+'%':'right:50%;width:'+halfPct+'%';
+                var markerPct=Math.min(100,Math.max(0,(pts+THRESHOLD)/(2*THRESHOLD)*100));
                 var dot='<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:2px"></span>';
                 var valButtons = IS_AUTH
                     ? (s.is_own
@@ -1911,9 +1909,8 @@ function updateHistoryNav() {
                     '<div style="flex:1">'+
                     '<div style="display:flex;justify-content:space-between"><span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
                     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px;color:#9ca3af"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">'+s.submitted_by+(!s.is_system && s.georeference_remarks?'<span class="remarks-btn" data-remarks="'+s.georeference_remarks.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>':'')+'</span><div style="display:flex;gap:8px;flex-shrink:0;margin-left:4px;">'+valButtons+'</div></div>'+
-                    '<div style="position:relative;height:4px;border-radius:4px;margin-top:6px;background:#f3f4f6;" class="sugg-bar-bg">'+
-                      '<div style="position:absolute;top:0;left:50%;width:1px;height:100%;background:#d1d5db;"></div>'+
-                      '<div style="position:absolute;top:0;height:100%;border-radius:4px;background:'+barColor+';'+barStyle+'"></div>'+
+                    '<div style="position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);" class="sugg-bar-bg">'+
+                      '<div style="position:absolute;top:-2px;height:10px;width:3px;border-radius:2px;background:white;border:1.5px solid #374151;transform:translateX(-50%);left:'+markerPct+'%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>'+
                     '</div>'+
                     '<div style="font-size:9px;color:#9ca3af;margin-top:2px;text-align:right">'+(pts>0?'+':'')+pts+' / '+THRESHOLD+'</div>'+
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
