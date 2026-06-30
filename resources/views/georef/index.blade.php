@@ -1755,17 +1755,17 @@ function updateHistoryNav() {
         _correctGbifOccurrenceIds = new Set();
         _isAllGeoref = (ungeorefTotal === 0 && georefOccurrences.length > 0);
         const fieldDefs = [
-            {key:'verbatim_locality', label:'Locality'},
-            {key:'municipality',      label:'Municipality'},
-            {key:'county',            label:'County'},
-            {key:'state_province',    label:'State / Province'},
-            {key:'island',            label:'Island'},
-            {key:'island_group',      label:'Island group'},
-            {key:'water_body',        label:'Water body'},
-            {key:'continent',         label:'Continent'},
-            {key:'higher_geography',  label:'Higher geography'},
-            {key:'location_remarks',  label:'Location remarks'},
-            {key:'country_code',      label:'Country'},
+            {key:'verbatim_locality', label:{!! json_encode(__('Locality')) !!}},
+            {key:'municipality',      label:{!! json_encode(__('Municipality')) !!}},
+            {key:'county',            label:{!! json_encode(__('County')) !!}},
+            {key:'state_province',    label:{!! json_encode(__('State / Province')) !!}},
+            {key:'island',            label:{!! json_encode(__('Island')) !!}},
+            {key:'island_group',      label:{!! json_encode(__('Island group')) !!}},
+            {key:'water_body',        label:{!! json_encode(__('Water body')) !!}},
+            {key:'continent',         label:{!! json_encode(__('Continent')) !!}},
+            {key:'higher_geography',  label:{!! json_encode(__('Higher geography')) !!}},
+            {key:'location_remarks',  label:{!! json_encode(__('Location remarks')) !!}},
+            {key:'country_code',      label:{!! json_encode(__('Country')) !!}},
         ];
         document.getElementById('locality-fields').innerHTML=fieldDefs
             .filter(d=>group[d.key])
