@@ -25,10 +25,20 @@
 
         <div class="flex items-center gap-3">
             {{-- Language switcher --}}
-            <div class="flex items-center gap-1 text-xs">
-                <a href="{{ route('lang.switch', 'en') }}" class="px-1.5 py-0.5 rounded {{ app()->getLocale()==='en' ? 'font-bold text-green-600' : 'text-gray-400 hover:text-green-600' }}">EN</a>
-                <span class="text-gray-300">|</span>
-                <a href="{{ route('lang.switch', 'pt') }}" class="px-1.5 py-0.5 rounded {{ app()->getLocale()==='pt' ? 'font-bold text-green-600' : 'text-gray-400 hover:text-green-600' }}">PT</a>
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open" class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-green-600 px-1.5 py-1 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                    </svg>
+                    <span>{{ \App\Http\Middleware\SetLocale::SUPPORTED[app()->getLocale()] ?? app()->getLocale() }}</span>
+                </button>
+                <div x-show="open" @click.away="open = false" x-cloak
+                     class="absolute right-0 mt-2 w-44 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    @foreach(\App\Http\Middleware\SetLocale::SUPPORTED as $code => $label)
+                        <a href="{{ route('lang.switch', $code) }}"
+                           class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 {{ app()->getLocale() === $code ? 'font-bold text-green-600' : 'text-gray-600 dark:text-gray-300' }}">{{ $label }}</a>
+                    @endforeach
+                </div>
             </div>
             @auth
                 {{-- Notifications --}}

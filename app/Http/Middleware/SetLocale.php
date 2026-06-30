@@ -9,13 +9,26 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
 {
-    private const SUPPORTED = ['en', 'pt'];
+    public const SUPPORTED = [
+        'en'    => 'English',
+        'ar'    => 'العربية',
+        'zh-CN' => '简体中文',
+        'fr'    => 'Français',
+        'ru'    => 'Русский',
+        'es'    => 'Español',
+        'zh-TW' => '繁體中文',
+        'cs'    => 'Čeština',
+        'ja'    => '日本語',
+        'pl'    => 'Polski',
+        'pt'    => 'Português',
+        'uk'    => 'Українська',
+    ];
 
     public function handle(Request $request, Closure $next): Response
     {
         $locale = session('locale', config('app.locale'));
 
-        if (!in_array($locale, self::SUPPORTED, true)) {
+        if (!array_key_exists($locale, self::SUPPORTED)) {
             $locale = config('app.locale');
         }
 

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [GeorefController::class, 'index'])->name('home');
 
 Route::get('/lang/{locale}', function (string $locale) {
-    if (in_array($locale, ['en', 'pt'], true)) {
+    if (array_key_exists($locale, \App\Http\Middleware\SetLocale::SUPPORTED)) {
         session(['locale' => $locale]);
     }
     return back();
