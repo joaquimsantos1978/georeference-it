@@ -481,14 +481,20 @@ public function next(Request $request)
                 ->get();
 
             foreach ($similarGroups as $simGroup) {
-                // Replace existing pending suggestion from same user
-                if (auth()->check()) {
-                    GeorefSuggestion::where('locality_group_id', $simGroup->id)
-                        ->where('user_id', auth()->id())
-                        ->where('status', 'pending')
-                        ->delete();
+                // If the group already has a pending suggestion, vote Agree on it instead of creating a new one
+                $existing = GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                    ->where('status', 'pending')
+                    ->first();
+
+                if ($existing) {
+                    if (auth()->check() && !$existing->validations()->where('user_id', auth()->id())->exists()) {
+                        $this->applyVote($existing, auth()->user(), 'agree', true);
+                    }
+                    $simGroup->recalculateCounters();
+                    continue;
                 }
 
+                // No existing suggestion — create one
                 $simSuggestion = GeorefSuggestion::create([
                     'locality_group_id'        => $simGroup->id,
                     'locality_group_hash'      => $simGroup->group_hash,
