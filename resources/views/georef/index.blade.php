@@ -1965,13 +1965,15 @@ function updateHistoryNav() {
     const ccParam = cc ? '&countrycodes='+cc.toLowerCase() : '';
     const queries = [];
     if (county && prov) queries.push('county='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
+    if (county && prov) queries.push('city='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
     if (county)         queries.push('county='+encodeURIComponent(county));
+    if (county)         queries.push('city='+encodeURIComponent(county));
     if (prov)           queries.push('state='+encodeURIComponent(prov));
     if (!queries.length) {
         // Fall back to suggestion bounds if no admin area available
         if (window._suggestionLayers && window._suggestionLayers.length > 0) {
-            var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
-            if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
+            var bounds = L.featureGroup(window._suggestionLayers).getBounds();
+            if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13, padding:[30,30]});
         }
         return;
     }
@@ -1979,8 +1981,8 @@ function updateHistoryNav() {
         if (i >= queries.length) {
             // All admin queries failed — fall back to suggestion bounds
             if (window._suggestionLayers && window._suggestionLayers.length > 0) {
-                var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
-                if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
+                var bounds = L.featureGroup(window._suggestionLayers).getBounds();
+                if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13, padding:[30,30]});
             }
             return;
         }
