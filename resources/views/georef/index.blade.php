@@ -1955,33 +1955,44 @@ function updateHistoryNav() {
         var mab=document.getElementById('mob-action-bar'); if(mab) mab.classList.add('mob-loaded');
         var mrb=document.getElementById('mob-right-bar'); if(mrb) mrb.classList.add('mob-loaded');
 
-if (window._suggestionLayers && window._suggestionLayers.length > 0) {
-    var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
-    if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
-} else {
-    // No markers — zoom to group's administrative area (county → state → country, no locality to avoid false positives)
-    (function zoomToGroup() {
-        const county = group.county;
-        const prov   = group.state_province;
-        const cc     = group.country_code;
-        const ccParam = cc ? '&countrycodes='+cc.toLowerCase() : '';
-        const queries = [];
-        if (county && prov) queries.push('county='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
-        if (county)         queries.push('county='+encodeURIComponent(county));
-        if (prov)           queries.push('state='+encodeURIComponent(prov));
-        if (!queries.length) return;
-        function tryNext(i) {
-            if (i >= queries.length) return;
-            fetch('https://nominatim.openstreetmap.org/search?'+queries[i]+ccParam+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
-                .then(r=>r.json()).then(res=>{
-                    if (!res.length) { tryNext(i+1); return; }
-                    const bb = res[0].boundingbox;
-                    map.fitBounds([[parseFloat(bb[0]),parseFloat(bb[2])],[parseFloat(bb[1]),parseFloat(bb[3])]],{maxZoom:13,padding:[20,20]});
-                }).catch(()=>tryNext(i+1));
+// Always zoom to the group's administrative area for geographic context (county → state → country).
+// Existing suggestion markers remain visible on the map but do not drive the initial viewport,
+// since they may be incorrect and would mislead the user about the expected location.
+(function zoomToGroup() {
+    const county = group.county;
+    const prov   = group.state_province;
+    const cc     = group.country_code;
+    const ccParam = cc ? '&countrycodes='+cc.toLowerCase() : '';
+    const queries = [];
+    if (county && prov) queries.push('county='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
+    if (county)         queries.push('county='+encodeURIComponent(county));
+    if (prov)           queries.push('state='+encodeURIComponent(prov));
+    if (!queries.length) {
+        // Fall back to suggestion bounds if no admin area available
+        if (window._suggestionLayers && window._suggestionLayers.length > 0) {
+            var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
+            if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
         }
-        tryNext(0);
-    })();
-}
+        return;
+    }
+    function tryNext(i) {
+        if (i >= queries.length) {
+            // All admin queries failed — fall back to suggestion bounds
+            if (window._suggestionLayers && window._suggestionLayers.length > 0) {
+                var bounds = L.featureGroup(window._suggestionLayers).getBounds().pad(0.5);
+                if (bounds.isValid()) map.fitBounds(bounds, {maxZoom: 13});
+            }
+            return;
+        }
+        fetch('https://nominatim.openstreetmap.org/search?'+queries[i]+ccParam+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
+            .then(r=>r.json()).then(res=>{
+                if (!res.length) { tryNext(i+1); return; }
+                const bb = res[0].boundingbox;
+                map.fitBounds([[parseFloat(bb[0]),parseFloat(bb[2])],[parseFloat(bb[1]),parseFloat(bb[3])]],{maxZoom:13,padding:[20,20]});
+            }).catch(()=>tryNext(i+1));
+    }
+    tryNext(0);
+})();
     }
 
     function renderComments(comments) {
