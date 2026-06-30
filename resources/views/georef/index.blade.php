@@ -1652,6 +1652,8 @@ function updateHistoryNav() {
                     return Math.abs(parseFloat(cs.decimal_latitude)  - parseFloat(s.decimal_latitude))  < 0.0001
                         && Math.abs(parseFloat(cs.decimal_longitude) - parseFloat(s.decimal_longitude)) < 0.0001;
                 });
+                const simPts = s.total_points || 0;
+                const simMarkerPct = Math.min(100, Math.max(0, (simPts + THRESHOLD) / (2 * THRESHOLD) * 100));
                 return '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-top:4px;">'
                     + '<div style="display:flex;justify-content:space-between">'
                     + '<span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span>'
@@ -1660,7 +1662,11 @@ function updateHistoryNav() {
                     + '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af">'
                     + '<span style="display:flex;align-items:center;gap:5px;">'+(s.submitted_by||'System')+remarksHtml+'</span>'
                     + '</div>'
-                    + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
+                    + '<div style="position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);">'
+                    + '<div style="position:absolute;top:0;height:100%;width:2px;background:rgba(0,0,0,0.5);transform:translateX(-50%);left:'+simMarkerPct+'%;pointer-events:none;"></div>'
+                    + '</div>'
+                    + '<div style="font-size:9px;color:#9ca3af;margin-top:2px;text-align:right">'+(simPts>0?'+':'')+simPts+' / '+THRESHOLD+'</div>'
+                    + '<div style="display:flex;gap:8px;margin-top:4px;align-items:center;">'
                     + '<button onclick="previewSuggestion('+parseFloat(s.decimal_latitude)+','+parseFloat(s.decimal_longitude)+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
                     + (sameAsExisting ? '' : '<button onclick="useSimilarSuggestion(\''+key+'\')" class="use-similar-btn" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;">Use this</button>')
                     + '</div>'
@@ -1910,7 +1916,7 @@ function updateHistoryNav() {
                     '<div style="display:flex;justify-content:space-between"><span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
                     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px;color:#9ca3af"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">'+s.submitted_by+(!s.is_system && s.georeference_remarks?'<span class="remarks-btn" data-remarks="'+s.georeference_remarks.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>':'')+'</span><div style="display:flex;gap:8px;flex-shrink:0;margin-left:4px;">'+valButtons+'</div></div>'+
                     '<div style="position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);" class="sugg-bar-bg">'+
-                      '<div style="position:absolute;top:-2px;height:10px;width:3px;border-radius:2px;background:white;border:1.5px solid #374151;transform:translateX(-50%);left:'+markerPct+'%;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>'+
+                      '<div style="position:absolute;top:0;height:100%;width:2px;background:rgba(0,0,0,0.5);transform:translateX(-50%);left:'+markerPct+'%;pointer-events:none;"></div>'+
                     '</div>'+
                     '<div style="font-size:9px;color:#9ca3af;margin-top:2px;text-align:right">'+(pts>0?'+':'')+pts+' / '+THRESHOLD+'</div>'+
                     '<button onclick="previewSuggestion('+s.decimal_latitude+','+s.decimal_longitude+','+s.coordinate_uncertainty_m+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;margin-top:4px;padding:0">'+TXT.previewMap+'</button>'+
