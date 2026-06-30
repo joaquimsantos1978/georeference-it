@@ -1135,8 +1135,13 @@ function buildLocalityString(g) {
                 if(D&&_inC(D,p))return D;
                 return welzl(rest,[...R,p]);
             }
+            // subsample to avoid stack overflow on very large polygons (e.g. country-level)
+            // the final radius is corrected via Haversine over all verts anyway
+            const MAX_W=800;
+            let wPts=pts;
+            if(pts.length>MAX_W){const step=pts.length/MAX_W;wPts=Array.from({length:MAX_W},(_,i)=>pts[Math.floor(i*step)]);}
             // shuffle for expected O(n) performance
-            const shuffled=pts.slice().sort(()=>Math.random()-0.5);
+            const shuffled=wPts.slice().sort(()=>Math.random()-0.5);
             const mec=welzl(shuffled,[]);
             // convert MEC center back to lat/lon
             const mecLon=bc.lng+mec.x/(RE*cosLat)*180/Math.PI;
