@@ -112,7 +112,7 @@ class GeorefController extends Controller
         $comments = LocalityGroupComment::where('locality_group_id', $group->id)
             ->with('user')->latest()->take(20)->get()
             ->map(fn($c) => [
-                'user_name'  => $c->user->name,
+                'user_name'  => $c->user->public_name ? $c->user->name : 'Hidden contributor',
                 'body'       => $c->body,
                 'created_at' => $c->created_at->diffForHumans(),
             ]);
@@ -678,7 +678,7 @@ public function next(Request $request)
         $comments = LocalityGroupComment::where('locality_group_id', $validated['locality_group_id'])
             ->with('user')->latest()->take(20)->get()
             ->map(fn($c) => [
-                'user_name'  => $c->user->name,
+                'user_name'  => $c->user->public_name ? $c->user->name : 'Hidden contributor',
                 'body'       => $c->body,
                 'created_at' => $c->created_at->diffForHumans(),
             ]);

@@ -65,7 +65,7 @@ class GeorefSuggestion extends Model
     public function getSubmittedByAttribute(): string
     {
         if ($this->user) {
-            return $this->user->name;
+            return $this->user->public_name ? $this->user->name : 'Hidden contributor';
         }
         return $this->anon_name ?? 'Anonymous';
     }
