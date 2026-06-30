@@ -6,7 +6,7 @@
             class="bg-white dark:bg-gray-900">
 
             {{-- Focus area --}}
-            <div style="flex-shrink:0; border-bottom:1px solid #e5e7eb; padding:8px 12px; position:relative;">
+            <div style="flex-shrink:0; border-bottom:1px solid #d1d5db; padding:8px 12px; position:relative;">
                 <div style="margin-bottom:4px;">
                     <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Focus area') }}</span>
                     <p style="font-size:10px;color:#9ca3af;margin:1px 0 4px">{{ __('Filter localities to georeference by area') }}</p>
@@ -444,7 +444,7 @@
             <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
             {{-- Existing suggestions (always shown) --}}
-            <div id="existing-suggestions" style="flex-shrink:0;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column;max-height:40%;min-height:0;">
+            <div id="existing-suggestions" style="flex-shrink:0;border-bottom:1px solid #d1d5db;display:flex;flex-direction:column;max-height:40%;min-height:0;">
                 <div class="px-3 pt-3 pb-1" style="flex-shrink:0;">
                     <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Existing suggestions') }}</span>
                 </div>
@@ -459,9 +459,9 @@
             </div>
 
             {{-- Similar groups --}}
-            <div id="similar-groups-wrap" style="display:none;flex-shrink:0;border-bottom:1px solid #e5e7eb;">
+            <div id="similar-groups-wrap" style="display:none;flex-shrink:0;border-bottom:1px solid #d1d5db;">
                 <div class="px-3 pt-2 pb-1" style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
-                    <span class="text-xs font-medium text-orange-500 uppercase tracking-wide">{{ __('Similar localities') }}</span>
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Similar localities') }}</span>
                     <div style="margin-left:auto;display:flex;gap:4px;">
                         <button onclick="simSelectAll()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('All') }}</button>
                         <button onclick="simSelectNone()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('None') }}</button>
@@ -620,7 +620,7 @@
 
     {{-- Mobile bottom bar — outside georef-wrap --}}
     {{-- Thin locality bar shown over map on mobile (right half only, to avoid overlapping history buttons) --}}
-    <div id="mob-locality-bar" style="display:none;position:fixed;top:48px;left:50%;right:0;z-index:39;background:rgba(255,255,255,0.93);border-bottom:1px solid #e5e7eb;border-left:1px solid #e5e7eb;border-radius:0 0 0 6px;padding:3px 10px;backdrop-filter:blur(4px);">
+    <div id="mob-locality-bar" style="display:none;position:fixed;top:48px;left:50%;right:0;z-index:39;background:rgba(255,255,255,0.93);border-bottom:1px solid #d1d5db;border-left:1px solid #e5e7eb;border-radius:0 0 0 6px;padding:3px 10px;backdrop-filter:blur(4px);">
         <span id="mob-locality-text" style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;"></span>
         <span id="mob-locality-spinner" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);">
             <svg style="width:13px;height:13px;animation:spin 0.8s linear infinite;color:#9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -635,7 +635,7 @@
         <div style="display:flex;align-items:stretch;height:100%;">
 
             {{-- Left group: Location | Specimens | Georef --}}
-            <div id="mob-action-bar" style="display:none;align-items:stretch;flex:1;" class="dark:border-gray-700">
+            <div id="mob-action-bar" style="display:none;align-items:stretch;flex:1;min-width:0;" class="dark:border-gray-700">
                 <button id="mob-btn-info" onclick="mobileToggle('info')"
                     style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:none;font-size:9px;font-weight:600;color:#6b7280;cursor:pointer;flex:1;">
                     <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -667,14 +667,14 @@
             </div>
 
             {{-- Right group: Skip | Submit --}}
-            <div id="mob-right-bar" style="display:none;align-items:stretch;flex-shrink:0;border-left:1px solid #e5e7eb;" class="dark:border-gray-700">
+            <div id="mob-right-bar" style="display:none;align-items:stretch;flex:1;min-width:0;border-left:1px solid #d1d5db;" class="dark:border-gray-700">
                 <button id="mob-skip-btn" onclick="mobSkip()"
-                    style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:500;color:#6b7280;cursor:pointer;padding:0 14px;height:100%;">
+                    style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:500;color:#6b7280;cursor:pointer;flex:1;height:100%;">
                     Skip
                 </button>
-                <div style="width:1px;background:#e5e7eb;flex-shrink:0;" class="dark:bg-gray-700"></div>
+                <div style="width:1px;background:#d1d5db;flex-shrink:0;" class="dark:bg-gray-700"></div>
                 <button id="mob-submit-btn" onclick="document.getElementById('submit-btn').click()"
-                    style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:700;color:#16a34a;cursor:pointer;padding:0 14px;height:100%;opacity:0.35;" disabled>
+                    style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:700;color:#16a34a;cursor:pointer;flex:1;height:100%;opacity:0.35;" disabled>
                     Submit
                 </button>
             </div>
@@ -727,7 +727,7 @@
         }
         #left-panel     { height: 60vh !important; max-height: 60vh !important; }
         #specimens-panel{ height: 65vh !important; max-height: 65vh !important; }
-        #right-panel    { height: 75vh !important; max-height: 75vh !important; }
+        #right-panel    { height: 85vh !important; max-height: 85vh !important; overflow-y: auto !important; }
 
         #left-panel.mob-open, #specimens-panel.mob-open, #right-panel.mob-open {
             transform: translateY(0) !important; pointer-events:auto !important;
