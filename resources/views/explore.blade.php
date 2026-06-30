@@ -17,8 +17,16 @@
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Country') }}</label>
                 <select name="country" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg pl-3 pr-8 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
                     <option value="">{{ __('All countries') }}</option>
-                    @foreach($countries as $code)
-                        <option value="{{ $code }}" {{ request('country') === $code ? 'selected' : '' }}>{{ $code }}</option>
+                    @php
+                        $countryOptions = $countries->map(function ($code) {
+                            $name = class_exists('Locale')
+                                ? (\Locale::getDisplayRegion('-'.$code, app()->getLocale()) ?: $code)
+                                : $code;
+                            return ['code' => $code, 'name' => $name];
+                        })->sortBy('name', SORT_FLAG_CASE | SORT_STRING);
+                    @endphp
+                    @foreach($countryOptions as $opt)
+                        <option value="{{ $opt['code'] }}" {{ request('country') === $opt['code'] ? 'selected' : '' }}>{{ $opt['name'] }}</option>
                     @endforeach
                 </select>
             </div>
