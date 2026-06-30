@@ -26,19 +26,19 @@ class ImpactController extends Controller
                 ->count();
         });
 
-        // Deferred join: fetch IDs first (index-only), then fetch full rows
-        $statusFilter  = $status && in_array($status, $validStatuses) ? [$status] : $validStatuses;
-        $offset        = ($page - 1) * $perPage;
+        $offset       = ($page - 1) * $perPage;
+        $statusFilter = $status && in_array($status, $validStatuses) ? [$status] : $validStatuses;
+        $countryWhere = $country ? "AND country_code = " . DB::connection()->getPdo()->quote($country) : '';
+        $limit        = $perPage + $offset;
 
-        $ids = DB::table('occurrences')
-            ->select('id')
-            ->whereIn('georef_status', $statusFilter)
-            ->when($country, fn($q) => $q->where('country_code', $country))
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->offset($offset)
-            ->limit($perPage)
-            ->pluck('id');
+        // UNION per status avoids filesort over 7M rows (each branch uses the index directly)
+        $branches = array_map(fn($s) =>
+            "SELECT id, updated_at FROM occurrences WHERE georef_status = " . DB::connection()->getPdo()->quote($s) . " $countryWhere ORDER BY updated_at DESC, id DESC LIMIT $limit",
+            $statusFilter
+        );
+        $unionSql = "SELECT id FROM (" . implode(" UNION ALL ", $branches) . ") _u ORDER BY updated_at DESC, id DESC LIMIT $perPage OFFSET $offset";
+
+        $ids = collect(DB::select($unionSql))->pluck('id');
 
         $rows = DB::table('occurrences as o')
             ->select(
