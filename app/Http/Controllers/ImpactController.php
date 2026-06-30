@@ -32,11 +32,12 @@ class ImpactController extends Controller
         $limit        = $perPage + $offset;
 
         // UNION per status avoids filesort over 7M rows (each branch uses the index directly)
+        $pdo      = DB::connection()->getPdo();
         $branches = array_map(fn($s) =>
-            "SELECT id, updated_at FROM occurrences WHERE georef_status = " . DB::connection()->getPdo()->quote($s) . " $countryWhere ORDER BY updated_at DESC, id DESC LIMIT $limit",
+            "(SELECT id, updated_at FROM occurrences WHERE georef_status = " . $pdo->quote($s) . " $countryWhere ORDER BY updated_at DESC, id DESC LIMIT $limit)",
             $statusFilter
         );
-        $unionSql = "SELECT id FROM (" . implode(" UNION ALL ", $branches) . ") _u ORDER BY updated_at DESC, id DESC LIMIT $perPage OFFSET $offset";
+        $unionSql = implode(" UNION ALL ", $branches) . " ORDER BY updated_at DESC, id DESC LIMIT $perPage OFFSET $offset";
 
         $ids = collect(DB::select($unionSql))->pluck('id');
 
