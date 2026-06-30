@@ -1174,6 +1174,20 @@ public function destroySuggestion(Request $request, GeorefSuggestion $suggestion
     }
 
     $group = $suggestion->localityGroup;
+
+    // Remove the orphaned activity feed entries this suggestion created (creation + any
+    // agree/disagree votes referencing it) — there's no FK, so match on the fields
+    // logged at creation time.
+    DB::table('activity_log')
+        ->where('locality_group_id', $suggestion->locality_group_id)
+        ->where(function ($q) use ($suggestion) {
+            $q->where('user_id', $suggestion->user_id)
+              ->orWhere('suggestion_user_id', $suggestion->user_id);
+        })
+        ->where('lat', $suggestion->decimal_latitude)
+        ->where('lng', $suggestion->decimal_longitude)
+        ->delete();
+
     $suggestion->validations()->delete();
     $suggestion->exclusions()->delete();
     $suggestion->delete();
