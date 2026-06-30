@@ -460,8 +460,13 @@
 
             {{-- Similar groups --}}
             <div id="similar-groups-wrap" style="display:none;flex-shrink:0;border-bottom:1px solid #e5e7eb;">
-                <div class="px-3 pt-2 pb-1" style="flex-shrink:0;">
+                <div class="px-3 pt-2 pb-1" style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
                     <span class="text-xs font-medium text-orange-500 uppercase tracking-wide">{{ __('Similar localities') }}</span>
+                    <div style="margin-left:auto;display:flex;gap:4px;">
+                        <button onclick="simSelectAll()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('All') }}</button>
+                        <button onclick="simSelectNone()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('None') }}</button>
+                        <button onclick="simSelectPending()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #fed7aa;background:#fff7ed;cursor:pointer;color:#c2410c;">{{ __('Pending') }}</button>
+                    </div>
                 </div>
                 <div id="similar-groups-list" class="px-3 pb-2 space-y-2 overflow-y-auto" style="max-height:180px;"></div>
             </div>
@@ -1614,6 +1619,10 @@ function updateHistoryNav() {
 
     var _simSuggMap = {};
 
+    function simSelectAll()     { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = true); }
+    function simSelectNone()    { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = false); }
+    function simSelectPending() { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = parseInt(cb.dataset.pending||0) > 0); }
+
     function renderSimilarGroups(groups) {
         const wrap = document.getElementById('similar-groups-wrap');
         const list = document.getElementById('similar-groups-list');
@@ -1655,7 +1664,7 @@ function updateHistoryNav() {
 
             return '<div style="border:1px solid #fed7aa;border-radius:6px;padding:6px 8px;background:#fff7ed;">'
                 + '<label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;">'
-                + '<input type="checkbox" class="similar-group-cb" data-id="'+g.id+'" checked '
+                + '<input type="checkbox" class="similar-group-cb" data-id="'+g.id+'" data-pending="'+g.pending_count+'" checked '
                 + 'style="margin-top:2px;flex-shrink:0;accent-color:#ea580c;">'
                 + '<div style="min-width:0;flex:1;">'
                 + '<div style="display:flex;align-items:center;gap:4px;">'
