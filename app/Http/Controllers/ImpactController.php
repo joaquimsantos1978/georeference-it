@@ -26,6 +26,20 @@ class ImpactController extends Controller
                 ->count();
         });
 
+        // Deferred join: fetch IDs first (index-only), then fetch full rows
+        $statusFilter  = $status && in_array($status, $validStatuses) ? [$status] : $validStatuses;
+        $offset        = ($page - 1) * $perPage;
+
+        $ids = DB::table('occurrences')
+            ->select('id')
+            ->whereIn('georef_status', $statusFilter)
+            ->when($country, fn($q) => $q->where('country_code', $country))
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->offset($offset)
+            ->limit($perPage)
+            ->pluck('id');
+
         $rows = DB::table('occurrences as o')
             ->select(
                 'o.id', 'o.gbif_occurrence_key', 'o.scientific_name',
@@ -40,13 +54,9 @@ class ImpactController extends Controller
                 'o.gbif_decimal_latitude', 'o.gbif_decimal_longitude',
                 'o.updated_at'
             )
-            ->whereIn('o.georef_status', $validStatuses)
-            ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('o.georef_status', $status))
-            ->when($country, fn($q) => $q->where('o.country_code', $country))
+            ->whereIn('o.id', $ids)
             ->orderByDesc('o.updated_at')
             ->orderByDesc('o.id')
-            ->offset(($page - 1) * $perPage)
-            ->limit($perPage)
             ->get();
 
         $occurrences = new \Illuminate\Pagination\LengthAwarePaginator(
