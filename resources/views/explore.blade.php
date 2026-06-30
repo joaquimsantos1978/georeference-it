@@ -64,6 +64,7 @@
                         <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-20">{{ __('Occurrences') }}</th>
                         <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Suggestions') }}</th>
                         <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-20">{{ __('Validated') }}</th>
+                        <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-32">{{ __('Status') }}</th>
                         <th class="px-4 py-3 w-24"></th>
                     </tr>
                 </thead>
@@ -96,6 +97,19 @@
                                 <span class="text-gray-300">—</span>
                             @endif
                         </td>
+                        <td class="px-4 py-2.5">
+                            @if($group->consistency_status === 'inconsistent')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">{{ __('Inconsistent') }}</span>
+                            @elseif($group->validated_count > 0)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-green-600 bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">{{ __('Validated') }}</span>
+                            @elseif($group->pending_count > 0)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">{{ __('Has suggestions') }}</span>
+                            @elseif($group->ungeoreferenced_count > 0)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-gray-500 bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600">{{ __('Needs georeferencing') }}</span>
+                            @else
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">{{ __('Georeferenced by GBIF') }}</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-2.5 text-right">
                             @php
                             $focusVal = $group->verbatim_locality ?: ($group->municipality ?: ($group->county ?: $group->state_province));
@@ -107,7 +121,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-10 text-center text-gray-400">{{ __('No locality groups found.') }}</td>
+                        <td colspan="7" class="px-4 py-10 text-center text-gray-400">{{ __('No locality groups found.') }}</td>
                     </tr>
                     @endforelse
                 </tbody>
