@@ -48,11 +48,14 @@ class ImpactController extends Controller
         $nextTs      = $hasMore ? $occurrences->last()->updated_at : null;
         $nextId      = $hasMore ? $occurrences->last()->id : null;
 
-        $totalCount = DB::table('occurrences')
-            ->whereIn('georef_status', $validStatuses)
-            ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('georef_status', $status))
-            ->when($country, fn($q) => $q->where('country_code', $country))
-            ->count();
+        $cacheKey = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
+        $totalCount = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($validStatuses, $status, $country) {
+            return DB::table('occurrences')
+                ->whereIn('georef_status', $validStatuses)
+                ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('georef_status', $status))
+                ->when($country, fn($q) => $q->where('country_code', $country))
+                ->count();
+        });
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'nextTs', 'nextId'));
     }
