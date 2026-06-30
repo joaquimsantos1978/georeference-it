@@ -1365,7 +1365,12 @@ function clearPanel() {
 function loadNextGroup() {
     clearPanel();
     var parts = [];
-    if (window._georefFocus) parts.push('focus=' + encodeURIComponent(window._georefFocus));
+    var focus = window._georefFocus;
+    // When no explicit focus, derive one from the current group's location (county → state → country)
+    if (!focus && currentGroup) {
+        focus = currentGroup.county || currentGroup.state_province || currentGroup.country_code || '';
+    }
+    if (focus) parts.push('focus=' + encodeURIComponent(focus));
     if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
     if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
