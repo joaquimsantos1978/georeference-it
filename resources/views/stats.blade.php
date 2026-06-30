@@ -101,7 +101,9 @@
                             $pctVal  = $tot > 0 ? number_format($val / $tot * 100, 2, '.', '') : 0;
                             $pctPen  = $tot > 0 ? number_format($pen / $tot * 100, 2, '.', '') : 0;
                             $cc      = strtoupper($row->country_code ?? '');
-                            $name    = $cc ? (\Locale::getDisplayRegion('-'.$cc, app()->getLocale()) ?: $cc) : '—';
+                            $name    = $cc
+                                ? (class_exists('Locale') ? (\Locale::getDisplayRegion('-'.$cc, app()->getLocale()) ?: $cc) : $cc)
+                                : '—';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
                             data-name="{{ $name }}"
