@@ -15,6 +15,9 @@ Route::get('/', [GeorefController::class, 'index'])->name('home');
 Route::get('/lang/{locale}', function (string $locale) {
     if (array_key_exists($locale, \App\Http\Middleware\SetLocale::SUPPORTED)) {
         session(['locale' => $locale]);
+        if (auth()->check()) {
+            auth()->user()->update(['locale' => $locale]);
+        }
     }
     return back();
 })->name('lang.switch');

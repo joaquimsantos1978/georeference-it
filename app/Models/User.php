@@ -27,6 +27,7 @@ class User extends Authenticatable
 'email_notifications',
 'preferred_task',
 'public_name',
+'locale',
     ];
 
     protected $hidden = [
