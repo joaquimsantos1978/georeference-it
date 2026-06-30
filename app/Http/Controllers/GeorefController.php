@@ -481,9 +481,11 @@ public function next(Request $request)
                 ->get();
 
             foreach ($similarGroups as $simGroup) {
-                // If the group already has a pending suggestion, vote Agree on it instead of creating a new one
+                // If the group already has a pending suggestion with the same coordinates, vote Agree on it
                 $existing = GeorefSuggestion::where('locality_group_id', $simGroup->id)
                     ->where('status', 'pending')
+                    ->whereRaw('ABS(decimal_latitude  - ?) < 0.0001', [$validated['decimal_latitude']])
+                    ->whereRaw('ABS(decimal_longitude - ?) < 0.0001', [$validated['decimal_longitude']])
                     ->first();
 
                 if ($existing) {
