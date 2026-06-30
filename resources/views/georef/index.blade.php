@@ -561,7 +561,7 @@
             </div>
 
             {{-- Action buttons --}}
-            <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0">
+            <div class="p-3 border-t border-gray-300 dark:border-gray-700 flex gap-2 shrink-0">
                 <button id="skip-btn" class="flex-1 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 rounded-lg py-2 hover:bg-gray-50">{{ __('Skip') }}</button>
                 <button id="submit-btn" class="flex-1 text-sm bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>{{ __('Submit') }}</button>
             </div>
