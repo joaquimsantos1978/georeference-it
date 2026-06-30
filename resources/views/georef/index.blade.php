@@ -249,7 +249,7 @@
                     <div class="flex flex-wrap gap-1 items-center">
                         <button onclick="occSelectAll(true)"  class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('All') }}</button>
                         <button onclick="occSelectAll(false)" class="text-xs px-2 py-0.5 rounded-full border border-gray-300 hover:bg-gray-100 text-gray-600">{{ __('None') }}</button>
-                        <select id="inst-filter" onchange="occSelectByInstitution(this.value)" class="text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white text-gray-600 max-w-full" style="max-width:130px;">
+                        <select id="inst-filter" onchange="occSelectByInstitution(this.value)" class="text-xs border border-gray-200 rounded py-0.5 bg-white text-gray-600 max-w-full" style="max-width:150px;padding-left:6px;padding-right:18px;text-overflow:ellipsis;">
                             <option value="">{{ __('All institutions') }}</option>
                         </select>
                     </div>
