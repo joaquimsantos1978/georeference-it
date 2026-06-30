@@ -409,6 +409,21 @@ public function next(Request $request)
                 ->delete();
         }
 
+        // If another pending suggestion already has the same coordinates, vote Agree on it instead
+        $existing = GeorefSuggestion::where('locality_group_id', $group->id)
+            ->where('status', 'pending')
+            ->whereRaw('ABS(decimal_latitude  - ?) < 0.0001', [$validated['decimal_latitude']])
+            ->whereRaw('ABS(decimal_longitude - ?) < 0.0001', [$validated['decimal_longitude']])
+            ->first();
+
+        if ($existing) {
+            if (auth()->check() && !$existing->validations()->where('user_id', auth()->id())->exists()) {
+                $this->applyVote($existing, auth()->user(), 'agree', true);
+            }
+            $group->recalculateCounters();
+            return response()->json(['success' => true, 'suggestion_id' => $existing->id]);
+        }
+
         $suggestion = GeorefSuggestion::create([
             'locality_group_id'        => $group->id,
             'locality_group_hash'      => $group->group_hash,
