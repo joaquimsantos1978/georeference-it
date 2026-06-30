@@ -1366,9 +1366,9 @@ function loadNextGroup() {
     clearPanel();
     var parts = [];
     var focus = window._georefFocus;
-    // When no explicit focus, derive one from the current group's location (county → state → country)
+    // When no explicit focus, derive one from the current group's locality (cascading fallback)
     if (!focus && currentGroup) {
-        focus = currentGroup.county || currentGroup.state_province || currentGroup.country_code || '';
+        focus = currentGroup.verbatim_locality || currentGroup.county || currentGroup.state_province || currentGroup.country_code || '';
     }
     if (focus) parts.push('focus=' + encodeURIComponent(focus));
     if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
