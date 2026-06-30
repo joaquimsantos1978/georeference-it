@@ -24,6 +24,12 @@
         </div>
 
         <div class="flex items-center gap-3">
+            {{-- Language switcher --}}
+            <div class="flex items-center gap-1 text-xs">
+                <a href="{{ route('lang.switch', 'en') }}" class="px-1.5 py-0.5 rounded {{ app()->getLocale()==='en' ? 'font-bold text-green-600' : 'text-gray-400 hover:text-green-600' }}">EN</a>
+                <span class="text-gray-300">|</span>
+                <a href="{{ route('lang.switch', 'pt') }}" class="px-1.5 py-0.5 rounded {{ app()->getLocale()==='pt' ? 'font-bold text-green-600' : 'text-gray-400 hover:text-green-600' }}">PT</a>
+            </div>
             @auth
                 {{-- Notifications --}}
                 <div class="relative" x-data="{ open: false }">

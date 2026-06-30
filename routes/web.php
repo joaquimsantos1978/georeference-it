@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [GeorefController::class, 'index'])->name('home');
 
+Route::get('/lang/{locale}', function (string $locale) {
+    if (in_array($locale, ['en', 'pt'], true)) {
+        session(['locale' => $locale]);
+    }
+    return back();
+})->name('lang.switch');
+
 Route::get('/about', fn() => view('about'))->name('about');
 Route::get('/how-it-works', function () {
     $levels = \App\Models\UserLevel::orderBy('sort_order')->get();
