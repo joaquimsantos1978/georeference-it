@@ -1647,6 +1647,11 @@ function updateHistoryNav() {
                 const remarksHtml = (!s.is_system && s.georeference_remarks)
                     ? '<span class="remarks-btn" data-remarks="'+escHtml(s.georeference_remarks).replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>'
                     : '';
+                // Hide "Use this" if coordinates match any existing suggestion in the current group
+                const sameAsExisting = _currentSuggestions.some(function(cs) {
+                    return Math.abs(parseFloat(cs.decimal_latitude)  - parseFloat(s.decimal_latitude))  < 0.0001
+                        && Math.abs(parseFloat(cs.decimal_longitude) - parseFloat(s.decimal_longitude)) < 0.0001;
+                });
                 return '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-top:4px;">'
                     + '<div style="display:flex;justify-content:space-between">'
                     + '<span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span>'
@@ -1657,7 +1662,7 @@ function updateHistoryNav() {
                     + '</div>'
                     + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
                     + '<button onclick="previewSuggestion('+parseFloat(s.decimal_latitude)+','+parseFloat(s.decimal_longitude)+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
-                    + '<button onclick="useSimilarSuggestion(\''+key+'\')" class="use-similar-btn" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;">Use this</button>'
+                    + (sameAsExisting ? '' : '<button onclick="useSimilarSuggestion(\''+key+'\')" class="use-similar-btn" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;">Use this</button>')
                     + '</div>'
                     + '</div>';
             }).join('') : '';
