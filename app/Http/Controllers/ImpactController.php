@@ -14,7 +14,19 @@ class ImpactController extends Controller
 
         $validStatuses = ['has_suggestion', 'validated', 'gbif_reviewed'];
 
-        $occurrences = DB::table('occurrences as o')
+        $perPage = 50;
+        $page    = $request->integer('page', 1) ?: 1;
+
+        $cacheKey = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
+        $totalCount = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($validStatuses, $status, $country) {
+            return DB::table('occurrences')
+                ->whereIn('georef_status', $validStatuses)
+                ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('georef_status', $status))
+                ->when($country, fn($q) => $q->where('country_code', $country))
+                ->count();
+        });
+
+        $rows = DB::table('occurrences as o')
             ->select(
                 'o.id', 'o.gbif_occurrence_key', 'o.scientific_name',
                 'o.georef_status', 'o.country_code', 'o.locality_group_id',
@@ -33,17 +45,14 @@ class ImpactController extends Controller
             ->when($country, fn($q) => $q->where('o.country_code', $country))
             ->orderByDesc('o.updated_at')
             ->orderByDesc('o.id')
-            ->paginate(50)
-            ->withQueryString();
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
+            ->get();
 
-        $cacheKey = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
-        $totalCount = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($validStatuses, $status, $country) {
-            return DB::table('occurrences')
-                ->whereIn('georef_status', $validStatuses)
-                ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('georef_status', $status))
-                ->when($country, fn($q) => $q->where('country_code', $country))
-                ->count();
-        });
+        $occurrences = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows, $totalCount, $perPage, $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country'));
     }
