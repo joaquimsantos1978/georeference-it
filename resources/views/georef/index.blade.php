@@ -2059,13 +2059,23 @@ function updateHistoryNav() {
         });
 
         Promise.all(votePromises).then(function(){
-            // If new point mode and marker placed, submit georef
+            var simIds=Array.from(document.querySelectorAll('.similar-group-cb:checked')).map(function(c){return parseInt(c.dataset.id,10);});
+            // If new point mode and marker placed, submit georef (with similars)
             if(georefMode==='new' && marker){
                 var excl=Array.from(document.querySelectorAll('.occurrence-checkbox:not(:checked)')).map(function(c){return c.value;});
-                var simIds=Array.from(document.querySelectorAll('.similar-group-cb:checked')).map(function(c){return parseInt(c.dataset.id,10);});
                 return fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
                     body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:document.getElementById('lat-input').value,decimal_longitude:document.getElementById('lng-input').value,coordinate_uncertainty_m:document.getElementById('uncertainty-input').value,georeference_remarks:document.getElementById('remarks-input').value,anon_name:document.getElementById('anon-name')?document.getElementById('anon-name').value:null,excluded_occurrence_ids:excl,correct_suggestion_ids:Array.from(_correctSuggestionIds),correct_occurrence_ids:Array.from(_correctGbifOccurrenceIds),similar_group_ids:simIds})})
                     .then(r=>r.json());
+            }
+            // If voted Agree on an existing suggestion and similars are checked, propagate to similars
+            var agreedId = Object.keys(pendingVotes).find(function(id){ return pendingVotes[id]==='agree'; });
+            if(agreedId && simIds.length){
+                var agreedSug = _currentSuggestions.find(function(s){ return s.id == agreedId; });
+                if(agreedSug){
+                    return fetch(APP_URL+'/georef/submit',{method:'POST',headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
+                        body:JSON.stringify({locality_group_id:currentGroup.id,decimal_latitude:agreedSug.decimal_latitude,decimal_longitude:agreedSug.decimal_longitude,coordinate_uncertainty_m:agreedSug.coordinate_uncertainty_m,georeference_remarks:agreedSug.georeference_remarks||null,similar_group_ids:simIds})})
+                        .then(r=>r.json());
+                }
             }
             return {success:true};
         }).then(function(d){
