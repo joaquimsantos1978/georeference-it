@@ -226,9 +226,20 @@ public function next(Request $request)
     }
 
     // Build reusable locality-scope constraints in order of specificity:
-    // 1. focus text match, 2. last served state_province (geographic coherence), 3. country, 4. any
+    // 1. focus text match, 2. last served county, 3. last served province, 4. country, 5. any
     $lastProvince = session('georef_last_province');
     $lastCounty   = session('georef_last_county');
+
+    // If no session location but we have the excluded group, seed from it
+    if ($focus === '' && !$lastCounty && !$lastProvince && $excludeId) {
+        $ref = LocalityGroup::select('state_province', 'county', 'country_code')
+            ->find($excludeId);
+        if ($ref) {
+            $lastCounty   = $ref->county;
+            $lastProvince = $ref->state_province;
+            if (!$country) $country = $ref->country_code ?: null;
+        }
+    }
 
     $scopes = [];
     if ($focus !== '') {
@@ -343,6 +354,10 @@ public function next(Request $request)
     {
         session()->save(); // release session lock before heavy DB work
         $group = LocalityGroup::findOrFail($groupId);
+        session([
+            'georef_last_province' => $group->state_province,
+            'georef_last_county'   => $group->county,
+        ]);
         return response()->json($this->groupData($group));
     }
 
