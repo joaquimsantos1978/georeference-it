@@ -460,9 +460,9 @@
 
             {{-- Similar groups --}}
             <div id="similar-groups-wrap" style="display:none;flex-shrink:0;border-bottom:1px solid #d1d5db;">
-                <div class="px-3 pt-2 pb-1" style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
+                <div class="px-3 pt-2 pb-1" style="flex-shrink:0;">
                     <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Similar localities') }}</span>
-                    <div style="margin-left:auto;display:flex;gap:4px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
                         <button onclick="simSelectAll()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('All') }}</button>
                         <button onclick="simSelectNone()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('None') }}</button>
                         <button onclick="simSelectPending()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #fed7aa;background:#fff7ed;cursor:pointer;color:#c2410c;">{{ __('Pending') }}</button>
