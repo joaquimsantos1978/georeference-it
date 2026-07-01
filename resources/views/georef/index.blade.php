@@ -1987,6 +1987,8 @@ function updateHistoryNav() {
 // Always zoom to the group's administrative area for geographic context (county → state → country).
 // Existing suggestion markers remain visible on the map but do not drive the initial viewport,
 // since they may be incorrect and would mislead the user about the expected location.
+window._groupAdminBBox = null; // reset per group; used by the out-of-area sanity check on submit
+window._groupCountryBBox = null; // country-level fallback bbox, looser check
 (function zoomToGroup() {
     const county = group.county;
     const prov   = group.state_province;
@@ -1998,6 +2000,18 @@ function updateHistoryNav() {
     if (county)         queries.push('county='+encodeURIComponent(county));
     if (county)         queries.push('city='+encodeURIComponent(county));
     if (prov)           queries.push('state='+encodeURIComponent(prov));
+
+    // Fetch the country-level bbox independently — used as a looser fallback check
+    // even when the finer county/state query below succeeds or fails.
+    if (cc) {
+        fetch('https://nominatim.openstreetmap.org/search?country='+encodeURIComponent(cc)+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
+            .then(r=>r.json()).then(res=>{
+                if (!res.length) return;
+                const bb = res[0].boundingbox;
+                window._groupCountryBBox = [parseFloat(bb[0]),parseFloat(bb[1]),parseFloat(bb[2]),parseFloat(bb[3])];
+            }).catch(()=>{});
+    }
+
     if (!queries.length) {
         // Fall back to suggestion bounds if no admin area available
         if (window._suggestionLayers && window._suggestionLayers.length > 0) {
@@ -2019,6 +2033,7 @@ function updateHistoryNav() {
             .then(r=>r.json()).then(res=>{
                 if (!res.length) { tryNext(i+1); return; }
                 const bb = res[0].boundingbox;
+                window._groupAdminBBox = [parseFloat(bb[0]),parseFloat(bb[1]),parseFloat(bb[2]),parseFloat(bb[3])];
                 map.fitBounds([[parseFloat(bb[0]),parseFloat(bb[2])],[parseFloat(bb[1]),parseFloat(bb[3])]],{maxZoom:13,padding:[20,20]});
             }).catch(()=>tryNext(i+1));
     }
@@ -2057,9 +2072,38 @@ function updateHistoryNav() {
                 }
             });
     }
+    // Returns 'country'|'admin'|null — how far outside the expected administrative
+    // area the point is, using padded bounding boxes fetched when the group loaded.
+    function checkOutOfArea(lat, lng) {
+        function outside(bbox, padFrac, padMinDeg) {
+            var latPad = Math.max(padMinDeg, (bbox[1]-bbox[0]) * padFrac);
+            var lngPad = Math.max(padMinDeg, (bbox[3]-bbox[2]) * padFrac);
+            return lat < bbox[0]-latPad || lat > bbox[1]+latPad || lng < bbox[2]-lngPad || lng > bbox[3]+lngPad;
+        }
+        if (window._groupCountryBBox && outside(window._groupCountryBBox, 0.15, 0.5)) return 'country';
+        if (window._groupAdminBBox && outside(window._groupAdminBBox, 0.5, 0.3)) return 'admin';
+        return null;
+    }
     document.getElementById('submit-btn').addEventListener('click',function(){
         if(!currentGroup)return;
         var btn=this;
+
+        if (georefMode==='new' && marker) {
+            var pos=marker.getLatLng();
+            var farLevel = checkOutOfArea(pos.lat, pos.lng);
+            if (farLevel) {
+                var remarksVal = document.getElementById('remarks-input').value.trim();
+                var msg = farLevel==='country'
+                    ? {{ json_encode(__('This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) }}
+                    : {{ json_encode(__('This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) }};
+                if (!remarksVal) {
+                    alert(msg);
+                    document.getElementById('remarks-input').focus();
+                    return;
+                }
+            }
+        }
+
         btn.disabled=true;
         btn.innerHTML='<svg class="animate-spin inline w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>{{ __("Submitting...") }}';
 

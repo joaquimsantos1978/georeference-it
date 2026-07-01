@@ -290,6 +290,8 @@
     "These are all the specimens that share this locality description. Check or uncheck them to include or exclude individual records from your georeference.": "這些是所有共用此地點描述的標本。勾選或取消勾選，即可將個別記錄納入或排除於您的地理參照之外。",
     "This is a secure area of the application. Please confirm your password before continuing.": "這是應用程式的安全區域，請先確認您的密碼後再繼續。",
     "This is the written locality description from the specimen label — the text you'll interpret to place a point on the map.": "這是來自標本標籤的文字地點描述——您將依此判讀並在地圖上放置點位。",
+    "This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "該點似乎遠在預期區域（縣/州）之外。請仔細檢查座標，如果地點描述有誤導性，請在備註中說明。",
+    "This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "該點似乎遠在預期國家之外。請仔細檢查座標，如果地點描述有誤導性，請在備註中說明。",
     "This quick tutorial walks you through the main tools. You can reopen it at any time by clicking the ? Help button in the top-right corner of the map.": "這個簡短教學將引導您了解主要工具。您可隨時點擊地圖右上角的「？」說明按鈕重新開啟。",
     "Total": "總計",
     "Total occurrences": "記錄總數",
