@@ -53,7 +53,7 @@ class ActivityController extends Controller
                 ->whereIn('gs.georeference_sources', ['GBIF', 'GBIF_CONSISTENCY_CHECK'])
                 ->when($filterCountry, fn($q) => $q->where('lg.country_code', $filterCountry))
                 ->orderByDesc('gs.created_at')
-                ->simplePaginate(40)
+                ->paginate(40)
                 ->withQueryString();
         } else {
             $activities = DB::table('activity_log as al')
@@ -74,7 +74,7 @@ class ActivityController extends Controller
                 ->when($filterUserId, fn($q) => $q->where('al.user_id', $filterUserId))
                 ->when($filterCountry, fn($q) => $q->where('al.country_code', $filterCountry))
                 ->orderByDesc('al.created_at')
-                ->simplePaginate(40)
+                ->paginate(40)
                 ->withQueryString();
         }
 
