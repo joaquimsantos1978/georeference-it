@@ -98,7 +98,7 @@
                             <a href="{{ route('about') }}" class="hover:text-green-600">{{ __('About') }}</a>
                             <a href="{{ route('how-it-works') }}" class="hover:text-green-600">{{ __('How it works') }}</a>
                             <a href="{{ route('georeferencing-guide') }}" class="hover:text-green-600">{{ __('Georeferencing guide') }}</a>
-                            <a href="{{ route('extension') }}" class="hover:text-green-600">{{ __('Extension') }}</a>
+                            <a href="{{ route('extension') }}" class="hover:text-green-600">{{ __('Browser extensions') }}</a>
                             <a href="{{ route('api-docs') }}" class="hover:text-green-600 font-mono">API</a>
                             <a href="{{ route('cite') }}" class="hover:text-green-600">{{ __('Cite') }}</a>
                             <a href="https://github.com/joaquimsantos1978/georeference-it" target="_blank" class="hover:text-green-600">GitHub</a>
