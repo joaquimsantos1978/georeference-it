@@ -1275,20 +1275,37 @@ function toggleVote(id, vote) {
         }
     }
     renderVoteButtonStates();
-    updateSubmitBtn();
 }
 
 function renderVoteButtonStates() {
     _currentSuggestions.forEach(function(s) {
         var agreeBtn = document.getElementById('agree-btn-'+s.id);
         var disagreeBtn = document.getElementById('disagree-btn-'+s.id);
-        if (!agreeBtn || !disagreeBtn) return;
         var vote = pendingVotes[s.id];
-        agreeBtn.style.background    = vote === 'agree'    ? '#16a34a' : '#f0fdf4';
-        agreeBtn.style.color         = vote === 'agree'    ? '#ffffff' : '#16a34a';
-        disagreeBtn.style.background = vote === 'disagree' ? '#ef4444' : '#fff1f2';
-        disagreeBtn.style.color      = vote === 'disagree' ? '#ffffff' : '#ef4444';
+        if (agreeBtn && disagreeBtn) {
+            agreeBtn.style.background    = vote === 'agree'    ? '#16a34a' : '#f0fdf4';
+            agreeBtn.style.color         = vote === 'agree'    ? '#ffffff' : '#16a34a';
+            disagreeBtn.style.background = vote === 'disagree' ? '#ef4444' : '#fff1f2';
+            disagreeBtn.style.color      = vote === 'disagree' ? '#ffffff' : '#ef4444';
+        }
+        // Agreeing with a suggestion implies its already-clustered occurrences are correct too —
+        // auto-check and lock the "Correct N georef. occurrences" box while agree is active,
+        // since unchecking it would leave those occurrences' existing coordinates untouched,
+        // which contradicts having just agreed this suggestion's coordinates are right.
+        var correctChk = document.getElementById('correct-chk-'+s.id);
+        if (correctChk) {
+            if (vote === 'agree') {
+                correctChk.checked = true;
+                correctChk.disabled = true;
+                _correctSuggestionIds.add(s.id);
+            } else {
+                correctChk.disabled = false;
+                correctChk.checked = false;
+                _correctSuggestionIds.delete(s.id);
+            }
+        }
     });
+    updateSubmitBtn();
 }
 
 function togglePointMode() {
