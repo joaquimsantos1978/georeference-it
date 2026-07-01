@@ -466,6 +466,8 @@
                         <button onclick="simSelectAll()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('All') }}</button>
                         <button onclick="simSelectNone()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #d1d5db;background:white;cursor:pointer;color:#374151;">{{ __('None') }}</button>
                         <button onclick="simSelectPending()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #fed7aa;background:#fff7ed;cursor:pointer;color:#c2410c;">{{ __('Pending') }}</button>
+                        <button onclick="simSelectUngeoref()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #e5e7eb;background:#f9fafb;cursor:pointer;color:#6b7280;">{{ __('Ungeoreferenced') }}</button>
+                        <button onclick="simSelectValidated()" style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid #bbf7d0;background:#f0fdf4;cursor:pointer;color:#15803d;">{{ __('Validated') }}</button>
                     </div>
                 </div>
                 <div id="similar-groups-list" class="px-3 pb-2 space-y-2 overflow-y-auto" style="max-height:180px;"></div>
@@ -1624,9 +1626,11 @@ function updateHistoryNav() {
 
     var _simSuggMap = {};
 
-    function simSelectAll()     { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = true); }
-    function simSelectNone()    { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = false); }
-    function simSelectPending() { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = parseInt(cb.dataset.pending||0) > 0); }
+    function simSelectAll()       { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = true); }
+    function simSelectNone()      { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = false); }
+    function simSelectPending()   { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = parseInt(cb.dataset.pending||0) > 0); }
+    function simSelectUngeoref()  { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = parseInt(cb.dataset.ungeoref||0) > 0); }
+    function simSelectValidated() { document.querySelectorAll('.similar-group-cb').forEach(cb => cb.checked = parseInt(cb.dataset.validated||0) > 0); }
 
     function renderSimilarGroups(groups) {
         const wrap = document.getElementById('similar-groups-wrap');
@@ -1680,7 +1684,7 @@ function updateHistoryNav() {
 
             return '<div style="border:1px solid #fed7aa;border-radius:6px;padding:6px 8px;background:#fff7ed;">'
                 + '<label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;">'
-                + '<input type="checkbox" class="similar-group-cb" data-id="'+g.id+'" data-pending="'+g.pending_count+'" checked '
+                + '<input type="checkbox" class="similar-group-cb" data-id="'+g.id+'" data-pending="'+g.pending_count+'" data-ungeoref="'+g.ungeoreferenced_count+'" data-validated="'+g.validated_count+'" checked '
                 + 'style="margin-top:2px;flex-shrink:0;accent-color:#ea580c;">'
                 + '<div style="min-width:0;flex:1;">'
                 + '<div style="display:flex;align-items:center;gap:4px;">'
