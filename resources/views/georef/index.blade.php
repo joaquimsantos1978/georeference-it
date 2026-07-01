@@ -1288,20 +1288,21 @@ function renderVoteButtonStates() {
             disagreeBtn.style.background = vote === 'disagree' ? '#ef4444' : '#fff1f2';
             disagreeBtn.style.color      = vote === 'disagree' ? '#ffffff' : '#ef4444';
         }
-        // Agreeing with a suggestion implies its already-clustered occurrences are correct too —
-        // auto-check and lock the "Correct N georef. occurrences" box while agree is active,
-        // since unchecking it would leave those occurrences' existing coordinates untouched,
-        // which contradicts having just agreed this suggestion's coordinates are right.
+        // Agreeing with a suggestion implies its already-clustered occurrences are marked
+        // validated too — their coordinates don't change either way (they already match this
+        // suggestion), so the choice is moot once agreed. Hide the checkbox instead of showing
+        // a locked, pre-checked box that has nothing left to decide.
         var correctChk = document.getElementById('correct-chk-'+s.id);
+        var correctLabel = document.getElementById('correct-label-'+s.id);
         if (correctChk) {
             if (vote === 'agree') {
                 correctChk.checked = true;
-                correctChk.disabled = true;
                 _correctSuggestionIds.add(s.id);
+                if (correctLabel) correctLabel.style.display = 'none';
             } else {
-                correctChk.disabled = false;
                 correctChk.checked = false;
                 _correctSuggestionIds.delete(s.id);
+                if (correctLabel) correctLabel.style.display = 'flex';
             }
         }
     });
@@ -1929,7 +1930,7 @@ function updateHistoryNav() {
                     : '<span style="color:#9ca3af;font-style:italic;font-size:10px">'+TXT.loginToVal+'</span>';
                 var correctRow = s.cluster_count > 0
                     ? '<div class="sugg-divider" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;">'+
-                      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:#6b7280;">'+
+                      '<label id="correct-label-'+s.id+'" style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:#6b7280;">'+
                       '<input type="checkbox" id="correct-chk-'+s.id+'" onchange="toggleCorrectSuggestion('+s.id+',this.checked)" style="cursor:pointer;">'+
                       '{{ __("Correct") }} '+s.cluster_count+' {{ __("georef. occurrences") }}'+
                       '</label>'+
