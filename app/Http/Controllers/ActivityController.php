@@ -29,11 +29,22 @@ class ActivityController extends Controller
             // hidden users: filterUserId stays, filterUser stays null → shows "Hidden contributor"
         }
 
+        $perPage = 40;
+        $page    = $request->integer('page', 1) ?: 1;
+
         if ($isSystem) {
             // System-generated suggestions aren't logged to activity_log (too high-volume to log
             // individually) — read them directly from georef_suggestions instead.
-            $activities = DB::table('georef_suggestions as gs')
+            $query = DB::table('georef_suggestions as gs')
                 ->join('locality_groups as lg', 'lg.id', '=', 'gs.locality_group_id')
+                ->whereNull('gs.user_id')
+                ->whereIn('gs.georeference_sources', ['GBIF', 'GBIF_CONSISTENCY_CHECK'])
+                ->when($filterCountry, fn($q) => $q->where('lg.country_code', $filterCountry));
+
+            $cacheKey = 'activity_count_system_' . ($filterCountry ?: 'all');
+            $total = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, fn() => (clone $query)->count());
+
+            $rows = $query
                 ->select(
                     'gs.id', DB::raw("'georef' as type"), DB::raw("'system' as source"),
                     'gs.locality_group_id',
@@ -49,14 +60,20 @@ class ActivityController extends Controller
                     DB::raw('NULL as suggestion_user_id'), DB::raw('NULL as suggestion_source'),
                     DB::raw('NULL as suggestion_author_name'), DB::raw('NULL as suggestion_author_id')
                 )
-                ->whereNull('gs.user_id')
-                ->whereIn('gs.georeference_sources', ['GBIF', 'GBIF_CONSISTENCY_CHECK'])
-                ->when($filterCountry, fn($q) => $q->where('lg.country_code', $filterCountry))
                 ->orderByDesc('gs.created_at')
-                ->paginate(40)
-                ->withQueryString();
+                ->forPage($page, $perPage)
+                ->get();
         } else {
-            $activities = DB::table('activity_log as al')
+            $query = DB::table('activity_log as al')
+                ->leftJoin('users as u', 'u.id', '=', 'al.user_id')
+                ->leftJoin('users as su', 'su.id', '=', 'al.suggestion_user_id')
+                ->when($filterUserId, fn($q) => $q->where('al.user_id', $filterUserId))
+                ->when($filterCountry, fn($q) => $q->where('al.country_code', $filterCountry));
+
+            $cacheKey = 'activity_count_' . ($filterUserId ?: 'all') . '_' . ($filterCountry ?: 'all');
+            $total = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, fn() => (clone $query)->count());
+
+            $rows = $query
                 ->select(
                     'al.id', 'al.type', 'al.source', 'al.locality_group_id', 'al.occ_count',
                     'al.lat', 'al.lng', 'al.uncertainty_m', 'al.remarks',
@@ -69,14 +86,15 @@ class ActivityController extends Controller
                     DB::raw("IF(su.public_name = 1, su.name, NULL) as suggestion_author_name"),
                     DB::raw("IF(su.public_name = 1, su.id, NULL) as suggestion_author_id")
                 )
-                ->leftJoin('users as u', 'u.id', '=', 'al.user_id')
-                ->leftJoin('users as su', 'su.id', '=', 'al.suggestion_user_id')
-                ->when($filterUserId, fn($q) => $q->where('al.user_id', $filterUserId))
-                ->when($filterCountry, fn($q) => $q->where('al.country_code', $filterCountry))
                 ->orderByDesc('al.created_at')
-                ->paginate(40)
-                ->withQueryString();
+                ->forPage($page, $perPage)
+                ->get();
         }
+
+        $activities = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows, $total, $perPage, $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         // Users for filter dropdown — all users with activity
         $dropdownUsers = DB::table('activity_log as al')
