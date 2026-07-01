@@ -85,7 +85,7 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">
                 The extension panel appears automatically on GBIF occurrence pages, showing the suggested
                 coordinates on a map and the current status — here, a pending suggestion for
-                <em>Collema subnigrescens</em> from Portugal.
+                <em>Bombus (Bombus s.s.) terrestris ferrugineus</em> Krüger, 1956 from Portugal.
             </p>
         </section>
 
