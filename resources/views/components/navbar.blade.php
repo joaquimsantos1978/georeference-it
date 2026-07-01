@@ -19,7 +19,7 @@
                 {{-- Info --}}
                 <span class="text-gray-200 dark:text-gray-700 select-none">|</span>
                 <a href="{{ route('about') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400">{{ __('About') }}</a>
-                <a href="{{ route('api-docs') }}" class="text-sm text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 font-mono">API</a>
+                <a href="{{ route('api-docs') }}" class="text-sm text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400">API</a>
             </div>
         </div>
 
@@ -124,7 +124,7 @@
                     <a href="{{ route('activity') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Activity') }}</a>
                     <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                     <a href="{{ route('about') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('About') }}</a>
-                    <a href="{{ route('api-docs') }}" class="block px-4 py-2 text-sm font-mono text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">API</a>
+                    <a href="{{ route('api-docs') }}" class="block px-4 py-2 text-sm text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">API</a>
                 </div>
             </div>
         </div>
