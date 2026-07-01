@@ -23,6 +23,12 @@
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-.5 3.5c1.6 0 3.1.5 4.3 1.4-.4-.1-.8-.1-1.2-.1-2.8 0-5.1 2-5.5 4.7H7.5c.4-3.4 3.2-6 6-6zm.5 13c-3.3 0-6-2.7-6-6 0-.3 0-.6.1-.9.5 2.2 2.5 3.9 4.9 3.9 1.1 0 2.1-.4 2.9-1H16c-.9 2.4-3.2 4-5 4z"/></svg>
                 Install for Firefox
             </a>
+            <a href="https://microsoftedge.microsoft.com/addons/detail/georeferenceit/fkpoljdkgbhaimbnmgekimckifghflle"
+               target="_blank"
+               class="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M21.86 12.5c-.09 4.8-3.94 9.06-9.05 9.06-3.53 0-6.63-2-8.2-4.94a8.5 8.5 0 0 0 5.4 1.9c4.15 0 7.7-2.87 8.63-6.75.15-.6.6-.9 1.14-.9.6 0 1.1.5 1.08 1.63zM3.6 15.24C2.6 13.62 2 11.7 2 9.65 2 5.4 5.4 2 9.6 2c2.9 0 5.44 1.62 6.75 4.03-1-.53-2.13-.83-3.35-.83-3.9 0-7.06 3.13-7.16 7-.06 2.2.9 4.3 2.5 5.7-1.9-.1-3.6-1.05-4.74-2.66zm7.9-2.4c0-2.1 1.7-3.8 3.8-3.8.9 0 1.72.3 2.38.83-1.4-3.1-4.5-5.27-8.1-5.27-4.9 0-8.9 4-8.9 8.9 0 1.85.56 3.57 1.53 5-.06-.4-.1-.8-.1-1.2 0-3.9 2.9-7.13 6.66-7.6-.85 1-1.37 2.3-1.37 3.7 0 .53.07 1.04.2 1.53a5.8 5.8 0 0 1-3.5-1.9c0 .1 0 .2 0 .3 0 3.2 2.6 5.8 5.8 5.8 3.2 0 5.8-2.6 5.8-5.8 0-.55-.08-1.1-.22-1.6-1.7-.4-3.98-.87-3.98-2.44z"/></svg>
+                Install for Edge
+            </a>
             <a href="https://github.com/joaquimsantos1978/georeference-it/tree/main/browser-extension"
                target="_blank"
                class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-2 py-2.5">
