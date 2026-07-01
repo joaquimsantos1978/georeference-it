@@ -2094,8 +2094,8 @@ window._groupCountryBBox = null; // country-level fallback bbox, looser check
             if (farLevel) {
                 var remarksVal = document.getElementById('remarks-input').value.trim();
                 var msg = farLevel==='country'
-                    ? {{ json_encode(__('This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) }}
-                    : {{ json_encode(__('This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) }};
+                    ? {!! json_encode(__('This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) !!}
+                    : {!! json_encode(__('This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) !!};
                 if (!remarksVal) {
                     alert(msg);
                     document.getElementById('remarks-input').focus();
