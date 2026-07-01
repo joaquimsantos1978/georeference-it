@@ -23,14 +23,14 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1 sm:gap-3">
             {{-- Language switcher --}}
-            <div class="relative" x-data="{ open: false }">
+            <div class="relative flex-shrink-0" x-data="{ open: false }">
                 <button @click="open = !open" class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-green-600 px-1.5 py-1 rounded">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                     </svg>
-                    <span>{{ \App\Http\Middleware\SetLocale::SUPPORTED[app()->getLocale()] ?? app()->getLocale() }}</span>
+                    <span class="hidden sm:inline">{{ \App\Http\Middleware\SetLocale::SUPPORTED[app()->getLocale()] ?? app()->getLocale() }}</span>
                 </button>
                 <div x-show="open" @click.away="open = false" x-cloak
                      class="absolute right-0 mt-2 w-44 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
@@ -42,7 +42,7 @@
             </div>
             @auth
                 {{-- Notifications --}}
-                <div class="relative" x-data="{ open: false }">
+                <div class="relative flex-shrink-0" x-data="{ open: false }">
                     <button @click="open = !open" class="relative p-1 text-gray-500 dark:text-gray-400 hover:text-green-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -71,12 +71,12 @@
                 </div>
 
                 {{-- User menu --}}
-                <div class="relative" x-data="{ open: false }">
+                <div class="relative flex-shrink-0" x-data="{ open: false }">
                     <button @click="open = !open" class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-green-600">
                         @if(auth()->user()->avatar)
-                            <img src="{{ auth()->user()->avatar }}" class="h-7 w-7 rounded-full">
+                            <img src="{{ auth()->user()->avatar }}" class="h-7 w-7 rounded-full flex-shrink-0">
                         @else
-                            <div class="h-7 w-7 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-bold">
+                            <div class="h-7 w-7 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                 {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                             </div>
                         @endif
@@ -101,12 +101,12 @@
                     </div>
                 </div>
             @else
-                <a href="{{ route('login') }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-green-600">{{ __('Login') }}</a>
-                <a href="{{ route('register') }}" class="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700">{{ __('Register') }}</a>
+                <a href="{{ route('login') }}" class="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-green-600">{{ __('Login') }}</a>
+                <a href="{{ route('register') }}" class="hidden sm:inline text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700">{{ __('Register') }}</a>
             @endauth
 
             {{-- Mobile menu toggle --}}
-            <div class="sm:hidden" x-data="{ open: false }">
+            <div class="sm:hidden flex-shrink-0" x-data="{ open: false }">
                 <button @click="open = !open" class="p-1 text-gray-500 hover:text-green-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -114,6 +114,11 @@
                 </button>
                 <div x-show="open" @click.away="open = false" x-cloak
                      class="absolute right-0 top-12 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    @guest
+                        <a href="{{ route('login') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Login') }}</a>
+                        <a href="{{ route('register') }}" class="block px-4 py-2 text-sm font-medium text-green-600 hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Register') }}</a>
+                        <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                    @endguest
                     <a href="{{ route('georef.index') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Georeference') }}</a>
                     <a href="{{ route('explore') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Explore') }}</a>
                     <a href="{{ route('datasets') }}" class="block px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">{{ __('Datasets') }}</a>

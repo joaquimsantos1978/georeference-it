@@ -31,9 +31,9 @@
                             <div class="flex items-center gap-3">
                                 @php $isPublic = $user->public_name || (auth()->check() && auth()->id() === $user->id); @endphp
                                 @if($isPublic && $user->avatar)
-                                    <img src="{{ $user->avatar }}" class="h-7 w-7 rounded-full">
+                                    <img src="{{ $user->avatar }}" class="h-7 w-7 rounded-full flex-shrink-0">
                                 @else
-                                    <div class="h-7 w-7 rounded-full {{ $isPublic ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600' }} flex items-center justify-center text-white text-xs font-bold">
+                                    <div class="h-7 w-7 rounded-full {{ $isPublic ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600' }} flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                         {{ $isPublic ? strtoupper(substr($user->name, 0, 1)) : '?' }}
                                     </div>
                                 @endif
