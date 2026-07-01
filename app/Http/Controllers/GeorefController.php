@@ -416,10 +416,18 @@ public function next(Request $request)
 
         $group = LocalityGroup::findOrFail($validated['locality_group_id']);
 
-        // Replace user's previous pending suggestion for this group
+        // Replace the submitter's previous pending suggestion for this group — for authenticated
+        // users, match by user_id; for anonymous users (no account), match by session, otherwise
+        // the same visitor could pile up unlimited pending suggestions on one group.
         if (auth()->check()) {
             GeorefSuggestion::where('locality_group_id', $group->id)
                 ->where('user_id', auth()->id())
+                ->where('status', 'pending')
+                ->delete();
+        } else {
+            GeorefSuggestion::where('locality_group_id', $group->id)
+                ->whereNull('user_id')
+                ->where('session_id', session()->getId())
                 ->where('status', 'pending')
                 ->delete();
         }
@@ -445,6 +453,7 @@ public function next(Request $request)
             'occurrence_id'            => $group->occurrences()->first()->id,
             'user_id'                  => auth()->id(),
             'anon_name'                => $validated['anon_name'] ?? null,
+            'session_id'               => auth()->check() ? null : session()->getId(),
             'decimal_latitude'         => $validated['decimal_latitude'],
             'decimal_longitude'        => $validated['decimal_longitude'],
             'geodetic_datum'           => 'epsg:4326',
@@ -526,6 +535,21 @@ public function next(Request $request)
                     continue;
                 }
 
+                // Replace the submitter's previous pending suggestion in this similar group first,
+                // same as the main group above — otherwise repeated submissions pile up unbounded.
+                if (auth()->check()) {
+                    GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                        ->where('user_id', auth()->id())
+                        ->where('status', 'pending')
+                        ->delete();
+                } else {
+                    GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                        ->whereNull('user_id')
+                        ->where('session_id', session()->getId())
+                        ->where('status', 'pending')
+                        ->delete();
+                }
+
                 // No existing suggestion — create one
                 $simSuggestion = GeorefSuggestion::create([
                     'locality_group_id'        => $simGroup->id,
@@ -533,6 +557,7 @@ public function next(Request $request)
                     'occurrence_id'            => $simGroup->occurrences()->first()?->id,
                     'user_id'                  => auth()->id(),
                     'anon_name'                => $validated['anon_name'] ?? null,
+                    'session_id'               => auth()->check() ? null : session()->getId(),
                     'decimal_latitude'         => $validated['decimal_latitude'],
                     'decimal_longitude'        => $validated['decimal_longitude'],
                     'geodetic_datum'           => 'epsg:4326',

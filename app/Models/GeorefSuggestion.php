@@ -14,6 +14,7 @@ class GeorefSuggestion extends Model
         'locality_group_hash',
         'user_id',
         'anon_name',
+        'session_id',
         'decimal_latitude',
         'decimal_longitude',
         'geodetic_datum',
