@@ -292,6 +292,7 @@
     "This is the written locality description from the specimen label — the text you'll interpret to place a point on the map.": "這是來自標本標籤的文字地點描述——您將依此判讀並在地圖上放置點位。",
     "This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "該點似乎遠在預期區域（縣/州）之外。請仔細檢查座標，如果地點描述有誤導性，請在備註中說明。",
     "This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "該點似乎遠在預期國家之外。請仔細檢查座標，如果地點描述有誤導性，請在備註中說明。",
+    "This point looks far outside the expected municipality. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "該點似乎遠在預期市鎮之外。請仔細檢查座標，如果地點描述有誤導性，請在備註中說明。",
     "This quick tutorial walks you through the main tools. You can reopen it at any time by clicking the ? Help button in the top-right corner of the map.": "這個簡短教學將引導您了解主要工具。您可隨時點擊地圖右上角的「？」說明按鈕重新開啟。",
     "Total": "總計",
     "Total occurrences": "記錄總數",

@@ -292,6 +292,7 @@
     "This is the written locality description from the specimen label — the text you'll interpret to place a point on the map.": "これは標本ラベルに記載された産地記述です。この文章を解釈して地図上にポイントを配置します。",
     "This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "このポイントは想定される地域（郡・州）から大きく外れているようです。座標を再確認するか、位置の説明が誤解を招く場合は備考欄で説明してください。",
     "This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "このポイントは想定される国から大きく外れているようです。座標を再確認するか、位置の説明が誤解を招く場合は備考欄で説明してください。",
+    "This point looks far outside the expected municipality. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "このポイントは想定される市町村から大きく外れているようです。座標を再確認するか、位置の説明が誤解を招く場合は備考欄で説明してください。",
     "This quick tutorial walks you through the main tools. You can reopen it at any time by clicking the ? Help button in the top-right corner of the map.": "このクイックチュートリアルでは主要なツールを説明します。地図右上の「？」ヘルプボタンをクリックすると、いつでも再表示できます。",
     "Total": "合計",
     "Total occurrences": "標本の総数",

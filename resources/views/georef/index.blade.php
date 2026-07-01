@@ -1989,11 +1989,25 @@ function updateHistoryNav() {
 // since they may be incorrect and would mislead the user about the expected location.
 window._groupAdminBBox = null; // reset per group; used by the out-of-area sanity check on submit
 window._groupCountryBBox = null; // country-level fallback bbox, looser check
+window._groupMunicipalityBBox = null; // finest-grained bbox, softest check
 (function zoomToGroup() {
     const county = group.county;
     const prov   = group.state_province;
     const cc     = group.country_code;
+    const muni   = group.municipality;
     const ccParam = cc ? '&countrycodes='+cc.toLowerCase() : '';
+
+    // Fetch municipality bbox independently — finest-grained sanity check on submit
+    if (muni) {
+        const muniQuery = 'city='+encodeURIComponent(muni)+(prov ? '&state='+encodeURIComponent(prov) : '');
+        fetch('https://nominatim.openstreetmap.org/search?'+muniQuery+ccParam+'&format=json&limit=1&polygon_geojson=0', {headers:{'Accept-Language':'en'}})
+            .then(r=>r.json()).then(res=>{
+                if (!res.length) return;
+                const bb = res[0].boundingbox;
+                window._groupMunicipalityBBox = [parseFloat(bb[0]),parseFloat(bb[1]),parseFloat(bb[2]),parseFloat(bb[3])];
+            }).catch(()=>{});
+    }
+
     const queries = [];
     if (county && prov) queries.push('county='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
     if (county && prov) queries.push('city='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
@@ -2072,8 +2086,10 @@ window._groupCountryBBox = null; // country-level fallback bbox, looser check
                 }
             });
     }
-    // Returns 'country'|'admin'|null — how far outside the expected administrative
-    // area the point is, using padded bounding boxes fetched when the group loaded.
+    // Returns 'country'|'admin'|'municipality'|null — how far outside the expected
+    // administrative area the point is, using padded bounding boxes fetched when the
+    // group loaded. Checked broadest-first: a country-level miss is more severe/
+    // informative than flagging the finer municipality boundary too.
     function checkOutOfArea(lat, lng) {
         function outside(bbox, padFrac, padMinDeg) {
             var latPad = Math.max(padMinDeg, (bbox[1]-bbox[0]) * padFrac);
@@ -2082,6 +2098,7 @@ window._groupCountryBBox = null; // country-level fallback bbox, looser check
         }
         if (window._groupCountryBBox && outside(window._groupCountryBBox, 0.15, 0.5)) return 'country';
         if (window._groupAdminBBox && outside(window._groupAdminBBox, 0.5, 0.3)) return 'admin';
+        if (window._groupMunicipalityBBox && outside(window._groupMunicipalityBBox, 0.8, 0.15)) return 'municipality';
         return null;
     }
     document.getElementById('submit-btn').addEventListener('click',function(){
@@ -2095,7 +2112,9 @@ window._groupCountryBBox = null; // country-level fallback bbox, looser check
                 var remarksVal = document.getElementById('remarks-input').value.trim();
                 var msg = farLevel==='country'
                     ? {!! json_encode(__('This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) !!}
-                    : {!! json_encode(__('This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) !!};
+                    : farLevel==='admin'
+                    ? {!! json_encode(__('This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) !!}
+                    : {!! json_encode(__('This point looks far outside the expected municipality. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.')) !!};
                 if (!remarksVal) {
                     alert(msg);
                     document.getElementById('remarks-input').focus();

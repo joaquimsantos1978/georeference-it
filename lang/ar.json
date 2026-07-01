@@ -292,6 +292,7 @@
     "This is the written locality description from the specimen label — the text you'll interpret to place a point on the map.": "هذا هو الوصف المكتوب للموقع من بطاقة العينة — النص الذي ستفسّره لوضع نقطة على الخريطة.",
     "This point looks far outside the expected area (county/state). Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "تبدو هذه النقطة بعيدة جدًا خارج المنطقة المتوقعة (المقاطعة/الولاية). يرجى التحقق من الإحداثيات، أو التوضيح في الملاحظات إذا كان وصف الموقع مضللاً.",
     "This point looks far outside the expected country. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "تبدو هذه النقطة بعيدة جدًا خارج الدولة المتوقعة. يرجى التحقق من الإحداثيات، أو التوضيح في الملاحظات إذا كان وصف الموقع مضللاً.",
+    "This point looks far outside the expected municipality. Please double-check the coordinates, or explain in Remarks if the locality description is misleading.": "تبدو هذه النقطة بعيدة جدًا خارج البلدية المتوقعة. يرجى التحقق من الإحداثيات، أو التوضيح في الملاحظات إذا كان وصف الموقع مضللاً.",
     "This quick tutorial walks you through the main tools. You can reopen it at any time by clicking the ? Help button in the top-right corner of the map.": "يرشدك هذا الدليل السريع عبر الأدوات الرئيسية. يمكنك إعادة فتحه في أي وقت بالنقر على زر المساعدة ? في الزاوية العلوية اليمنى من الخريطة.",
     "Total": "الإجمالي",
     "Total occurrences": "إجمالي السجلات",
