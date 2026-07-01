@@ -3,59 +3,59 @@
     <div class="max-w-3xl mx-auto space-y-8">
 
         <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Georeferencing Guide</h1>
-            <p class="mt-2 text-gray-500 dark:text-gray-400 text-sm">A practical summary based on <a href="https://doi.org/10.15468/doc-gg7h-s853" target="_blank" class="text-green-600 hover:underline">Georeferencing Best Practices</a> (Chapman &amp; Wieczorek, 2020) — read in ~2 minutes.</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ __('Georeferencing Guide') }}</h1>
+            <p class="mt-2 text-gray-500 dark:text-gray-400 text-sm">{!! __('A practical summary based on :link (Chapman & Wieczorek, 2020) — read in ~2 minutes.', ['link' => '<a href="https://doi.org/10.15468/doc-gg7h-s853" target="_blank" class="text-green-600 hover:underline">'.__('Georeferencing Best Practices').'</a>']) !!}</p>
         </div>
 
         {{-- What is georeferencing --}}
         <section class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 space-y-3">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">What is georeferencing?</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('What is georeferencing?') }}</h2>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-                Georeferencing is the process of interpreting a textual locality description — such as <em>"5 km NW of Ratanakiri, Cambodia"</em> — into a geographic coordinate pair (latitude/longitude) plus a <strong>coordinate uncertainty radius</strong> that captures the imprecision of the original description.
+                {!! __('Georeferencing is the process of interpreting a textual locality description — such as :example — into a geographic coordinate pair (latitude/longitude) plus a :strong that captures the imprecision of the original description.', ['example' => '<em>"5 km NW of Ratanakiri, Cambodia"</em>', 'strong' => '<strong>'.__('coordinate uncertainty radius').'</strong>']) !!}
             </p>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-                The result is not just a point on a map, but a <strong>point-radius</strong>: the true location lies somewhere within a circle centered on the given coordinates.
+                {!! __('The result is not just a point on a map, but a :strong: the true location lies somewhere within a circle centered on the given coordinates.', ['strong' => '<strong>'.__('point-radius').'</strong>']) !!}
             </p>
         </section>
 
         {{-- Step by step --}}
         <section class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 space-y-4">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Step-by-step</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('Step-by-step') }}</h2>
 
             <div class="space-y-4 text-sm text-gray-600 dark:text-gray-300">
                 <div class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">1</span>
                     <div>
-                        <p class="font-medium text-gray-800 dark:text-gray-100">Read the full label</p>
-                        <p>Use all available fields — locality, state/province, country, collector, date, habitat. They provide context to disambiguate place names.</p>
+                        <p class="font-medium text-gray-800 dark:text-gray-100">{{ __('Read the full label') }}</p>
+                        <p>{{ __('Use all available fields — locality, state/province, country, collector, date, habitat. They provide context to disambiguate place names.') }}</p>
                     </div>
                 </div>
                 <div class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">2</span>
                     <div>
-                        <p class="font-medium text-gray-800 dark:text-gray-100">Find the named place</p>
-                        <p>Use a gazetteer (Google Maps, GeoNames, Getty Thesaurus of Geographic Names) to locate the feature described. Prefer historical gazetteers when the collection is old — place names change.</p>
+                        <p class="font-medium text-gray-800 dark:text-gray-100">{{ __('Find the named place') }}</p>
+                        <p>{{ __('Use a gazetteer (Google Maps, GeoNames, Getty Thesaurus of Geographic Names) to locate the feature described. Prefer historical gazetteers when the collection is old — place names change.') }}</p>
                     </div>
                 </div>
                 <div class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">3</span>
                     <div>
-                        <p class="font-medium text-gray-800 dark:text-gray-100">Place the coordinate</p>
-                        <p>For a named feature, use its center. For directional descriptions (<em>"5 km NW of [town]"</em>), find the town's center and apply the heading and distance to get the georeference point. For administrative areas with no finer detail, use the centroid.</p>
+                        <p class="font-medium text-gray-800 dark:text-gray-100">{{ __('Place the coordinate') }}</p>
+                        <p>{!! __('For a named feature, use its center. For directional descriptions (:example), find the town\'s center and apply the heading and distance to get the georeference point. For administrative areas with no finer detail, use the centroid.', ['example' => '<em>"5 km NW of [town]"</em>']) !!}</p>
                     </div>
                 </div>
                 <div class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">4</span>
                     <div>
-                        <p class="font-medium text-gray-800 dark:text-gray-100">Estimate the uncertainty</p>
-                        <p>The uncertainty radius must encompass <em>every possible</em> true location. It combines: the extent of the named feature, the precision of any distance/direction given, and GPS/map accuracy. When in doubt, go larger — underestimating uncertainty is worse than overestimating it.</p>
+                        <p class="font-medium text-gray-800 dark:text-gray-100">{{ __('Estimate the uncertainty') }}</p>
+                        <p>{!! __('The uncertainty radius must encompass :em true location. It combines: the extent of the named feature, the precision of any distance/direction given, and GPS/map accuracy. When in doubt, go larger — underestimating uncertainty is worse than overestimating it.', ['em' => '<em>'.__('every possible').'</em>']) !!}</p>
                     </div>
                 </div>
                 <div class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-semibold text-xs">5</span>
                     <div>
-                        <p class="font-medium text-gray-800 dark:text-gray-100">Document your sources and remarks</p>
-                        <p>Note which gazetteer or tool you used and any assumptions you made. This allows future reviewers to verify or improve the georeference.</p>
+                        <p class="font-medium text-gray-800 dark:text-gray-100">{{ __('Document your sources and remarks') }}</p>
+                        <p>{{ __('Note which gazetteer or tool you used and any assumptions you made. This allows future reviewers to verify or improve the georeference.') }}</p>
                     </div>
                 </div>
             </div>
@@ -63,22 +63,22 @@
 
         {{-- Uncertainty guidance --}}
         <section class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 space-y-3">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Uncertainty quick reference</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('Uncertainty quick reference') }}</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left text-gray-600 dark:text-gray-300">
                     <thead class="text-xs text-gray-500 uppercase border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                            <th class="py-2 pr-4">Locality description</th>
-                            <th class="py-2">Typical uncertainty</th>
+                            <th class="py-2 pr-4">{{ __('Locality description') }}</th>
+                            <th class="py-2">{{ __('Typical uncertainty') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        <tr><td class="py-2 pr-4">GPS coordinates on label</td><td class="py-2">10–100 m</td></tr>
-                        <tr><td class="py-2 pr-4">Named village or small town</td><td class="py-2">1–5 km</td></tr>
-                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">Geographic radial of town + imprecision of distance/direction</td></tr>
-                        <tr><td class="py-2 pr-4">Named river, lake or mountain</td><td class="py-2">Radius of smallest circle enclosing the feature</td></tr>
-                        <tr><td class="py-2 pr-4">County / district only</td><td class="py-2">Radius of the administrative area</td></tr>
-                        <tr><td class="py-2 pr-4">Country only</td><td class="py-2">Radius of the country</td></tr>
+                        <tr><td class="py-2 pr-4">{{ __('GPS coordinates on label') }}</td><td class="py-2">10–100 m</td></tr>
+                        <tr><td class="py-2 pr-4">{{ __('Named village or small town') }}</td><td class="py-2">1–5 km</td></tr>
+                        <tr><td class="py-2 pr-4">"5 km NW of [town]"</td><td class="py-2">{{ __('Geographic radial of town + imprecision of distance/direction') }}</td></tr>
+                        <tr><td class="py-2 pr-4">{{ __('Named river, lake or mountain') }}</td><td class="py-2">{{ __('Radius of smallest circle enclosing the feature') }}</td></tr>
+                        <tr><td class="py-2 pr-4">{{ __('County / district only') }}</td><td class="py-2">{{ __('Radius of the administrative area') }}</td></tr>
+                        <tr><td class="py-2 pr-4">{{ __('Country only') }}</td><td class="py-2">{{ __('Radius of the country') }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -86,37 +86,37 @@
 
         {{-- When NOT to georeference --}}
         <section class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-6 border border-amber-200 dark:border-amber-700 space-y-3">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">When to skip</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('When to skip') }}</h2>
             <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
-                <li>The locality is too vague to narrow down below country level.</li>
-                <li>Multiple equally plausible interpretations exist and you cannot resolve the ambiguity.</li>
-                <li>The place name is unresolvable in any gazetteer, even with contextual clues.</li>
+                <li>{{ __('The locality is too vague to narrow down below country level.') }}</li>
+                <li>{{ __('Multiple equally plausible interpretations exist and you cannot resolve the ambiguity.') }}</li>
+                <li>{{ __('The place name is unresolvable in any gazetteer, even with contextual clues.') }}</li>
             </ul>
-            <p class="text-sm text-gray-600 dark:text-gray-300">In these cases it is better to leave it ungeoreferenced than to assign misleading coordinates.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{ __('In these cases it is better to leave it ungeoreferenced than to assign misleading coordinates.') }}</p>
         </section>
 
         {{-- Further reading --}}
         <section class="space-y-3">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Further reading</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('Further reading') }}</h2>
             <ul class="text-sm space-y-2">
                 <li>
-                    <a href="https://doi.org/10.15468/doc-gg7h-s853" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Best Practices</a>
-                    <span class="text-gray-500"> — Chapman AD &amp; Wieczorek JR (2020). GBIF Secretariat. The authoritative reference.</span>
+                    <a href="https://doi.org/10.15468/doc-gg7h-s853" target="_blank" class="text-green-600 hover:underline font-medium">{{ __('Georeferencing Best Practices') }}</a>
+                    <span class="text-gray-500"> — {{ __('Chapman AD & Wieczorek JR (2020). GBIF Secretariat. The authoritative reference.') }}</span>
                 </li>
                 <li>
-                    <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Quick Reference Guide</a>
-                    <span class="text-gray-500"> — Zermoglio PF, Chapman AD, Wieczorek JR, Luna MC &amp; Bloom DA (2020). GBIF Secretariat. Step-by-step worked examples.</span>
+                    <a href="https://doi.org/10.35035/e09p-h128" target="_blank" class="text-green-600 hover:underline font-medium">{{ __('Georeferencing Quick Reference Guide') }}</a>
+                    <span class="text-gray-500"> — {{ __('Zermoglio PF, Chapman AD, Wieczorek JR, Luna MC & Bloom DA (2020). GBIF Secretariat. Step-by-step worked examples.') }}</span>
                 </li>
                 <li>
-                    <a href="https://doi.org/10.35035/gdwq-3v93" target="_blank" class="text-green-600 hover:underline font-medium">Georeferencing Calculator Manual</a>
-                    <span class="text-gray-500"> — Bloom DA, Wieczorek JR &amp; Zermoglio PF (2020). GBIF Secretariat.</span>
+                    <a href="https://doi.org/10.35035/gdwq-3v93" target="_blank" class="text-green-600 hover:underline font-medium">{{ __('Georeferencing Calculator Manual') }}</a>
+                    <span class="text-gray-500"> — {{ __('Bloom DA, Wieczorek JR & Zermoglio PF (2020). GBIF Secretariat.') }}</span>
                 </li>
             </ul>
         </section>
 
         <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 border border-green-200 dark:border-green-700">
-            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Ready to put this into practice?</p>
-            <a href="{{ route('georef.index') }}" class="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700">Start georeferencing →</a>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ __('Ready to put this into practice?') }}</p>
+            <a href="{{ route('georef.index') }}" class="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700">{{ __('Start georeferencing →') }}</a>
         </div>
 
     </div>
