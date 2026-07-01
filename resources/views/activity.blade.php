@@ -10,6 +10,7 @@
                 <select name="user" onchange="this.form.submit()"
                     class="text-xs border border-gray-200 dark:border-gray-600 rounded-lg pl-2 pr-7 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer">
                     <option value="">{{ __('All contributors') }}</option>
+                    <option value="system" {{ request('user') === 'system' ? 'selected' : '' }}>{{ __('System') }}</option>
                     @foreach($dropdownUsers as $u)
                         @php $label = ($u->public_name || auth()->id() === $u->id) ? $u->name : __('Hidden contributor'); @endphp
                         <option value="{{ $u->id }}" {{ request('user') == $u->id ? 'selected' : '' }}>{{ $label }}</option>
