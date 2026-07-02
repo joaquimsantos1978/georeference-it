@@ -1178,10 +1178,8 @@ function buildLocalityString(g) {
                 const dx=(maxLon-minLon)*Math.PI/180*RE*cosLat/2;
                 const unc=Math.round(Math.sqrt(dx*dx+dy*dy));
                 if (unc > 0) {
-                    document.getElementById('uncertainty-input').value=unc;
                     document.getElementById('uncertainty-slider').max=Math.max(500000,Math.round(unc*1.5));
-                    document.getElementById('uncertainty-slider').value=unc;
-                    document.getElementById('uncertainty-display').textContent=unc.toLocaleString()+'m';
+                    setUncertainty(unc); // also resizes the already-drawn circle to match
                 }
                 map.fitBounds([[minLat,minLon],[maxLat,maxLon]],{padding:[20,20]});
             } else {
