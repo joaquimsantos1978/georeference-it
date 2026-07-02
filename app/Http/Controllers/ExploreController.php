@@ -51,21 +51,31 @@ class ExploreController extends Controller
             };
         }
 
+        $perPage  = 50;
+        $page     = $request->integer('page', 1) ?: 1;
+        $cacheKey = 'explore_count_' . md5(json_encode($request->only(['q', 'country', 'dataset_key', 'status'])));
+        $total    = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, fn() => (clone $query)->count());
+
         if ($request->filled('q')) {
-            $q = $request->q;
-            $groups = $query
+            $q    = $request->q;
+            $rows = $query
                 ->orderByRaw(
                     'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC',
                     [$q]
                 )
-                ->simplePaginate(50)
-                ->withQueryString();
+                ->forPage($page, $perPage)
+                ->get();
         } else {
-            $groups = $query
+            $rows = $query
                 ->orderByDesc('occurrence_count')
-                ->simplePaginate(50)
-                ->withQueryString();
+                ->forPage($page, $perPage)
+                ->get();
         }
+
+        $groups = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows, $total, $perPage, $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
             return \Illuminate\Support\Facades\DB::table('locality_groups')
