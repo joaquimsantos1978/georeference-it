@@ -1,6 +1,6 @@
 <x-layouts.app title="Impact" description="Specimens georeferenced or improved through georeference.it — making biodiversity data more useful.">
 
-    <div class="space-y-6 max-w-6xl mx-auto">
+    <div class="space-y-6">
 
         <div class="flex items-center justify-between gap-4 flex-wrap">
             <div>

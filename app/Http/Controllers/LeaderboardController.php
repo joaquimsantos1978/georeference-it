@@ -15,7 +15,10 @@ class LeaderboardController extends Controller
                 JOIN georef_suggestions gs ON gs.id = gv.suggestion_id
                 WHERE gv.user_id = users.id
                 AND (gs.user_id != gv.user_id OR gs.user_id IS NULL)
-            ) as reviews_count')
+            ) as reviews_count, (
+                SELECT COALESCE(SUM(al.occ_count), 0) FROM activity_log al
+                WHERE al.user_id = users.id AND al.type = "georef"
+            ) as specimens_count')
             ->orderByDesc('total_validated')
             ->orderByDesc('suggestions_count')
             ->take(50)

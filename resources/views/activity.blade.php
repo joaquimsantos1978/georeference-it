@@ -1,6 +1,6 @@
 <x-layouts.app title="Activity" description="Recent georeferencing activity on georeference.it.">
 
-    <div class="space-y-6 max-w-5xl mx-auto">
+    <div class="space-y-6">
 
         <div class="flex items-center justify-between gap-4 flex-wrap">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Activity') }}</h1>

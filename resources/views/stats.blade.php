@@ -1,6 +1,6 @@
 <x-layouts.app title="Georeferencing Progress" description="Track the global progress of georeferencing natural history specimens on georeference.it.">
 
-    <div class="space-y-8 max-w-5xl mx-auto">
+    <div class="space-y-8">
 
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Georeferencing Progress') }}</h1>
