@@ -813,6 +813,7 @@
         validated:    "{{ __('validated') }}",
         suggestions:  "{{ __('suggestions') }}",
         gbifCoordinates: "{{ __('with GBIF coordinates') }}",
+        viewGroup:    "{{ __('View group →') }}",
     };
 
     // Session history — restored from localStorage on every page load
@@ -1127,12 +1128,18 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             _sysSuggResults = results;
             if (!results.length) { document.getElementById('sys-sugg-popup').style.display='none'; return; }
             document.getElementById('sys-sugg-list').innerHTML = results.map((r,i)=>
-                '<button onclick="applySystemSuggestion('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid #bbf7d0;margin-bottom:2px;background:#f0fdf4;cursor:pointer" onmouseover="this.style.background=\'#dcfce7\'" onmouseout="this.style.background=\'#f0fdf4\'">'+
+                '<div style="border:1px solid #bbf7d0;border-radius:4px;margin-bottom:2px;background:#f0fdf4;overflow:hidden;">'+
+                '<button onclick="applySystemSuggestion('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px 5px 2px;border:none;background:transparent;cursor:pointer" onmouseover="this.parentElement.style.background=\'#dcfce7\'" onmouseout="this.parentElement.style.background=\'#f0fdf4\'">'+
                 '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📍 '+r.display_name+'</span>'+
                 '<span style="color:#16a34a">'+(r.source==='gbif'
                     ? TXT.gbifCoordinates
                     : r.suggestion_count+' '+TXT.suggestions+(r.validated_count>0?' ('+r.validated_count+' '+TXT.validated+')':''))+
-                ' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
+                ' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+
+                (r.uncertainty_m ? ' · ±'+Number(r.uncertainty_m).toLocaleString()+'m' : '')+
+                ' · '+r.occurrence_count+' '+TXT.occurrences+
+                '</span></button>'+
+                '<a href="'+APP_URL+'/georef?group='+r.locality_group_id+'" target="_blank" rel="noopener" style="display:block;font-size:10px;color:#2563eb;padding:1px 5px 4px;text-decoration:underline;">'+TXT.viewGroup+'</a>'+
+                '</div>'
             ).join('');
         } catch(e) { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
     }
