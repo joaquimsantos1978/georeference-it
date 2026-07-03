@@ -483,41 +483,64 @@ class GbifImportDownload extends Command
         $occCount = DB::table('occurrences')->count();
         $this->info("  Occurrences total: {$occCount}");
 
-        $this->info('Step 3/3: Updating group counters...');
+        $this->info('Step 3/3: Updating group counters in batches...');
 
-        // Update counters for groups that have occurrences
-        DB::statement("
-            UPDATE locality_groups lg
-            JOIN (
-                SELECT locality_group_id,
-                    COUNT(*) AS total,
-                    SUM(georef_status IN ('has_suggestion', 'conflicted')) AS pending,
-                    SUM(georef_status = 'validated') AS validated,
-                    SUM(georef_status = 'ungeoreferenced') AS ungeoreferenced
-                FROM occurrences
-                WHERE locality_group_id IS NOT NULL
-                GROUP BY locality_group_id
-            ) c ON c.locality_group_id = lg.id
-            SET
-                lg.occurrence_count       = c.total,
-                lg.pending_count          = c.pending,
-                lg.validated_count        = c.validated,
-                lg.ungeoreferenced_count  = c.ungeoreferenced,
-                lg.updated_at             = NOW()
-        ");
+        // Batch by locality_groups.id range, same reasoning as the occurrences upsert above —
+        // locality_groups is read on every /georef page load, so one giant UPDATE touching
+        // millions of rows at once would hold locks on that hot table for a long time.
+        $lgBounds = DB::selectOne('SELECT MIN(id) AS min_id, MAX(id) AS max_id FROM locality_groups');
 
-        // Zero out groups whose occurrences all moved to other groups
-        DB::statement("
-            UPDATE locality_groups lg
-            LEFT JOIN occurrences o ON o.locality_group_id = lg.id
-            SET lg.occurrence_count      = 0,
-                lg.pending_count         = 0,
-                lg.validated_count       = 0,
-                lg.ungeoreferenced_count = 0,
-                lg.updated_at            = NOW()
-            WHERE o.id IS NULL
-              AND lg.occurrence_count > 0
-        ");
+        if ($lgBounds && $lgBounds->min_id !== null) {
+            $batchSize    = 200000;
+            $minId        = (int) $lgBounds->min_id;
+            $maxId        = (int) $lgBounds->max_id;
+            $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
+            $batchNum     = 0;
+
+            for ($from = $minId; $from <= $maxId; $from += $batchSize) {
+                $to = min($from + $batchSize - 1, $maxId);
+                $batchNum++;
+
+                // Update counters for groups in this id range that have occurrences
+                DB::statement("
+                    UPDATE locality_groups lg
+                    JOIN (
+                        SELECT locality_group_id,
+                            COUNT(*) AS total,
+                            SUM(georef_status IN ('has_suggestion', 'conflicted')) AS pending,
+                            SUM(georef_status = 'validated') AS validated,
+                            SUM(georef_status = 'ungeoreferenced') AS ungeoreferenced
+                        FROM occurrences
+                        WHERE locality_group_id BETWEEN {$from} AND {$to}
+                        GROUP BY locality_group_id
+                    ) c ON c.locality_group_id = lg.id
+                    SET
+                        lg.occurrence_count       = c.total,
+                        lg.pending_count          = c.pending,
+                        lg.validated_count        = c.validated,
+                        lg.ungeoreferenced_count  = c.ungeoreferenced,
+                        lg.updated_at             = NOW()
+                    WHERE lg.id BETWEEN {$from} AND {$to}
+                ");
+
+                // Zero out groups in this range whose occurrences all moved to other groups
+                DB::statement("
+                    UPDATE locality_groups lg
+                    LEFT JOIN occurrences o ON o.locality_group_id = lg.id
+                    SET lg.occurrence_count      = 0,
+                        lg.pending_count         = 0,
+                        lg.validated_count       = 0,
+                        lg.ungeoreferenced_count = 0,
+                        lg.updated_at            = NOW()
+                    WHERE o.id IS NULL
+                      AND lg.occurrence_count > 0
+                      AND lg.id BETWEEN {$from} AND {$to}
+                ");
+
+                $this->line("  Batch {$batchNum}/{$totalBatches} done (locality_group id {$from}–{$to})");
+                usleep(200000);
+            }
+        }
 
         $this->info('  Counters updated.');
     }
