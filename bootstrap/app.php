@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\SendWeeklySummary;
+use App\Console\Commands\GbifMonthlyRefresh;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -31,6 +32,21 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command(SendWeeklySummary::class)->weeklyOn(1, '8:00'); // Monday 8am
+
+        // First Saturday of every month, 00:00 UTC. Cron has no native "nth weekday of
+        // month" field, so this runs the check daily at midnight and gates the actual
+        // work with ->when() — cheap to evaluate, only fires when both conditions hold.
+        $gbifRefresh = $schedule->command(GbifMonthlyRefresh::class)
+            ->dailyAt('00:00')
+            ->timezone('UTC')
+            ->when(fn () => now()->isSaturday() && now()->day <= 7)
+            ->withoutOverlapping(1440) // minutes; import can take hours, never double-run
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/gbif-monthly-refresh.log'));
+
+        if (config('gbif.notification_email')) {
+            $gbifRefresh->emailOutputOnFailure(config('gbif.notification_email'));
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
