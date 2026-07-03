@@ -976,10 +976,12 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
         return response()->json([]);
     }
 
-    // Strip characters that are operators in MySQL boolean-mode fulltext syntax
-    // (+ - < > ( ) ~ * " @), otherwise a locality name containing them can silently
-    // produce zero matches or a malformed boolean expression.
-    $ftQuery = trim(preg_replace('/[+\-<>()~*"@]/', ' ', $q));
+    // Strip all punctuation, not just MySQL's boolean-mode operator characters. A
+    // leftover ":" or "," glued to a word (e.g. "PT:") makes a "+PT:*" mandatory term
+    // that can never match anything — the index never stores punctuation — which
+    // silently zeroes out the AND search and falls back to a much looser OR match.
+    $ftQuery = trim(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $q));
+    $ftQuery = trim(preg_replace('/\s+/', ' ', $ftQuery));
     if ($ftQuery === '') {
         return response()->json([]);
     }
