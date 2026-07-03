@@ -41,6 +41,10 @@ class UserProfileController extends Controller
                 ->where('gv.user_id', $id)
                 ->where(fn($q) => $q->where('gs.user_id', '!=', $id)->orWhereNull('gs.user_id'))
                 ->count(),
+            'specimens'      => DB::table('activity_log')
+                ->where('user_id', $id)
+                ->where('type', 'georef')
+                ->sum('occ_count'),
         ];
 
         return view('users.profile', compact('user', 'activities', 'stats'));

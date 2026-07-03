@@ -35,6 +35,10 @@
                     <div class="text-xs text-gray-500">Georefs</div>
                 </div>
                 <div>
+                    <div class="text-xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['specimens']) }}</div>
+                    <div class="text-xs text-gray-500">Specimens</div>
+                </div>
+                <div>
                     <div class="text-xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['reviews']) }}</div>
                     <div class="text-xs text-gray-500">Reviews</div>
                 </div>
