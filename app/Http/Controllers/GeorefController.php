@@ -1016,49 +1016,68 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
             return [];
         }
 
-        $suggestionCoords = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
+        // Pick one representative suggestion per group — no averaging across suggestions,
+        // since a group can genuinely hold several distinct real-world coordinates (that's
+        // exactly what "inconsistent" groups are). Prefer validated, then highest vote total.
+        $suggestionsByGroup = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
             ->where('status', '!=', 'rejected')
-            ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as suggestion_count, SUM(status = "validated") as validated_count')
-            ->groupBy('locality_group_id')
-            ->get()
-            ->keyBy('locality_group_id');
+            ->get(['locality_group_id', 'decimal_latitude', 'decimal_longitude', 'coordinate_uncertainty_m', 'status', 'total_points'])
+            ->groupBy('locality_group_id');
 
-        $gbifCoords = Occurrence::whereIn('locality_group_id', $groups->pluck('id'))
+        $bestSuggestion = $suggestionsByGroup->map(function ($rows) {
+            return $rows->sortByDesc(fn($r) => [$r->status === 'validated' ? 1 : 0, $r->total_points])->first();
+        });
+        $suggestionCounts = $suggestionsByGroup->map(fn($rows) => [
+            'suggestion_count' => $rows->count(),
+            'validated_count'  => $rows->where('status', 'validated')->count(),
+        ]);
+
+        // Fallback for groups with no suggestion at all (fully GBIF-georeferenced groups
+        // never get an auto-suggestion — see GbifService::createAutoSuggestions). Group the
+        // raw occurrence coordinates by *exact* match and take the largest cluster, same
+        // logic the "already georeferenced" occurrence list itself uses for display.
+        $gbifOccByGroup = Occurrence::whereIn('locality_group_id', $groups->pluck('id'))
             ->where('georef_status', 'gbif_georeferenced')
-            ->selectRaw('locality_group_id, AVG(gbif_decimal_latitude) as lat, AVG(gbif_decimal_longitude) as lon, AVG(gbif_coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as occurrence_sample_count')
-            ->groupBy('locality_group_id')
-            ->get()
-            ->keyBy('locality_group_id');
+            ->whereNotNull('gbif_decimal_latitude')->whereNotNull('gbif_decimal_longitude')
+            ->get(['locality_group_id', 'gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m'])
+            ->groupBy('locality_group_id');
 
-        return $groups->map(function ($g) use ($suggestionCoords, $gbifCoords) {
+        $bestGbifCluster = $gbifOccByGroup->map(function ($rows) {
+            return $rows->groupBy(fn($o) => round($o->gbif_decimal_latitude, 6) . ',' . round($o->gbif_decimal_longitude, 6))
+                ->sortByDesc(fn($cluster) => $cluster->count())
+                ->first();
+        });
+
+        return $groups->map(function ($g) use ($bestSuggestion, $suggestionCounts, $bestGbifCluster) {
             $displayName = implode(', ', array_filter([
                 $g->verbatim_locality, $g->municipality, $g->county, $g->state_province, $g->country_code,
             ]));
 
-            $s = $suggestionCoords->get($g->id);
-            if ($s && $s->lat !== null && $s->lon !== null) {
+            $s = $bestSuggestion->get($g->id);
+            if ($s) {
+                $counts = $suggestionCounts->get($g->id);
                 return [
                     'source'           => 'occurrence',
                     'locality_group_id' => $g->id,
                     'display_name'     => $displayName,
-                    'lat'              => (float) $s->lat,
-                    'lon'              => (float) $s->lon,
-                    'uncertainty_m'    => $s->uncertainty_m ? round($s->uncertainty_m) : null,
+                    'lat'              => (float) $s->decimal_latitude,
+                    'lon'              => (float) $s->decimal_longitude,
+                    'uncertainty_m'    => $s->coordinate_uncertainty_m ? round($s->coordinate_uncertainty_m) : null,
                     'occurrence_count' => $g->occurrence_count,
-                    'suggestion_count' => (int) $s->suggestion_count,
-                    'validated_count'  => (int) $s->validated_count,
+                    'suggestion_count' => $counts['suggestion_count'],
+                    'validated_count'  => $counts['validated_count'],
                 ];
             }
 
-            $c = $gbifCoords->get($g->id);
-            if ($c && $c->lat !== null && $c->lon !== null) {
+            $cluster = $bestGbifCluster->get($g->id);
+            if ($cluster) {
                 return [
                     'source'           => 'gbif',
                     'locality_group_id' => $g->id,
                     'display_name'     => $displayName,
-                    'lat'              => (float) $c->lat,
-                    'lon'              => (float) $c->lon,
-                    'uncertainty_m'    => $c->uncertainty_m ? round($c->uncertainty_m) : null,
+                    'lat'              => (float) $cluster->first()->gbif_decimal_latitude,
+                    'lon'              => (float) $cluster->first()->gbif_decimal_longitude,
+                    'uncertainty_m'    => $cluster->max('gbif_coordinate_uncertainty_m') ? round($cluster->max('gbif_coordinate_uncertainty_m')) : null,
                     'occurrence_count' => $g->occurrence_count,
                     'suggestion_count' => 0,
                     'validated_count'  => 0,
