@@ -34,6 +34,7 @@ class ExploreController extends Controller
                     ->select('locality_group_id')
                     ->where('dataset_key', $request->dataset_key)
                     ->whereNotNull('locality_group_id')
+                    ->whereNull('deleted_at')
                     ->distinct(),
                 'ds_occ',
                 'locality_groups.id', '=', 'ds_occ.locality_group_id'
@@ -80,6 +81,7 @@ class ExploreController extends Controller
         $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
             return \Illuminate\Support\Facades\DB::table('locality_groups')
                 ->select('country_code')
+                ->whereNull('deleted_at')
                 ->whereNotNull('country_code')
                 ->where('occurrence_count', '>', 0)
                 ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")

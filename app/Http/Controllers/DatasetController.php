@@ -40,6 +40,7 @@ class DatasetController extends Controller
         if ($country) {
             // Filter by country requires joining occurrences — only used when country filter active
             $keysInCountry = DB::table('occurrences')
+                ->whereNull('deleted_at')
                 ->where('country_code', $country)
                 ->whereNotNull('dataset_key')
                 ->distinct()

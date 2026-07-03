@@ -57,6 +57,7 @@ class GbifResetConsistency extends Command
                     SUM(georef_status IN ('has_suggestion','conflicted')) AS p
                 FROM occurrences
                 WHERE locality_group_id IS NOT NULL
+                  AND deleted_at IS NULL
                 GROUP BY locality_group_id
             ) c ON c.locality_group_id = lg.id
             SET lg.pending_count = c.p

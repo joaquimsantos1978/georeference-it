@@ -15,7 +15,8 @@ class GbifImportDownload extends Command
                             {--file= : Path to an already-downloaded zip (skips polling and download)}
                             {--skip-staging : Skip LOAD DATA INFILE (re-use staging table already populated)}
                             {--skip-cleanup : Keep gbif_staging populated after import}
-                            {--multimedia-only= : Path to multimedia.txt — skip everything else and only import multimedia}';
+                            {--multimedia-only= : Path to multimedia.txt — skip everything else and only import multimedia}
+                            {--prune-deleted : Soft-delete occurrences absent from this staging batch — only safe for full, unfiltered world imports, NOT for a --country-filtered download}';
 
     protected $description = 'Poll, download, and import a GBIF DWCA download into occurrences';
 
@@ -66,7 +67,7 @@ class GbifImportDownload extends Command
         }
 
         // Step 4: staging → locality_groups + occurrences
-        $this->processStaging();
+        $this->processStaging($this->option('prune-deleted'));
 
         // Step 4b: import multimedia if extracted
         if (!empty($multimediaPath) && file_exists($multimediaPath)) {
@@ -310,7 +311,7 @@ class GbifImportDownload extends Command
     // staging → locality_groups + occurrences
     // -------------------------------------------------------------------------
 
-    private function processStaging(): void
+    private function processStaging(bool $pruneDeleted = false): void
     {
         // Nullify country_code values that are not valid ISO 3166-1 alpha-2
         DB::statement("UPDATE gbif_staging SET country_code = NULL WHERE country_code NOT REGEXP '^[A-Z]{2}$'");
@@ -469,6 +470,7 @@ class GbifImportDownload extends Command
                             georef_status,
                             VALUES(georef_status)
                         ),
+                        deleted_at = NULL,
                         synced_at  = NOW(),
                         updated_at = NOW()
                 ");
@@ -477,6 +479,44 @@ class GbifImportDownload extends Command
 
                 // Brief pause between batches so queued user requests get a chance to run.
                 usleep(200000);
+            }
+        }
+
+        if (!$pruneDeleted) {
+            $this->line('Step 2b/3: Skipped (pass --prune-deleted on a full, unfiltered import to enable).');
+        } else {
+            $this->info('Step 2b/3: Soft-deleting occurrences no longer present in GBIF...');
+
+            // Anything currently in `occurrences` whose key isn't in the fresh full staging import
+            // is gone from GBIF (retracted, dataset removed, etc). Soft-delete rather than hard-delete
+            // so validated/suggested georeferences aren't lost if the record reappears later.
+            // Only safe when staging holds a full, unfiltered world import — a --country-filtered
+            // staging batch would otherwise look like everything else in the world was deleted.
+            $occBounds = DB::selectOne('SELECT MIN(id) AS min_id, MAX(id) AS max_id FROM occurrences');
+
+            if ($occBounds && $occBounds->min_id !== null) {
+                $batchSize    = 200000;
+                $minId        = (int) $occBounds->min_id;
+                $maxId        = (int) $occBounds->max_id;
+                $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
+                $batchNum     = 0;
+
+                for ($from = $minId; $from <= $maxId; $from += $batchSize) {
+                    $to = min($from + $batchSize - 1, $maxId);
+                    $batchNum++;
+
+                    DB::statement("
+                        UPDATE occurrences o
+                        LEFT JOIN gbif_staging s ON s.gbif_id = CAST(o.gbif_occurrence_key AS UNSIGNED)
+                        SET o.deleted_at = NOW()
+                        WHERE s.gbif_id IS NULL
+                          AND o.deleted_at IS NULL
+                          AND o.id BETWEEN {$from} AND {$to}
+                    ");
+
+                    $this->line("  Batch {$batchNum}/{$totalBatches} done (occurrence id {$from}–{$to})");
+                    usleep(200000);
+                }
             }
         }
 
@@ -502,6 +542,7 @@ class GbifImportDownload extends Command
                 $batchNum++;
 
                 // Update counters for groups in this id range that have occurrences
+                // (deleted_at IS NULL — soft-deleted occurrences no longer count)
                 DB::statement("
                     UPDATE locality_groups lg
                     JOIN (
@@ -512,6 +553,7 @@ class GbifImportDownload extends Command
                             SUM(georef_status = 'ungeoreferenced') AS ungeoreferenced
                         FROM occurrences
                         WHERE locality_group_id BETWEEN {$from} AND {$to}
+                          AND deleted_at IS NULL
                         GROUP BY locality_group_id
                     ) c ON c.locality_group_id = lg.id
                     SET
@@ -523,10 +565,10 @@ class GbifImportDownload extends Command
                     WHERE lg.id BETWEEN {$from} AND {$to}
                 ");
 
-                // Zero out groups in this range whose occurrences all moved to other groups
+                // Zero out groups in this range with no remaining (non-deleted) occurrences
                 DB::statement("
                     UPDATE locality_groups lg
-                    LEFT JOIN occurrences o ON o.locality_group_id = lg.id
+                    LEFT JOIN occurrences o ON o.locality_group_id = lg.id AND o.deleted_at IS NULL
                     SET lg.occurrence_count      = 0,
                         lg.pending_count         = 0,
                         lg.validated_count       = 0,
@@ -536,6 +578,26 @@ class GbifImportDownload extends Command
                       AND lg.occurrence_count > 0
                       AND lg.id BETWEEN {$from} AND {$to}
                 ");
+
+                if ($pruneDeleted) {
+                    // Soft-delete groups left with zero occurrences (fully orphaned), and
+                    // revive any previously soft-deleted group that has occurrences again.
+                    DB::statement("
+                        UPDATE locality_groups
+                        SET deleted_at = NOW()
+                        WHERE occurrence_count = 0
+                          AND deleted_at IS NULL
+                          AND id BETWEEN {$from} AND {$to}
+                    ");
+
+                    DB::statement("
+                        UPDATE locality_groups
+                        SET deleted_at = NULL
+                        WHERE occurrence_count > 0
+                          AND deleted_at IS NOT NULL
+                          AND id BETWEEN {$from} AND {$to}
+                    ");
+                }
 
                 $this->line("  Batch {$batchNum}/{$totalBatches} done (locality_group id {$from}–{$to})");
                 usleep(200000);

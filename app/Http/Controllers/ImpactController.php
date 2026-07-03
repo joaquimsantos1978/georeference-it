@@ -20,6 +20,7 @@ class ImpactController extends Controller
         $cacheKey = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
         $totalCount = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($validStatuses, $status, $country) {
             return DB::table('occurrences')
+                ->whereNull('deleted_at')
                 ->whereIn('georef_status', $validStatuses)
                 ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('georef_status', $status))
                 ->when($country, fn($q) => $q->where('country_code', $country))
@@ -34,7 +35,7 @@ class ImpactController extends Controller
         // UNION per status avoids filesort over 7M rows (each branch uses the index directly)
         $pdo      = DB::connection()->getPdo();
         $branches = array_map(fn($s) =>
-            "(SELECT id, updated_at FROM occurrences WHERE georef_status = " . $pdo->quote($s) . " $countryWhere ORDER BY updated_at DESC, id DESC LIMIT $limit)",
+            "(SELECT id, updated_at FROM occurrences WHERE georef_status = " . $pdo->quote($s) . " AND deleted_at IS NULL $countryWhere ORDER BY updated_at DESC, id DESC LIMIT $limit)",
             $statusFilter
         );
         $unionSql = implode(" UNION ALL ", $branches) . " ORDER BY updated_at DESC, id DESC LIMIT $perPage OFFSET $offset";
@@ -68,6 +69,7 @@ class ImpactController extends Controller
         $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
             return DB::table('locality_groups')
                 ->select('country_code')
+                ->whereNull('deleted_at')
                 ->whereNotNull('country_code')
                 ->where('occurrence_count', '>', 0)
                 ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")

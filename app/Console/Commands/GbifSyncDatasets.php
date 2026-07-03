@@ -28,6 +28,7 @@ class GbifSyncDatasets extends Command
     {
         $keys = DB::table('occurrences')
             ->select('dataset_key')
+            ->whereNull('deleted_at')
             ->whereNotNull('dataset_key')
             ->distinct()
             ->pluck('dataset_key');
@@ -97,6 +98,7 @@ class GbifSyncDatasets extends Command
                 NOW(), NOW(), NOW()
             FROM occurrences
             WHERE dataset_key IS NOT NULL
+              AND deleted_at IS NULL
             GROUP BY dataset_key
             ON DUPLICATE KEY UPDATE
                 institution_code  = VALUES(institution_code),

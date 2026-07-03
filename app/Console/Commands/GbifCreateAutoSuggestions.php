@@ -48,6 +48,7 @@ class GbifCreateAutoSuggestions extends Command
             // Get group IDs that have gbif_georeferenced occurrences (one JOIN per batch, not per row)
             $eligibleIds = DB::table('occurrences')
                 ->select('locality_group_id')
+                ->whereNull('deleted_at')
                 ->whereIn('locality_group_id', $groups->pluck('id'))
                 ->where('georef_status', 'gbif_georeferenced')
                 ->distinct()

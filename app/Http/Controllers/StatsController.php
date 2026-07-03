@@ -17,6 +17,7 @@ class StatsController extends Controller
     {
         // Global totals direct from occurrences (locality_groups counters don't distinguish gbif_georeferenced)
         $global = DB::table('occurrences')
+            ->whereNull('deleted_at')
             ->selectRaw("
                 COUNT(*)                                             AS total_occ,
                 SUM(georef_status = 'ungeoreferenced')               AS ungeoref_occ,
@@ -29,6 +30,7 @@ class StatsController extends Controller
 
         // pending_groups still from locality_groups (faster)
         $pendingGroups = DB::table('locality_groups')
+            ->whereNull('deleted_at')
             ->whereRaw('ungeoreferenced_count > 0 OR pending_count > 0')
             ->count();
         $global->pending_groups = $pendingGroups;
@@ -45,6 +47,7 @@ class StatsController extends Controller
                 COUNT(*)                                                      AS total_groups,
                 SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
             ')
+            ->whereNull('deleted_at')
             ->where('occurrence_count', '>', 0)
             ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
             ->groupBy('country_code')

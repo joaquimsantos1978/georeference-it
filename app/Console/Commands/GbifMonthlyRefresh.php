@@ -48,7 +48,9 @@ class GbifMonthlyRefresh extends Command
         // Step 2: poll, download, and import (gbif:import-download already polls internally
         // for up to 8 hours, downloads the DWCA, stages it, and upserts in batches)
         $this->info('Step 2/6: Importing (polling until GBIF finishes preparing the download — may take hours)...');
-        $exit = Artisan::call('gbif:import-download', ['key' => $key]);
+        // --prune-deleted is safe here since the monthly refresh always requests a full,
+        // unfiltered world download (never --country-scoped).
+        $exit = Artisan::call('gbif:import-download', ['key' => $key, '--prune-deleted' => true]);
         $this->line(Artisan::output());
 
         if ($exit !== self::SUCCESS) {

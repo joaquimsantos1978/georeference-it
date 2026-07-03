@@ -38,6 +38,7 @@ class ActivityController extends Controller
             $query = DB::table('georef_suggestions as gs')
                 ->join('locality_groups as lg', 'lg.id', '=', 'gs.locality_group_id')
                 ->whereNull('gs.user_id')
+                ->whereNull('lg.deleted_at')
                 ->whereIn('gs.georeference_sources', ['GBIF', 'GBIF_CONSISTENCY_CHECK'])
                 ->when($filterCountry, fn($q) => $q->where('lg.country_code', $filterCountry));
 
@@ -109,6 +110,7 @@ class ActivityController extends Controller
         $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
             return DB::table('locality_groups')
                 ->select('country_code')
+                ->whereNull('deleted_at')
                 ->whereNotNull('country_code')
                 ->where('occurrence_count', '>', 0)
                 ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")

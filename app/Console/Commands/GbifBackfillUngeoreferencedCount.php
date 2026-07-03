@@ -25,6 +25,7 @@ class GbifBackfillUngeoreferencedCount extends Command
             // Process country by country to keep each UPDATE small
             $countries = DB::table('locality_groups')
                 ->select('country_code')
+                ->whereNull('deleted_at')
                 ->whereNotNull('country_code')
                 ->distinct()
                 ->orderBy('country_code')
@@ -54,6 +55,7 @@ class GbifBackfillUngeoreferencedCount extends Command
         while (true) {
             $groupIds = DB::table('locality_groups')
                 ->select('id')
+                ->whereNull('deleted_at')
                 ->where('id', '>', $lastId)
                 ->when($country !== null, fn($q) => $q->where('country_code', $country))
                 ->when($country === null, fn($q) => $q->whereNull('country_code'))
@@ -68,6 +70,7 @@ class GbifBackfillUngeoreferencedCount extends Command
             // Aggregate counts for this batch
             $counts = DB::table('occurrences')
                 ->select('locality_group_id', DB::raw('COUNT(*) as cnt'))
+                ->whereNull('deleted_at')
                 ->whereIn('locality_group_id', $groupIds)
                 ->where('georef_status', 'ungeoreferenced')
                 ->groupBy('locality_group_id')

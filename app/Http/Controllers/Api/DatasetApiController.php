@@ -41,6 +41,7 @@ class DatasetApiController extends Controller
 
         if ($country) {
             $keysInCountry = DB::table('occurrences')
+                ->whereNull('deleted_at')
                 ->where('country_code', $country)
                 ->whereNotNull('dataset_key')
                 ->distinct()

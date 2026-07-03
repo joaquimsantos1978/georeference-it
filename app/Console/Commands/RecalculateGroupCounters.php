@@ -30,6 +30,7 @@ class RecalculateGroupCounters extends Command
                 SUM(georef_status = \'ungeoreferenced\') AS ungeoreferenced,
                 SUM(georef_status = \'validated\')       AS validated
             FROM occurrences
+            WHERE deleted_at IS NULL
             GROUP BY locality_group_id
         ');
 
@@ -65,13 +66,14 @@ class RecalculateGroupCounters extends Command
 
     private function handleChunked(int $chunk): int
     {
-        $total = DB::table('locality_groups')->count();
+        $total = DB::table('locality_groups')->whereNull('deleted_at')->count();
         $bar   = $this->output->createProgressBar($total);
         $bar->start();
 
         $minId = 0;
         do {
             $ids = DB::table('locality_groups')
+                ->whereNull('deleted_at')
                 ->where('id', '>', $minId)
                 ->orderBy('id')
                 ->limit($chunk)
@@ -89,6 +91,7 @@ class RecalculateGroupCounters extends Command
                         SUM(georef_status = 'validated')            AS validated
                     FROM occurrences
                     WHERE locality_group_id IN (" . $ids->implode(',') . ")
+                      AND deleted_at IS NULL
                     GROUP BY locality_group_id
                 ) occ ON occ.locality_group_id = lg.id
                 LEFT JOIN (

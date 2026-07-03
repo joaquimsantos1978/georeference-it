@@ -16,6 +16,7 @@ class NormalizeLocalityGroups extends Command
         $priority = $this->option('priority');
 
         $query = DB::table('locality_groups')
+            ->whereNull('deleted_at')
             ->whereNull('normalized_locality')
             ->when($priority, fn($q) => $q->where(fn($q2) =>
                 $q2->where('pending_count', '>', 0)->orWhere('validated_count', '>', 0)
