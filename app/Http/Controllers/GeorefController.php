@@ -385,6 +385,20 @@ public function next(Request $request)
         return response()->json(['occurrences' => $occurrences]);
     }
 
+    public function suggestionVotes(GeorefSuggestion $suggestion): \Illuminate\Http\JsonResponse
+    {
+        $votes = $suggestion->validations()->with('user')->get()->map(fn($v) => [
+            'vote'   => $v->vote,
+            'name'   => $v->user ? ($v->user->public_name ? $v->user->name : 'Hidden contributor') : 'Anonymous',
+            'points' => $v->points_awarded,
+        ]);
+
+        return response()->json([
+            'agree'    => $votes->where('vote', 'agree')->values(),
+            'disagree' => $votes->where('vote', 'disagree')->values(),
+        ]);
+    }
+
     public function occurrencesByIds(Request $request)
     {
         session()->save();
@@ -971,9 +985,11 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
 {
     $q = trim($request->get('q', ''));
     $excludeGroupId = $request->integer('exclude_group_id') ?: null;
+    $offset = max(0, $request->integer('offset', 0));
+    $perPage = 8;
 
     if (strlen($q) < 3) {
-        return response()->json([]);
+        return response()->json(['results' => [], 'has_more' => false]);
     }
 
     // Strip all punctuation, not just MySQL's boolean-mode operator characters. A
@@ -983,15 +999,16 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
     $ftQuery = trim(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $q));
     $ftQuery = trim(preg_replace('/\s+/', ' ', $ftQuery));
     if ($ftQuery === '') {
-        return response()->json([]);
+        return response()->json(['results' => [], 'has_more' => false]);
     }
 
-    // Cached by search term only (not exclude_group_id) so the same query benefits
-    // every user/locality that searches it, not just the one that triggered it.
-    $cacheKey = 'georef:search-geo-loc:' . md5(mb_strtolower($ftQuery));
-
-    $candidates = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($ftQuery) {
-        $fetchGroups = function (string $booleanQuery) {
+    // No caching: recently georeferenced localities need to show up immediately, not
+    // after a stale window — this is exactly when a user wants to see them.
+    // Pool size grows with the requested offset so "load more" can keep going deeper
+    // into the relevance ranking instead of being capped at a fixed pool.
+    $poolSize = max(40, $offset + $perPage + 10);
+    $candidates = (function () use ($ftQuery, $poolSize) {
+        $fetchGroups = function (string $booleanQuery) use ($poolSize) {
             return LocalityGroup::query()
                 ->where(function ($sub) {
                     $sub->whereHas('suggestions', fn($s) => $s->where('status', '!=', 'rejected'))
@@ -999,7 +1016,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
                 })
                 ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
                 ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanQuery])
-                ->limit(10)
+                ->limit($poolSize)
                 ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count']);
         };
 
@@ -1088,14 +1105,18 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
 
             return null;
         })->filter()->values()->all();
-    });
+    })();
 
-    $results = collect($candidates)
+    $filtered = collect($candidates)
         ->reject(fn($r) => $excludeGroupId && $r['locality_group_id'] === $excludeGroupId)
-        ->take(5)
         ->values();
 
-    return response()->json($results);
+    $page = $filtered->slice($offset, $perPage)->values();
+
+    return response()->json([
+        'results'  => $page,
+        'has_more' => $offset + $perPage < $filtered->count(),
+    ]);
 }
 
 private function countryNameToIso2(): array

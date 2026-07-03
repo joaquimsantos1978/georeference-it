@@ -134,6 +134,15 @@
                                 @if($occ->updated_at)
                                     <div class="text-xs text-gray-400 mt-0.5">{{ \Carbon\Carbon::parse($occ->updated_at)->diffForHumans() }}</div>
                                 @endif
+                                @if($occ->suggestion_id)
+                                    @php
+                                        $markerPct = min(100, max(0, ($occ->total_points + $threshold) / (2 * $threshold) * 100));
+                                    @endphp
+                                    <div class="votes-bar" onclick="showImpactVotesPopup({{ $occ->suggestion_id }}, event)"
+                                         style="cursor:pointer;position:relative;height:6px;width:80px;border-radius:4px;margin-top:4px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);">
+                                        <div style="position:absolute;top:0;height:100%;width:2px;background:rgba(0,0,0,0.5);transform:translateX(-50%);left:{{ $markerPct }}%;pointer-events:none;"></div>
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2 justify-end">
@@ -172,5 +181,36 @@
             @endif
         </div>
     </div>
+
+    <script>
+    function escHtmlImpact(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    async function showImpactVotesPopup(suggestionId, event) {
+        event.stopPropagation();
+        var anchor = event.currentTarget;
+        var existing = document.getElementById('votes-popup');
+        if (existing) existing.remove();
+        var popup = document.createElement('div');
+        popup.id = 'votes-popup';
+        popup.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;font-size:11px;color:#374151;max-width:260px;box-shadow:0 4px 12px rgba(0,0,0,0.15);line-height:1.6;';
+        popup.textContent = {{ Illuminate\Support\Js::from(__('Loading votes...')) }};
+        document.body.appendChild(popup);
+        var r = anchor.getBoundingClientRect();
+        popup.style.left = Math.min(r.left, window.innerWidth - 268) + 'px';
+        popup.style.top  = (r.bottom + 4) + 'px';
+        var close = function(){ popup.remove(); document.removeEventListener('click', close); };
+        setTimeout(function(){ document.addEventListener('click', close); }, 0);
+        try {
+            const data = await (await fetch('{{ url("/georef/suggestion") }}/'+suggestionId+'/votes')).json();
+            if (!document.body.contains(popup)) return;
+            var fmt = function(list) { return list.map(function(v){ return escHtmlImpact(v.name)+' ('+v.points+(v.points===1?' pt':' pts')+')'; }).join(', '); };
+            var html = '';
+            if (data.agree.length) html += '<div><strong style="color:#15803d">'+{{ Illuminate\Support\Js::from(__('Agreed')) }}+':</strong> '+fmt(data.agree)+'</div>';
+            if (data.disagree.length) html += '<div style="margin-top:4px"><strong style="color:#b91c1c">'+{{ Illuminate\Support\Js::from(__('Disagreed')) }}+':</strong> '+fmt(data.disagree)+'</div>';
+            popup.innerHTML = html || '<span style="color:#9ca3af">'+{{ Illuminate\Support\Js::from(__('No votes yet.')) }}+'</span>';
+        } catch(e) { popup.textContent = {{ Illuminate\Support\Js::from(__('Search failed.')) }}; }
+    }
+    </script>
 
 </x-layouts.app>

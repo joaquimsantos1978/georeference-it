@@ -61,6 +61,30 @@ class ImpactController extends Controller
             ->orderByDesc('o.id')
             ->get();
 
+        // Attach the validated suggestion's vote total, but only when a group's
+        // validation is unambiguous (one validated suggestion) — inconsistent groups can
+        // have several winning clusters, and picking the "right" one needs the same
+        // exclusion-aware clustering used on the georef page, which isn't worth
+        // replicating here just to draw a progress bar.
+        $groupIds = $rows->pluck('locality_group_id')->filter()->unique();
+        $suggestionsByGroup = \App\Models\GeorefSuggestion::whereIn('locality_group_id', $groupIds)
+            ->where('status', 'validated')
+            ->get(['id', 'locality_group_id', 'total_points'])
+            ->groupBy('locality_group_id');
+
+        foreach ($rows as $row) {
+            $group = $suggestionsByGroup->get($row->locality_group_id);
+            if ($group && $group->count() === 1) {
+                $row->suggestion_id = $group->first()->id;
+                $row->total_points  = $group->first()->total_points;
+            } else {
+                $row->suggestion_id = null;
+                $row->total_points  = null;
+            }
+        }
+
+        $threshold = (int) \App\Models\PlatformSetting::get('validation_threshold', 60);
+
         $occurrences = new \Illuminate\Pagination\LengthAwarePaginator(
             $rows, $totalCount, $perPage, $page,
             ['path' => $request->url(), 'query' => $request->query()]
@@ -78,6 +102,6 @@ class ImpactController extends Controller
                 ->pluck('country_code');
         });
 
-        return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries'));
+        return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
     }
 }

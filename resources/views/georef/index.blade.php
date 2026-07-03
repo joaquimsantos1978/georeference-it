@@ -815,6 +815,11 @@
         suggestions:  "{{ __('suggestions') }}",
         gbifCoordinates: "{{ __('with GBIF coordinates') }}",
         viewGroup:    "{{ __('View group ↗') }}",
+        agreed:       "{{ __('Agreed') }}",
+        disagreed:    "{{ __('Disagreed') }}",
+        noVotesYet:   "{{ __('No votes yet.') }}",
+        loadingVotes: "{{ __('Loading votes...') }}",
+        loadMore:     "{{ __('Load more') }}",
     };
 
     // Session history — restored from localStorage on every page load
@@ -1138,55 +1143,75 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
 
     // ── System suggestions (already-georeferenced matches) ──────────────────────
     let _sysSuggResults = [];
+    let _sysSuggQuery = '';
+    function renderSystemSuggestionCard(r, i) {
+        const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+        const uncM = r.uncertainty_m ? Math.round(r.uncertainty_m) : 0;
+        const sourceLabel = r.source==='gbif'
+            ? TXT.gbifCoordinates
+            : r.suggestion_count+' '+TXT.suggestions+(r.validated_count>0?' ('+r.validated_count+' '+TXT.validated+')':'');
+        // Hide "Use this" if coordinates match any existing suggestion in the current group
+        const sameAsExisting = _currentSuggestions.some(function(cs) {
+            return Math.abs(parseFloat(cs.decimal_latitude)  - lat) < 0.0001
+                && Math.abs(parseFloat(cs.decimal_longitude) - lon) < 0.0001;
+        });
+        return '<div style="border:1px solid #bbf7d0;border-radius:6px;padding:6px 8px;background:#f0fdf4;margin-bottom:4px;">'
+            + '<div style="display:flex;align-items:flex-start;gap:6px;">'
+            + '<span>📍</span>'
+            + '<div style="min-width:0;flex:1;">'
+            + '<span style="font-size:10px;font-weight:600;color:#16a34a;word-break:break-word">'+escHtml(r.display_name)+'</span>'
+            + '<div style="font-size:10px;color:#6b7280;margin-top:1px;display:flex;align-items:center;gap:6px;">'
+            + sourceLabel
+            + '<a href="'+APP_URL+'/georef?group='+r.locality_group_id+'" target="_blank" rel="noopener" style="margin-left:auto;color:#2563eb;flex-shrink:0;">'+TXT.viewGroup+'</a>'
+            + '</div></div></div>'
+            + '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-top:4px;">'
+            + '<div style="display:flex;justify-content:space-between">'
+            + '<span class="dark-text" style="font-weight:500">'+lat.toFixed(5)+', '+lon.toFixed(5)+'</span>'
+            + '<span style="color:#9ca3af">±'+uncM+'m</span>'
+            + '</div>'
+            + '<div style="display:flex;justify-content:flex-end;margin-top:4px;">'
+            + '<button onclick="openGroupOccPopup('+r.locality_group_id+','+r.occurrence_count+')" style="font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">'+r.occurrence_count+' '+TXT.occurrences+' · {{ __("see list") }} ↗</button>'
+            + '</div>'
+            + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
+            + '<button onclick="previewSuggestion('+lat+','+lon+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
+            + (sameAsExisting ? '' : '<button onclick="useSystemSuggestion('+i+')" class="use-similar-btn" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;">Use this</button>')
+            + '</div>'
+            + '</div>'
+            + '</div>';
+    }
+    function renderSystemSuggestionList(hasMore) {
+        var html = _sysSuggResults.map(renderSystemSuggestionCard).join('');
+        if (hasMore) {
+            html += '<button onclick="loadMoreSystemSuggestions()" style="width:100%;font-size:11px;padding:6px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;margin-top:2px;">'+TXT.loadMore+'</button>';
+        }
+        document.getElementById('sys-sugg-list').innerHTML = html;
+    }
     async function loadSystemSuggestions(query, silent) {
         if (!query) return;
+        _sysSuggQuery = query;
+        _sysSuggResults = [];
         openPopupAvoidingOverlap(document.getElementById('sys-sugg-popup'), document.getElementById('occ-popup'));
         document.getElementById('sys-sugg-list').innerHTML = '<p style="color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
         try {
             const excludeId = currentGroup ? currentGroup.id : '';
-            const results = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(query)+'&exclude_group_id='+excludeId)).json();
-            _sysSuggResults = results;
-            if (!results.length) {
+            const data = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(query)+'&exclude_group_id='+excludeId)).json();
+            _sysSuggResults = data.results;
+            if (!data.results.length) {
                 if (silent) { document.getElementById('sys-sugg-popup').style.display='none'; }
                 else { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; }
                 return;
             }
-            document.getElementById('sys-sugg-list').innerHTML = results.map((r,i)=>{
-                const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
-                const uncM = r.uncertainty_m ? Math.round(r.uncertainty_m) : 0;
-                const sourceLabel = r.source==='gbif'
-                    ? TXT.gbifCoordinates
-                    : r.suggestion_count+' '+TXT.suggestions+(r.validated_count>0?' ('+r.validated_count+' '+TXT.validated+')':'');
-                // Hide "Use this" if coordinates match any existing suggestion in the current group
-                const sameAsExisting = _currentSuggestions.some(function(cs) {
-                    return Math.abs(parseFloat(cs.decimal_latitude)  - lat) < 0.0001
-                        && Math.abs(parseFloat(cs.decimal_longitude) - lon) < 0.0001;
-                });
-                return '<div style="border:1px solid #bbf7d0;border-radius:6px;padding:6px 8px;background:#f0fdf4;margin-bottom:4px;">'
-                    + '<div style="display:flex;align-items:flex-start;gap:6px;">'
-                    + '<span>📍</span>'
-                    + '<div style="min-width:0;flex:1;">'
-                    + '<span style="font-size:10px;font-weight:600;color:#16a34a;word-break:break-word">'+escHtml(r.display_name)+'</span>'
-                    + '<div style="font-size:10px;color:#6b7280;margin-top:1px;display:flex;align-items:center;gap:6px;">'
-                    + sourceLabel
-                    + '<a href="'+APP_URL+'/georef?group='+r.locality_group_id+'" target="_blank" rel="noopener" style="margin-left:auto;color:#2563eb;flex-shrink:0;">'+TXT.viewGroup+'</a>'
-                    + '</div></div></div>'
-                    + '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-top:4px;">'
-                    + '<div style="display:flex;justify-content:space-between">'
-                    + '<span class="dark-text" style="font-weight:500">'+lat.toFixed(5)+', '+lon.toFixed(5)+'</span>'
-                    + '<span style="color:#9ca3af">±'+uncM+'m</span>'
-                    + '</div>'
-                    + '<div style="display:flex;justify-content:flex-end;margin-top:4px;">'
-                    + '<button onclick="openGroupOccPopup('+r.locality_group_id+','+r.occurrence_count+')" style="font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">'+r.occurrence_count+' '+TXT.occurrences+' · {{ __("see list") }} ↗</button>'
-                    + '</div>'
-                    + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
-                    + '<button onclick="previewSuggestion('+lat+','+lon+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
-                    + (sameAsExisting ? '' : '<button onclick="useSystemSuggestion('+i+')" class="use-similar-btn" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;">Use this</button>')
-                    + '</div>'
-                    + '</div>'
-                    + '</div>';
-            }).join('');
+            renderSystemSuggestionList(data.has_more);
         } catch(e) { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
+    }
+    async function loadMoreSystemSuggestions() {
+        if (!_sysSuggQuery) return;
+        try {
+            const excludeId = currentGroup ? currentGroup.id : '';
+            const data = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(_sysSuggQuery)+'&exclude_group_id='+excludeId+'&offset='+_sysSuggResults.length)).json();
+            _sysSuggResults = _sysSuggResults.concat(data.results);
+            renderSystemSuggestionList(data.has_more);
+        } catch(e) { /* keep existing list on failure */ }
     }
     function useSystemSuggestion(index) {
         const r = _sysSuggResults[index];
@@ -1551,8 +1576,10 @@ function loadGroup(groupId) {
         document.getElementById('occurrence-loading').classList.add('hidden');
         if(data.group){
             currentGroup=data.group;
+            addToHistory(data.group);
             renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[]);
             updateUrl(data.group.id);
+            updateHistoryNav();
         }
     })
     .catch(()=>{ hideOverlay(); document.getElementById('occurrence-loading').classList.add('hidden'); });
@@ -1817,7 +1844,7 @@ function updateHistoryNav() {
                     + '<div style="display:flex;justify-content:space-between;margin-top:4px;color:#9ca3af">'
                     + '<span style="display:flex;align-items:center;gap:5px;">'+(s.submitted_by||'System')+remarksHtml+'</span>'
                     + '</div>'
-                    + '<div style="position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);">'
+                    + '<div onclick="showVotesPopup('+s.id+',event)" style="cursor:pointer;position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);">'
                     + '<div style="position:absolute;top:0;height:100%;width:2px;background:rgba(0,0,0,0.5);transform:translateX(-50%);left:'+simMarkerPct+'%;pointer-events:none;"></div>'
                     + '</div>'
                     + '<div style="font-size:9px;color:#9ca3af;margin-top:2px;text-align:right">'+(simPts>0?'+':'')+simPts+' / '+THRESHOLD+'</div>'
@@ -1866,6 +1893,32 @@ function updateHistoryNav() {
                 setTimeout(function(){ document.addEventListener('click', close); }, 0);
             });
         });
+    }
+
+    async function showVotesPopup(suggestionId, event) {
+        event.stopPropagation();
+        var anchor = event.currentTarget;
+        var existing = document.getElementById('votes-popup');
+        if (existing) existing.remove();
+        var popup = document.createElement('div');
+        popup.id = 'votes-popup';
+        popup.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;font-size:11px;color:#374151;max-width:260px;box-shadow:0 4px 12px rgba(0,0,0,0.15);line-height:1.6;';
+        popup.textContent = TXT.loadingVotes;
+        document.body.appendChild(popup);
+        var r = anchor.getBoundingClientRect();
+        popup.style.left = Math.min(r.left, window.innerWidth - 268) + 'px';
+        popup.style.top  = (r.bottom + 4) + 'px';
+        var close = function(){ popup.remove(); document.removeEventListener('click', close); };
+        setTimeout(function(){ document.addEventListener('click', close); }, 0);
+        try {
+            const data = await (await fetch(APP_URL+'/georef/suggestion/'+suggestionId+'/votes')).json();
+            if (!document.body.contains(popup)) return; // closed before it loaded
+            var fmt = function(list) { return list.map(function(v){ return escHtml(v.name)+' ('+v.points+(v.points===1?' pt':' pts')+')'; }).join(', '); };
+            var html = '';
+            if (data.agree.length) html += '<div><strong style="color:#15803d">'+TXT.agreed+':</strong> '+fmt(data.agree)+'</div>';
+            if (data.disagree.length) html += '<div style="margin-top:4px"><strong style="color:#b91c1c">'+TXT.disagreed+':</strong> '+fmt(data.disagree)+'</div>';
+            popup.innerHTML = html || '<span style="color:#9ca3af">'+TXT.noVotesYet+'</span>';
+        } catch(e) { popup.textContent = TXT.searchFailed; }
     }
 
     function useSimilarSuggestion(key) {
@@ -2082,7 +2135,7 @@ function updateHistoryNav() {
                     '<div style="display:flex;justify-content:space-between"><span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
                     seeListRow+
                     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px;color:#9ca3af"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">'+s.submitted_by+(!s.is_system && s.georeference_remarks?'<span class="remarks-btn" data-remarks="'+s.georeference_remarks.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>':'')+'</span><div style="display:flex;gap:8px;flex-shrink:0;margin-left:4px;">'+valButtons+'</div></div>'+
-                    '<div style="position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);" class="sugg-bar-bg">'+
+                    '<div onclick="showVotesPopup('+s.id+',event)" style="cursor:pointer;position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);" class="sugg-bar-bg">'+
                       '<div style="position:absolute;top:0;height:100%;width:2px;background:rgba(0,0,0,0.5);transform:translateX(-50%);left:'+markerPct+'%;pointer-events:none;"></div>'+
                     '</div>'+
                     '<div style="font-size:9px;color:#9ca3af;margin-top:2px;text-align:right">'+(pts>0?'+':'')+pts+' / '+THRESHOLD+'</div>'+
