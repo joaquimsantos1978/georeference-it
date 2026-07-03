@@ -976,12 +976,21 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
         return response()->json([]);
     }
 
-    $groups = LocalityGroup::where('validated_count', '>', 0)
+    // Strip characters that are operators in MySQL boolean-mode fulltext syntax
+    // (+ - < > ( ) ~ * " @), otherwise a locality name containing them can silently
+    // produce zero matches or a malformed boolean expression.
+    $ftQuery = trim(preg_replace('/[+\-<>()~*"@]/', ' ', $q));
+    if ($ftQuery === '') {
+        return response()->json([]);
+    }
+
+    $groups = LocalityGroup::query()
+        ->whereHas('suggestions', fn($sub) => $sub->where('status', 'validated'))
         ->when($excludeGroupId, fn($sub) => $sub->where('id', '!=', $excludeGroupId))
-        ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$q])
-        ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$q])
+        ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$ftQuery])
+        ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$ftQuery])
         ->limit(5)
-        ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'validated_count']);
+        ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count']);
 
     if ($groups->isEmpty()) {
         return response()->json([]);
@@ -989,7 +998,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
 
     $coords = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
         ->where('status', 'validated')
-        ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m')
+        ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as validated_count')
         ->groupBy('locality_group_id')
         ->get()
         ->keyBy('locality_group_id');
@@ -1008,7 +1017,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
             'lon'              => $c->lon,
             'uncertainty_m'    => $c->uncertainty_m ? round($c->uncertainty_m) : null,
             'occurrence_count' => $g->occurrence_count,
-            'validated_count'  => $g->validated_count,
+            'validated_count'  => $c->validated_count,
         ];
     })->filter()->values();
 

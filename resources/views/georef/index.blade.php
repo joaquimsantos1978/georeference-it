@@ -230,10 +230,10 @@
                             onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">🔗</button>
                     </div>
                     <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">{{ __('Find coordinates on map:') }}</div>
-                    <div class="flex gap-1">
+                    <form id="nominatim-form" class="flex gap-1" onsubmit="event.preventDefault(); searchNominatim(document.getElementById('nominatim-input').value.trim());">
                         <input type="text" id="nominatim-input" name="nominatim-search" autocomplete="on" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
-                        <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
-                    </div>
+                        <button id="nominatim-btn" type="submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
+                    </form>
                     <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
                 </div>
             </div>
@@ -1211,8 +1211,7 @@ function buildLocalityString(g) {
         }
         document.getElementById('nominatim-results').innerHTML='';
     }
-    document.getElementById('nominatim-btn').addEventListener('click', ()=>searchNominatim(document.getElementById('nominatim-input').value.trim()));
-    document.getElementById('nominatim-input').addEventListener('keydown', e=>{ if(e.key==='Enter') searchNominatim(e.target.value.trim()); });
+    // form submit handler (button click + Enter key) triggers the actual search; see #nominatim-form above.
 
     // ── Load next group ───────────────────────────────────────────────────────
     function clearSuggestionLayers() {
