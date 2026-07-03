@@ -795,6 +795,7 @@
         occurrences:  "{{ __('occurrences') }}",
         georeferencedOccurrence: "{{ __('Already georeferenced') }}",
         validated:    "{{ __('validated') }}",
+        suggestions:  "{{ __('suggestions') }}",
     };
 
     // Session history — restored from localStorage on every page load
@@ -1113,7 +1114,7 @@ function buildLocalityString(g) {
                 r.source==='occurrence'
                 ? '<button onclick="applyNominatimResult('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid #bbf7d0;margin-bottom:2px;background:#f0fdf4;cursor:pointer" onmouseover="this.style.background=\'#dcfce7\'" onmouseout="this.style.background=\'#f0fdf4\'">'+
                   '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📍 '+r.display_name+'</span>'+
-                  '<span style="color:#16a34a">'+TXT.georeferencedOccurrence+' · '+r.validated_count+' '+TXT.validated+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
+                  '<span style="color:#16a34a">'+TXT.georeferencedOccurrence+' · '+r.suggestion_count+' '+TXT.suggestions+(r.validated_count>0?' ('+r.validated_count+' '+TXT.validated+')':'')+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
                 : '<button onclick="applyNominatimResult('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid #e5e7eb;margin-bottom:2px;background:white;cursor:pointer" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'white\'">'+
                   '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+r.display_name+'</span>'+
                   '<span style="color:#9ca3af">'+r.type+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'

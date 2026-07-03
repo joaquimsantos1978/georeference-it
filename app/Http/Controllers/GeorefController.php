@@ -985,7 +985,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
     }
 
     $groups = LocalityGroup::query()
-        ->whereHas('suggestions', fn($sub) => $sub->where('status', 'validated'))
+        ->whereHas('suggestions', fn($sub) => $sub->where('status', '!=', 'rejected'))
         ->when($excludeGroupId, fn($sub) => $sub->where('id', '!=', $excludeGroupId))
         ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$ftQuery])
         ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$ftQuery])
@@ -997,8 +997,8 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
     }
 
     $coords = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
-        ->where('status', 'validated')
-        ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as validated_count')
+        ->where('status', '!=', 'rejected')
+        ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as suggestion_count, SUM(status = "validated") as validated_count')
         ->groupBy('locality_group_id')
         ->get()
         ->keyBy('locality_group_id');
@@ -1017,6 +1017,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
             'lon'              => $c->lon,
             'uncertainty_m'    => $c->uncertainty_m ? round($c->uncertainty_m) : null,
             'occurrence_count' => $g->occurrence_count,
+            'suggestion_count' => $c->suggestion_count,
             'validated_count'  => $c->validated_count,
         ];
     })->filter()->values();
