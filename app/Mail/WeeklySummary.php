@@ -18,6 +18,8 @@ class WeeklySummary extends Mailable
         public int $suggestions,
         public int $validations,
         public int $comments,
+        public int $specimens,
+        public int $validated,
         public int $totalContributors,
         public int $totalGeoreferenced,
     ) {}
@@ -25,7 +27,7 @@ class WeeklySummary extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your weekly summary on georeference.it',
+            subject: __('Your weekly summary on georeference.it'),
         );
     }
 

@@ -1,27 +1,26 @@
 <x-mail::message>
-# Your week on georeference.it
+# {{ __('Your week on georeference.it') }}
 
-Hi {{ $user->name }}, here's what happened this week:
+{{ __('Hi :name, here\'s what happened this week:', ['name' => $user->name]) }}
 
-**Your activity**
+**{{ __('Your activity') }}**
 
-| | Count |
-|---|---|
-| Georeferencing suggestions | {{ $suggestions }} |
-| Validations | {{ $validations }} |
-| Comments | {{ $comments }} |
+- **{{ $suggestions }}** {{ __('Georefs') }}
+- **{{ $validations }}** {{ __('Reviews') }}
+- **{{ $specimens }}** {{ __('Specimens') }}
+- **{{ $validated }}** {{ __('Validated') }}
 
-**Platform activity**
+**{{ __('Platform activity') }}**
 
-- **{{ $totalGeoreferenced }}** new specimens georeferenced
-- **{{ $totalContributors }}** active contributors
+- **{{ $totalGeoreferenced }}** {{ __('new specimens georeferenced this week') }}
+- **{{ $totalContributors }}** {{ __('active contributors this week') }}
 
 <x-mail::button :url="route('georef.index')">
-Continue contributing
+{{ __('Continue contributing') }}
 </x-mail::button>
 
-To stop receiving weekly summaries, update your [email preferences]({{ route('profile.edit') }}).
+{{ __('To stop receiving weekly summaries, update your :link.', ['link' => '['.__('email preferences').']('.route('profile.edit').')']) }}
 
-Thanks,<br>
+{{ __('Thanks,') }}<br>
 {{ config('app.name') }}
 </x-mail::message>
