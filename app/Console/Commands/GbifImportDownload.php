@@ -378,82 +378,107 @@ class GbifImportDownload extends Command
         $groupCount = DB::table('locality_groups')->count();
         $this->info("  Locality groups total: {$groupCount}");
 
-        $this->info('Step 2/3: Upserting occurrences (may take a while)...');
+        $this->info('Step 2/3: Upserting occurrences in batches (keeps the site responsive)...');
 
-        DB::statement("
-            INSERT INTO occurrences
-                (gbif_occurrence_key, dataset_key, publisher_key, basis_of_record,
-                 institution_code, collection_code, catalog_number, recorded_by,
-                 event_date, country, country_code, state_province, county, municipality,
-                 verbatim_locality, island, island_group, water_body,
-                 scientific_name, taxon_rank, kingdom, family,
-                 gbif_decimal_latitude, gbif_decimal_longitude,
-                 gbif_coordinate_uncertainty_m, gbif_geodetic_datum,
-                 locality_group_id, georef_status, synced_at, created_at, updated_at)
-            SELECT
-                CAST(s.gbif_id AS CHAR),
-                s.dataset_key,
-                s.publishing_org_key,
-                s.basis_of_record,
-                s.institution_code,
-                s.collection_code,
-                s.catalog_number,
-                s.recorded_by,
-                s.event_date,
-                s.country,
-                s.country_code,
-                s.state_province,
-                s.county,
-                s.municipality,
-                COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),'')),
-                s.island,
-                s.island_group,
-                s.water_body,
-                s.scientific_name,
-                s.taxon_rank,
-                s.kingdom,
-                s.family,
-                IF(s.has_coordinate = 'true', s.decimal_latitude, NULL),
-                IF(s.has_coordinate = 'true', s.decimal_longitude, NULL),
-                IF(s.has_coordinate = 'true', s.coordinate_uncertainty_m, NULL),
-                NULLIF(s.geodetic_datum, ''),
-                lg.id,
-                IF(s.has_coordinate = 'true', 'gbif_georeferenced', 'ungeoreferenced'),
-                NOW(), NOW(), NOW()
-            FROM gbif_staging s
-            JOIN locality_groups lg ON lg.group_hash = SHA1(CONCAT_WS('|',
-                NULLIF(LOWER(TRIM(COALESCE(s.continent, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.country_code, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.state_province, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.county, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.municipality, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),''), ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.water_body, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.island_group, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.island, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.higher_geography, ''))), ''),
-                NULLIF(LOWER(TRIM(COALESCE(s.location_remarks, ''))), '')
-            ))
-            WHERE s.basis_of_record = 'PRESERVED_SPECIMEN'
-            ON DUPLICATE KEY UPDATE
-                dataset_key                   = VALUES(dataset_key),
-                scientific_name               = VALUES(scientific_name),
-                taxon_rank                    = VALUES(taxon_rank),
-                kingdom                       = VALUES(kingdom),
-                family                        = VALUES(family),
-                gbif_decimal_latitude         = VALUES(gbif_decimal_latitude),
-                gbif_decimal_longitude        = VALUES(gbif_decimal_longitude),
-                gbif_coordinate_uncertainty_m = VALUES(gbif_coordinate_uncertainty_m),
-                gbif_geodetic_datum           = VALUES(gbif_geodetic_datum),
-                locality_group_id             = VALUES(locality_group_id),
-                georef_status = IF(
-                    georef_status IN ('validated', 'gbif_reviewed', 'has_suggestion', 'conflicted'),
-                    georef_status,
-                    VALUES(georef_status)
-                ),
-                synced_at  = NOW(),
-                updated_at = NOW()
-        ");
+        // Batch by gbif_id range instead of one giant statement — a single multi-million-row
+        // INSERT ... ON DUPLICATE KEY UPDATE holds row locks on `occurrences` for a very long
+        // time, which would stall user submissions for the duration. Chunking lets other
+        // queries interleave between batches.
+        $bounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging WHERE basis_of_record = 'PRESERVED_SPECIMEN'");
+
+        if ($bounds && $bounds->min_id !== null) {
+            $batchSize = 200000;
+            $minId     = (int) $bounds->min_id;
+            $maxId     = (int) $bounds->max_id;
+            $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
+            $batchNum  = 0;
+
+            for ($from = $minId; $from <= $maxId; $from += $batchSize) {
+                $to = min($from + $batchSize - 1, $maxId);
+                $batchNum++;
+
+                DB::statement("
+                    INSERT INTO occurrences
+                        (gbif_occurrence_key, dataset_key, publisher_key, basis_of_record,
+                         institution_code, collection_code, catalog_number, recorded_by,
+                         event_date, country, country_code, state_province, county, municipality,
+                         verbatim_locality, island, island_group, water_body,
+                         scientific_name, taxon_rank, kingdom, family,
+                         gbif_decimal_latitude, gbif_decimal_longitude,
+                         gbif_coordinate_uncertainty_m, gbif_geodetic_datum,
+                         locality_group_id, georef_status, synced_at, created_at, updated_at)
+                    SELECT
+                        CAST(s.gbif_id AS CHAR),
+                        s.dataset_key,
+                        s.publishing_org_key,
+                        s.basis_of_record,
+                        s.institution_code,
+                        s.collection_code,
+                        s.catalog_number,
+                        s.recorded_by,
+                        s.event_date,
+                        s.country,
+                        s.country_code,
+                        s.state_province,
+                        s.county,
+                        s.municipality,
+                        COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),'')),
+                        s.island,
+                        s.island_group,
+                        s.water_body,
+                        s.scientific_name,
+                        s.taxon_rank,
+                        s.kingdom,
+                        s.family,
+                        IF(s.has_coordinate = 'true', s.decimal_latitude, NULL),
+                        IF(s.has_coordinate = 'true', s.decimal_longitude, NULL),
+                        IF(s.has_coordinate = 'true', s.coordinate_uncertainty_m, NULL),
+                        NULLIF(s.geodetic_datum, ''),
+                        lg.id,
+                        IF(s.has_coordinate = 'true', 'gbif_georeferenced', 'ungeoreferenced'),
+                        NOW(), NOW(), NOW()
+                    FROM gbif_staging s
+                    JOIN locality_groups lg ON lg.group_hash = SHA1(CONCAT_WS('|',
+                        NULLIF(LOWER(TRIM(COALESCE(s.continent, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.country_code, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.state_province, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.county, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.municipality, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(s.verbatim_locality),''), NULLIF(TRIM(s.locality),''), ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.water_body, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.island_group, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.island, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.higher_geography, ''))), ''),
+                        NULLIF(LOWER(TRIM(COALESCE(s.location_remarks, ''))), '')
+                    ))
+                    WHERE s.basis_of_record = 'PRESERVED_SPECIMEN'
+                        AND s.gbif_id BETWEEN {$from} AND {$to}
+                    ON DUPLICATE KEY UPDATE
+                        dataset_key                   = VALUES(dataset_key),
+                        scientific_name               = VALUES(scientific_name),
+                        taxon_rank                    = VALUES(taxon_rank),
+                        kingdom                       = VALUES(kingdom),
+                        family                        = VALUES(family),
+                        gbif_decimal_latitude         = VALUES(gbif_decimal_latitude),
+                        gbif_decimal_longitude        = VALUES(gbif_decimal_longitude),
+                        gbif_coordinate_uncertainty_m = VALUES(gbif_coordinate_uncertainty_m),
+                        gbif_geodetic_datum           = VALUES(gbif_geodetic_datum),
+                        locality_group_id             = VALUES(locality_group_id),
+                        georef_status = IF(
+                            georef_status IN ('validated', 'gbif_reviewed', 'has_suggestion', 'conflicted'),
+                            georef_status,
+                            VALUES(georef_status)
+                        ),
+                        synced_at  = NOW(),
+                        updated_at = NOW()
+                ");
+
+                $this->line("  Batch {$batchNum}/{$totalBatches} done (gbif_id {$from}–{$to})");
+
+                // Brief pause between batches so queued user requests get a chance to run.
+                usleep(200000);
+            }
+        }
 
         $occCount = DB::table('occurrences')->count();
         $this->info("  Occurrences total: {$occCount}");
