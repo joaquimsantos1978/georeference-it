@@ -984,43 +984,95 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
         return response()->json([]);
     }
 
-    $groups = LocalityGroup::query()
-        ->whereHas('suggestions', fn($sub) => $sub->where('status', '!=', 'rejected'))
-        ->when($excludeGroupId, fn($sub) => $sub->where('id', '!=', $excludeGroupId))
-        ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$ftQuery])
-        ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$ftQuery])
-        ->limit(5)
-        ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count']);
+    // Cached by search term only (not exclude_group_id) so the same query benefits
+    // every user/locality that searches it, not just the one that triggered it.
+    $cacheKey = 'georef:search-geo-loc:' . md5(mb_strtolower($ftQuery));
 
-    if ($groups->isEmpty()) {
-        return response()->json([]);
-    }
+    $candidates = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($ftQuery) {
+        $fetchGroups = function (string $booleanQuery) {
+            return LocalityGroup::query()
+                ->where(function ($sub) {
+                    $sub->whereHas('suggestions', fn($s) => $s->where('status', '!=', 'rejected'))
+                        ->orWhereHas('occurrences', fn($o) => $o->where('georef_status', 'gbif_georeferenced'));
+                })
+                ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
+                ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanQuery])
+                ->limit(10)
+                ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count']);
+        };
 
-    $coords = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
-        ->where('status', '!=', 'rejected')
-        ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as suggestion_count, SUM(status = "validated") as validated_count')
-        ->groupBy('locality_group_id')
-        ->get()
-        ->keyBy('locality_group_id');
+        // Require every significant word to match first (AND), so a query with several
+        // distinctive words isn't drowned out by a single common one (e.g. "Coimbra").
+        // Fall back to plain OR only if the stricter search finds nothing.
+        $tokens = array_filter(preg_split('/\s+/', $ftQuery), fn($t) => mb_strlen($t) >= 3);
+        $andQuery = implode(' ', array_map(fn($t) => '+' . $t . '*', $tokens));
 
-    $results = $groups->map(function ($g) use ($coords) {
-        $c = $coords->get($g->id);
-        if (!$c || $c->lat === null || $c->lon === null) return null;
+        $groups = $andQuery !== '' ? $fetchGroups($andQuery) : collect();
+        if ($groups->isEmpty()) {
+            $groups = $fetchGroups($ftQuery);
+        }
 
-        return [
-            'source'           => 'occurrence',
-            'locality_group_id' => $g->id,
-            'display_name'     => implode(', ', array_filter([
+        if ($groups->isEmpty()) {
+            return [];
+        }
+
+        $suggestionCoords = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
+            ->where('status', '!=', 'rejected')
+            ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as suggestion_count, SUM(status = "validated") as validated_count')
+            ->groupBy('locality_group_id')
+            ->get()
+            ->keyBy('locality_group_id');
+
+        $gbifCoords = Occurrence::whereIn('locality_group_id', $groups->pluck('id'))
+            ->where('georef_status', 'gbif_georeferenced')
+            ->selectRaw('locality_group_id, AVG(gbif_decimal_latitude) as lat, AVG(gbif_decimal_longitude) as lon, COUNT(*) as occurrence_sample_count')
+            ->groupBy('locality_group_id')
+            ->get()
+            ->keyBy('locality_group_id');
+
+        return $groups->map(function ($g) use ($suggestionCoords, $gbifCoords) {
+            $displayName = implode(', ', array_filter([
                 $g->verbatim_locality, $g->municipality, $g->county, $g->state_province, $g->country_code,
-            ])),
-            'lat'              => $c->lat,
-            'lon'              => $c->lon,
-            'uncertainty_m'    => $c->uncertainty_m ? round($c->uncertainty_m) : null,
-            'occurrence_count' => $g->occurrence_count,
-            'suggestion_count' => $c->suggestion_count,
-            'validated_count'  => $c->validated_count,
-        ];
-    })->filter()->values();
+            ]));
+
+            $s = $suggestionCoords->get($g->id);
+            if ($s && $s->lat !== null && $s->lon !== null) {
+                return [
+                    'source'           => 'occurrence',
+                    'locality_group_id' => $g->id,
+                    'display_name'     => $displayName,
+                    'lat'              => (float) $s->lat,
+                    'lon'              => (float) $s->lon,
+                    'uncertainty_m'    => $s->uncertainty_m ? round($s->uncertainty_m) : null,
+                    'occurrence_count' => $g->occurrence_count,
+                    'suggestion_count' => (int) $s->suggestion_count,
+                    'validated_count'  => (int) $s->validated_count,
+                ];
+            }
+
+            $c = $gbifCoords->get($g->id);
+            if ($c && $c->lat !== null && $c->lon !== null) {
+                return [
+                    'source'           => 'gbif',
+                    'locality_group_id' => $g->id,
+                    'display_name'     => $displayName,
+                    'lat'              => (float) $c->lat,
+                    'lon'              => (float) $c->lon,
+                    'uncertainty_m'    => null,
+                    'occurrence_count' => $g->occurrence_count,
+                    'suggestion_count' => 0,
+                    'validated_count'  => 0,
+                ];
+            }
+
+            return null;
+        })->filter()->values()->all();
+    });
+
+    $results = collect($candidates)
+        ->reject(fn($r) => $excludeGroupId && $r['locality_group_id'] === $excludeGroupId)
+        ->take(5)
+        ->values();
 
     return response()->json($results);
 }
