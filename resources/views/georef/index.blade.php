@@ -231,7 +231,7 @@
                     </div>
                     <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">{{ __('Find coordinates on map:') }}</div>
                     <div class="flex gap-1">
-                        <input type="text" id="nominatim-input" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
+                        <input type="text" id="nominatim-input" name="nominatim-search" autocomplete="on" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
                         <button id="nominatim-btn" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
                     </div>
                     <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
@@ -793,6 +793,8 @@
         searchFailed: "{{ __('Search failed.') }}",
         noOcc:        "{{ __('No occurrences found. Try a different country.') }}",
         occurrences:  "{{ __('occurrences') }}",
+        georeferencedOccurrence: "{{ __('Already georeferenced') }}",
+        validated:    "{{ __('validated') }}",
     };
 
     // Session history — restored from localStorage on every page load
@@ -1097,18 +1099,39 @@ function buildLocalityString(g) {
         if (!query) return;
         document.getElementById('nominatim-results').innerHTML = '<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
         try {
-            const results = await (await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&polygon_geojson=1&limit=5', { headers: {'Accept-Language':'en'} })).json();
+            const excludeId = currentGroup ? currentGroup.id : '';
+            const [osmResults, occResults] = await Promise.all([
+                fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&polygon_geojson=1&limit=5', { headers: {'Accept-Language':'en'} })
+                    .then(r=>r.json()).catch(()=>[]),
+                fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(query)+'&exclude_group_id='+excludeId)
+                    .then(r=>r.json()).catch(()=>[]),
+            ]);
+            const results = [...occResults, ...osmResults];
             if (!results.length) { document.getElementById('nominatim-results').innerHTML='<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; return; }
             window._nominatimResults=results;
             document.getElementById('nominatim-results').innerHTML=results.map((r,i)=>
-                '<button onclick="applyNominatimResult('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid #e5e7eb;margin-bottom:2px;background:white;cursor:pointer" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'white\'">'+
-                '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+r.display_name+'</span>'+
-                '<span style="color:#9ca3af">'+r.type+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
+                r.source==='occurrence'
+                ? '<button onclick="applyNominatimResult('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid #bbf7d0;margin-bottom:2px;background:#f0fdf4;cursor:pointer" onmouseover="this.style.background=\'#dcfce7\'" onmouseout="this.style.background=\'#f0fdf4\'">'+
+                  '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📍 '+r.display_name+'</span>'+
+                  '<span style="color:#16a34a">'+TXT.georeferencedOccurrence+' · '+r.validated_count+' '+TXT.validated+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
+                : '<button onclick="applyNominatimResult('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid #e5e7eb;margin-bottom:2px;background:white;cursor:pointer" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'white\'">'+
+                  '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+r.display_name+'</span>'+
+                  '<span style="color:#9ca3af">'+r.type+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
             ).join('');
         } catch(e) { document.getElementById('nominatim-results').innerHTML='<p style="font-size:11px;color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
     }
     function applyNominatimResult(index) {
         const r=window._nominatimResults[index], lat=parseFloat(r.lat), lon=parseFloat(r.lon);
+        if (r.source==='occurrence') {
+            placeMarker(lat,lon);
+            if (r.uncertainty_m) {
+                document.getElementById('uncertainty-slider').max=Math.max(500000,Math.round(r.uncertainty_m*1.5));
+                setUncertainty(Math.round(r.uncertainty_m));
+            }
+            map.flyTo([lat,lon],14);
+            document.getElementById('nominatim-results').innerHTML='';
+            return;
+        }
         if (r.geojson && (r.geojson.type==='Polygon'||r.geojson.type==='MultiPolygon')) {
             if (window._nominatimPolygon) map.removeLayer(window._nominatimPolygon);
             window._nominatimPolygon=L.geoJSON(r.geojson,{style:{color:'#16a34a',weight:2,fillOpacity:0.05}}).addTo(map);

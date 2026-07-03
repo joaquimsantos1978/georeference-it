@@ -964,6 +964,57 @@ public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
     return response()->json($results);
 }
 
+// Search already-georeferenced locality groups by free text, for use alongside Nominatim
+// results when finding coordinates for a not-yet-georeferenced locality. Full-text only —
+// can't compare against the current group's centroid because it has no coordinates yet.
+public function searchGeoreferencedLocalities(Request $request): \Illuminate\Http\JsonResponse
+{
+    $q = trim($request->get('q', ''));
+    $excludeGroupId = $request->integer('exclude_group_id') ?: null;
+
+    if (strlen($q) < 3) {
+        return response()->json([]);
+    }
+
+    $groups = LocalityGroup::where('validated_count', '>', 0)
+        ->when($excludeGroupId, fn($sub) => $sub->where('id', '!=', $excludeGroupId))
+        ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$q])
+        ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$q])
+        ->limit(5)
+        ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'validated_count']);
+
+    if ($groups->isEmpty()) {
+        return response()->json([]);
+    }
+
+    $coords = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
+        ->where('status', 'validated')
+        ->selectRaw('locality_group_id, AVG(decimal_latitude) as lat, AVG(decimal_longitude) as lon, AVG(coordinate_uncertainty_m) as uncertainty_m')
+        ->groupBy('locality_group_id')
+        ->get()
+        ->keyBy('locality_group_id');
+
+    $results = $groups->map(function ($g) use ($coords) {
+        $c = $coords->get($g->id);
+        if (!$c || $c->lat === null || $c->lon === null) return null;
+
+        return [
+            'source'           => 'occurrence',
+            'locality_group_id' => $g->id,
+            'display_name'     => implode(', ', array_filter([
+                $g->verbatim_locality, $g->municipality, $g->county, $g->state_province, $g->country_code,
+            ])),
+            'lat'              => $c->lat,
+            'lon'              => $c->lon,
+            'uncertainty_m'    => $c->uncertainty_m ? round($c->uncertainty_m) : null,
+            'occurrence_count' => $g->occurrence_count,
+            'validated_count'  => $g->validated_count,
+        ];
+    })->filter()->values();
+
+    return response()->json($results);
+}
+
 private function countryNameToIso2(): array
 {
     return [

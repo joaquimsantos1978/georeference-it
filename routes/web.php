@@ -65,6 +65,7 @@ Route::get('/georef/occurrences-by-ids', [GeorefController::class, 'occurrencesB
 
 Route::get('/georef/detect-location', [GeorefController::class, 'detectLocation'])->name('georef.detect-location');
 Route::get('/georef/search-locality', [GeorefController::class, 'searchLocality'])->name('georef.search-locality');
+Route::get('/georef/search-georeferenced-localities', [GeorefController::class, 'searchGeoreferencedLocalities'])->name('georef.search-georeferenced-localities');
 Route::get('/georef/occurrence/{key}', [GeorefController::class, 'findByGbifKey'])->name('georef.occurrence');
 
 Route::post('/georef/sync', [GeorefController::class, 'sync'])->name('georef.sync');
