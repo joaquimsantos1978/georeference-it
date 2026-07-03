@@ -235,6 +235,7 @@
                         <button id="nominatim-btn" type="submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
                     </form>
                     <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
+                    <button type="button" onclick="loadSystemSuggestions(document.getElementById('sys-sugg-input').value.trim() || document.getElementById('nominatim-input').value.trim() || (currentGroup ? buildLocalityString(currentGroup) : ''))" style="margin-top:4px;font-size:10px;color:#16a34a;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">📍 {{ __('Search already-georeferenced matches') }}</button>
                 </div>
             </div>
 
@@ -813,7 +814,7 @@
         validated:    "{{ __('validated') }}",
         suggestions:  "{{ __('suggestions') }}",
         gbifCoordinates: "{{ __('with GBIF coordinates') }}",
-        viewGroup:    "{{ __('View group →') }}",
+        viewGroup:    "{{ __('View group ↗') }}",
     };
 
     // Session history — restored from localStorage on every page load
@@ -1116,17 +1117,40 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         window.addEventListener('mouseup', ()=>{ drag=false; res=false; });
     })();
 
+    // Position `popup` right below `avoid` if `avoid` is currently visible, so the two
+    // draggable windows don't default to stacking exactly on top of each other. Only
+    // applied when opening — doesn't fight the user once they've dragged either one.
+    function openPopupAvoidingOverlap(popup, avoid) {
+        const avoidVisible = avoid && getComputedStyle(avoid).display !== 'none';
+        if (avoidVisible) {
+            const rect = avoid.getBoundingClientRect();
+            const parentRect = avoid.offsetParent.getBoundingClientRect();
+            popup.style.top = Math.round(rect.bottom - parentRect.top + 12) + 'px';
+            popup.style.right = (avoid.style.right && avoid.style.right !== 'auto') ? avoid.style.right : '340px';
+            popup.style.left = 'auto';
+        } else {
+            popup.style.top = '60px';
+            popup.style.right = '340px';
+            popup.style.left = 'auto';
+        }
+        popup.style.display = 'flex';
+    }
+
     // ── System suggestions (already-georeferenced matches) ──────────────────────
     let _sysSuggResults = [];
-    async function loadSystemSuggestions(query) {
+    async function loadSystemSuggestions(query, silent) {
         if (!query) return;
-        document.getElementById('sys-sugg-popup').style.display = 'flex';
+        openPopupAvoidingOverlap(document.getElementById('sys-sugg-popup'), document.getElementById('occ-popup'));
         document.getElementById('sys-sugg-list').innerHTML = '<p style="color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
         try {
             const excludeId = currentGroup ? currentGroup.id : '';
             const results = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(query)+'&exclude_group_id='+excludeId)).json();
             _sysSuggResults = results;
-            if (!results.length) { document.getElementById('sys-sugg-popup').style.display='none'; return; }
+            if (!results.length) {
+                if (silent) { document.getElementById('sys-sugg-popup').style.display='none'; }
+                else { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; }
+                return;
+            }
             document.getElementById('sys-sugg-list').innerHTML = results.map((r,i)=>
                 '<div style="border:1px solid #bbf7d0;border-radius:4px;margin-bottom:2px;background:#f0fdf4;overflow:hidden;">'+
                 '<button onclick="applySystemSuggestion('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px 5px 2px;border:none;background:transparent;cursor:pointer" onmouseover="this.parentElement.style.background=\'#dcfce7\'" onmouseout="this.parentElement.style.background=\'#f0fdf4\'">'+
@@ -1649,7 +1673,7 @@ function updateHistoryNav() {
         _occPopupOffset = 0;
         _occPopupTotal = count;
         _occPopupIds = [];
-        document.getElementById('occ-popup').style.display = 'flex';
+        openPopupAvoidingOverlap(document.getElementById('occ-popup'), document.getElementById('sys-sugg-popup'));
         document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
         document.getElementById('occ-popup-loadmore').style.display = 'none';
         fetchOccPopupPage(true);
@@ -1661,7 +1685,7 @@ function updateHistoryNav() {
         _occPopupOffset = 0;
         _occPopupTotal = count;
         _occPopupIds = ids || [];
-        document.getElementById('occ-popup').style.display = 'flex';
+        openPopupAvoidingOverlap(document.getElementById('occ-popup'), document.getElementById('sys-sugg-popup'));
         document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
         document.getElementById('occ-popup-loadmore').style.display = 'none';
         fetchOccPopupPage(true);
@@ -1673,7 +1697,7 @@ function updateHistoryNav() {
         _occPopupOffset = 0;
         _occPopupTotal = ids.length;
         _occPopupIds = ids;
-        document.getElementById('occ-popup').style.display = 'flex';
+        openPopupAvoidingOverlap(document.getElementById('occ-popup'), document.getElementById('sys-sugg-popup'));
         document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
         document.getElementById('occ-popup-loadmore').style.display = 'none';
         fetchOccPopupPage(true);
@@ -1874,7 +1898,7 @@ function updateHistoryNav() {
 
         const sysSuggQuery = buildLocalityString(group);
         document.getElementById('sys-sugg-input').value = sysSuggQuery;
-        if (sysSuggQuery) loadSystemSuggestions(sysSuggQuery); else document.getElementById('sys-sugg-popup').style.display='none';
+        if (sysSuggQuery) loadSystemSuggestions(sysSuggQuery, true); else document.getElementById('sys-sugg-popup').style.display='none';
 
         var allGeoref = ungeorefTotal === 0 && georefOccurrences.length > 0;
         document.getElementById('occ-panel-label').textContent = allGeoref

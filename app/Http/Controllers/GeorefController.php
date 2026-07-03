@@ -1025,7 +1025,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
 
         $gbifCoords = Occurrence::whereIn('locality_group_id', $groups->pluck('id'))
             ->where('georef_status', 'gbif_georeferenced')
-            ->selectRaw('locality_group_id, AVG(gbif_decimal_latitude) as lat, AVG(gbif_decimal_longitude) as lon, COUNT(*) as occurrence_sample_count')
+            ->selectRaw('locality_group_id, AVG(gbif_decimal_latitude) as lat, AVG(gbif_decimal_longitude) as lon, AVG(gbif_coordinate_uncertainty_m) as uncertainty_m, COUNT(*) as occurrence_sample_count')
             ->groupBy('locality_group_id')
             ->get()
             ->keyBy('locality_group_id');
@@ -1058,7 +1058,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
                     'display_name'     => $displayName,
                     'lat'              => (float) $c->lat,
                     'lon'              => (float) $c->lon,
-                    'uncertainty_m'    => null,
+                    'uncertainty_m'    => $c->uncertainty_m ? round($c->uncertainty_m) : null,
                     'occurrence_count' => $g->occurrence_count,
                     'suggestion_count' => 0,
                     'validated_count'  => 0,
