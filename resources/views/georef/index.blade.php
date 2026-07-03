@@ -235,7 +235,7 @@
                         <button id="nominatim-btn" type="submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
                     </form>
                     <div id="nominatim-results" class="mt-1 space-y-1 max-h-32 overflow-y-auto"></div>
-                    <button type="button" onclick="loadSystemSuggestions(document.getElementById('sys-sugg-input').value.trim() || document.getElementById('nominatim-input').value.trim() || (currentGroup ? buildLocalityString(currentGroup) : ''))" style="margin-top:4px;font-size:10px;color:#16a34a;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">📍 {{ __('Search already-georeferenced matches') }}</button>
+                    <button type="button" onclick="loadSystemSuggestions(document.getElementById('sys-sugg-input').value.trim() || document.getElementById('nominatim-input').value.trim() || (currentGroup ? buildLocalityString(currentGroup) : ''))" style="margin-top:4px;font-size:10px;color:#16a34a;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">📍 {{ __('Search already-georeferenced locations') }}</button>
                 </div>
             </div>
 
@@ -283,7 +283,7 @@
         <div id="sys-sugg-popup" style="display:none;position:absolute;top:60px;right:340px;z-index:30;width:320px;height:340px;min-width:240px;min-height:200px;"
             class="bg-white dark:bg-gray-900 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
             <div id="sys-sugg-bar" class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 cursor-move select-none shrink-0 border-b border-gray-200 dark:border-gray-700">
-                <span class="text-xs text-gray-500 truncate flex-1 mr-2">{{ __('Already georeferenced matches') }}</span>
+                <span class="text-xs text-gray-500 truncate flex-1 mr-2">{{ __('Search already-georeferenced locations') }}</span>
                 <button onclick="document.getElementById('sys-sugg-popup').style.display='none'" class="text-gray-400 hover:text-gray-600 text-sm leading-none ml-1">✕</button>
             </div>
             <form id="sys-sugg-form" class="flex gap-1 px-2 pt-2 shrink-0" onsubmit="event.preventDefault(); loadSystemSuggestions(document.getElementById('sys-sugg-input').value.trim());">
@@ -1126,16 +1126,22 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     // draggable windows don't default to stacking exactly on top of each other. Only
     // applied when opening — doesn't fight the user once they've dragged either one.
     function openPopupAvoidingOverlap(popup, avoid) {
+        // On narrow viewports a fixed "right: 340px" pushes a 320px-wide popup mostly
+        // (or entirely) off-screen to the left. Clamp so it always stays on-screen.
+        const popupWidth = parseInt(popup.style.width, 10) || popup.offsetWidth || 320;
+        const maxRight = Math.max(8, window.innerWidth - popupWidth - 8);
+        const clampRight = (px) => Math.min(px, maxRight) + 'px';
+
         const avoidVisible = avoid && getComputedStyle(avoid).display !== 'none';
         if (avoidVisible) {
             const rect = avoid.getBoundingClientRect();
             const parentRect = avoid.offsetParent.getBoundingClientRect();
             popup.style.top = Math.round(rect.bottom - parentRect.top + 12) + 'px';
-            popup.style.right = (avoid.style.right && avoid.style.right !== 'auto') ? avoid.style.right : '340px';
+            popup.style.right = clampRight((avoid.style.right && avoid.style.right !== 'auto') ? parseInt(avoid.style.right, 10) : 340);
             popup.style.left = 'auto';
         } else {
             popup.style.top = '60px';
-            popup.style.right = '340px';
+            popup.style.right = clampRight(340);
             popup.style.left = 'auto';
         }
         popup.style.display = 'flex';
@@ -1170,7 +1176,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             + '<span style="color:#9ca3af">±'+uncM+'m</span>'
             + '</div>'
             + '<div style="display:flex;justify-content:flex-end;margin-top:4px;">'
-            + '<button onclick="openGroupOccPopup('+r.locality_group_id+','+r.occurrence_count+')" style="font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">'+r.occurrence_count+' '+TXT.occurrences+' · {{ __("see list") }} ↗</button>'
+            + '<button onclick="openGroupOccPopup('+r.locality_group_id+','+r.occurrence_count+',true)" style="font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">'+r.occurrence_count+' '+TXT.occurrences+' · {{ __("see list") }} ↗</button>'
             + '</div>'
             + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
             + '<button onclick="previewSuggestion('+lat+','+lon+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
@@ -1721,11 +1727,16 @@ function updateHistoryNav() {
     var _occPopupTotal = 0;
     var _occPopupSuggId = null;
     var _occPopupGroupId = null;
+    var _occPopupGroupAll = false;
     var _occPopupIds = [];
 
-    function openGroupOccPopup(groupId, count) {
+    // `all` shows every occurrence in the group, not just ungeoreferenced ones — needed
+    // for already-georeferenced matches, whose groups typically have nothing left
+    // ungeoreferenced (that's the whole reason they surfaced as a match).
+    function openGroupOccPopup(groupId, count, all) {
         _occPopupSuggId = null;
         _occPopupGroupId = groupId;
+        _occPopupGroupAll = !!all;
         _occPopupOffset = 0;
         _occPopupTotal = count;
         _occPopupIds = [];
@@ -1737,6 +1748,7 @@ function updateHistoryNav() {
 
     function openOccPopup(suggId, count, ids) {
         _occPopupGroupId = null;
+        _occPopupGroupAll = false;
         _occPopupSuggId = suggId;
         _occPopupOffset = 0;
         _occPopupTotal = count;
@@ -1762,7 +1774,9 @@ function updateHistoryNav() {
     function fetchOccPopupPage(reset) {
         var url;
         if (_occPopupGroupId) {
-            url = APP_URL+'/georef/group/'+_occPopupGroupId+'/ungeoref-occurrences?offset='+_occPopupOffset;
+            url = _occPopupGroupAll
+                ? APP_URL+'/georef/group/'+_occPopupGroupId+'/occurrences?offset='+_occPopupOffset
+                : APP_URL+'/georef/group/'+_occPopupGroupId+'/ungeoref-occurrences?offset='+_occPopupOffset;
         } else {
             var pageIds = _occPopupIds.slice(_occPopupOffset, _occPopupOffset + 100);
             url = _occPopupSuggId

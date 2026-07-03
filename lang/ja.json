@@ -350,6 +350,7 @@
     "Save": "保存",
     "Saved.": "保存しました。",
     "Search": "検索",
+    "Search already-georeferenced locations": "位置情報付与済みの場所を検索",
     "Search already-georeferenced matches": "位置情報付与済みの一致を検索",
     "Search collection...": "コレクションを検索...",
     "Search failed.": "検索に失敗しました。",

@@ -374,6 +374,21 @@ public function next(Request $request)
         return response()->json(['occurrences' => $occurrences]);
     }
 
+    // Used by the "see list" link on already-georeferenced matches, which point to a
+    // group that's typically fully georeferenced already — groupUngeorefOccurrences()
+    // would return nothing there since there's nothing left ungeoreferenced to show.
+    public function groupAllOccurrences(Request $request, int $groupId)
+    {
+        session()->save();
+        $group = LocalityGroup::findOrFail($groupId);
+        $offset = max(0, (int) $request->get('offset', 0));
+        $occurrences = Occurrence::where('locality_group_id', $group->id)
+            ->offset($offset)
+            ->limit(100)
+            ->get(self::OCC_COLUMNS);
+        return response()->json(['occurrences' => $occurrences]);
+    }
+
     public function suggestionGeorefOccurrences(Request $request, GeorefSuggestion $suggestion)
     {
         session()->save();
