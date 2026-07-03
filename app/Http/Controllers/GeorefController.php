@@ -1002,12 +1002,17 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
         return response()->json(['results' => [], 'has_more' => false]);
     }
 
-    // No caching: recently georeferenced localities need to show up immediately, not
-    // after a stale window — this is exactly when a user wants to see them.
     // Pool size grows with the requested offset so "load more" can keep going deeper
     // into the relevance ranking instead of being capped at a fixed pool.
     $poolSize = max(40, $offset + $perPage + 10);
-    $candidates = (function () use ($ftQuery, $poolSize) {
+
+    // Short-lived cache (not the 1h it had before). Removing it entirely turned out to
+    // cost 300+ seconds per query in production — the whereHas EXISTS filters combined
+    // with fulltext relevance ordering are expensive over the full corpus. A 60s window
+    // is short enough that a locality georeferenced moments ago still shows up almost
+    // immediately, while absorbing repeat hits on the same term.
+    $cacheKey = 'georef:search-geo-loc:' . md5(mb_strtolower($ftQuery) . ':' . $poolSize);
+    $candidates = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($ftQuery, $poolSize) {
         $fetchGroups = function (string $booleanQuery) use ($poolSize) {
             return LocalityGroup::query()
                 ->where(function ($sub) {
@@ -1105,7 +1110,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
 
             return null;
         })->filter()->values()->all();
-    })();
+    });
 
     $filtered = collect($candidates)
         ->reject(fn($r) => $excludeGroupId && $r['locality_group_id'] === $excludeGroupId)

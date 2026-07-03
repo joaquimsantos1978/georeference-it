@@ -9,8 +9,39 @@ class StatsController extends Controller
 {
     public function index()
     {
-        [$global, $byCountry] = Cache::remember('stats.georef', now()->addWeek(), fn() => $this->compute());
+        [$global, $byCountry] = $this->getWithStaleWhileRevalidate();
         return view('stats', compact('global', 'byCountry'));
+    }
+
+    // Recomputing takes minutes (full scan over ~230M occurrences). A plain Cache::remember()
+    // meant every request that arrived after the weekly TTL expired reran that scan in
+    // parallel — a stampede that once stacked up 3 concurrent 10+ minute queries and took
+    // the whole site down with it (504s on Stats/Impact). Data never actually expires now;
+    // only ONE request (whichever wins the lock) recomputes in the background while every
+    // other request — including that same one, immediately — gets the last known value.
+    private function getWithStaleWhileRevalidate(): array
+    {
+        $cached = Cache::get('stats.georef.data');
+
+        $isStale = $cached === null
+            || Cache::get('stats.georef.computed_at', 0) < now()->subWeek()->timestamp;
+
+        if ($isStale) {
+            $lock = Cache::lock('stats.georef.lock', 900);
+            if ($lock->get()) {
+                try {
+                    $cached = $this->compute();
+                    Cache::forever('stats.georef.data', $cached);
+                    Cache::forever('stats.georef.computed_at', now()->timestamp);
+                } finally {
+                    $lock->release();
+                }
+            }
+            // If the lock is already held, someone else is recomputing — just serve
+            // whatever we have (possibly null on a genuinely cold cache) rather than wait.
+        }
+
+        return $cached ?? $this->compute();
     }
 
     public function compute(): array

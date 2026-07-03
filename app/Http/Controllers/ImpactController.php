@@ -18,7 +18,7 @@ class ImpactController extends Controller
         $page    = $request->integer('page', 1) ?: 1;
 
         $cacheKey = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
-        $totalCount = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($validStatuses, $status, $country) {
+        $totalCount = $this->staleWhileRevalidate($cacheKey, 3600, function () use ($validStatuses, $status, $country) {
             return DB::table('occurrences')
                 ->whereNull('deleted_at')
                 ->whereIn('georef_status', $validStatuses)
@@ -90,7 +90,7 @@ class ImpactController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
+        $countries = $this->staleWhileRevalidate('explore_countries', 86400, function () {
             return DB::table('locality_groups')
                 ->select('country_code')
                 ->whereNull('deleted_at')
@@ -103,5 +103,36 @@ class ImpactController extends Controller
         });
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
+    }
+
+    // Same stale-while-revalidate pattern as StatsController: counting over ~230M
+    // occurrences is slow enough that a plain Cache::remember() TTL expiry let every
+    // concurrent request rerun the count in parallel — a stampede that caused 504s on
+    // this page. Data is kept forever and only refreshed by whichever single request
+    // wins the lock; everyone else (including that request, immediately) gets the last
+    // known count instead of waiting on or duplicating the query.
+    private function staleWhileRevalidate(string $key, int $maxAgeSeconds, \Closure $compute)
+    {
+        $dataKey = $key . ':data';
+        $atKey   = $key . ':computed_at';
+        $cached  = \Illuminate\Support\Facades\Cache::get($dataKey);
+
+        $isStale = $cached === null
+            || \Illuminate\Support\Facades\Cache::get($atKey, 0) < now()->subSeconds($maxAgeSeconds)->timestamp;
+
+        if ($isStale) {
+            $lock = \Illuminate\Support\Facades\Cache::lock($key . ':lock', 300);
+            if ($lock->get()) {
+                try {
+                    $cached = $compute();
+                    \Illuminate\Support\Facades\Cache::forever($dataKey, $cached);
+                    \Illuminate\Support\Facades\Cache::forever($atKey, now()->timestamp);
+                } finally {
+                    $lock->release();
+                }
+            }
+        }
+
+        return $cached ?? $compute();
     }
 }
