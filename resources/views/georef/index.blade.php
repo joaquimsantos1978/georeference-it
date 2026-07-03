@@ -1151,30 +1151,52 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
                 else { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; }
                 return;
             }
-            document.getElementById('sys-sugg-list').innerHTML = results.map((r,i)=>
-                '<div style="border:1px solid #bbf7d0;border-radius:4px;margin-bottom:2px;background:#f0fdf4;overflow:hidden;">'+
-                '<button onclick="applySystemSuggestion('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px 5px 2px;border:none;background:transparent;cursor:pointer" onmouseover="this.parentElement.style.background=\'#dcfce7\'" onmouseout="this.parentElement.style.background=\'#f0fdf4\'">'+
-                '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📍 '+r.display_name+'</span>'+
-                '<span style="color:#16a34a">'+(r.source==='gbif'
+            document.getElementById('sys-sugg-list').innerHTML = results.map((r,i)=>{
+                const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+                const uncM = r.uncertainty_m ? Math.round(r.uncertainty_m) : 0;
+                const sourceLabel = r.source==='gbif'
                     ? TXT.gbifCoordinates
-                    : r.suggestion_count+' '+TXT.suggestions+(r.validated_count>0?' ('+r.validated_count+' '+TXT.validated+')':''))+
-                ' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+
-                (r.uncertainty_m ? ' · ±'+Number(r.uncertainty_m).toLocaleString()+'m' : '')+
-                ' · '+r.occurrence_count+' '+TXT.occurrences+
-                '</span></button>'+
-                '<a href="'+APP_URL+'/georef?group='+r.locality_group_id+'" target="_blank" rel="noopener" style="display:block;font-size:10px;color:#2563eb;padding:1px 5px 4px;text-decoration:underline;">'+TXT.viewGroup+'</a>'+
-                '</div>'
-            ).join('');
+                    : r.suggestion_count+' '+TXT.suggestions+(r.validated_count>0?' ('+r.validated_count+' '+TXT.validated+')':'');
+                return '<div style="border:1px solid #bbf7d0;border-radius:6px;padding:6px 8px;background:#f0fdf4;margin-bottom:4px;">'
+                    + '<div style="display:flex;align-items:flex-start;gap:6px;">'
+                    + '<span>📍</span>'
+                    + '<div style="min-width:0;flex:1;">'
+                    + '<span style="font-size:10px;font-weight:600;color:#16a34a;word-break:break-word">'+escHtml(r.display_name)+'</span>'
+                    + '<div style="font-size:10px;color:#6b7280;margin-top:1px;display:flex;align-items:center;gap:6px;">'
+                    + sourceLabel+' · '+r.occurrence_count+' '+TXT.occurrences
+                    + '<a href="'+APP_URL+'/georef?group='+r.locality_group_id+'" target="_blank" rel="noopener" style="margin-left:auto;color:#2563eb;flex-shrink:0;">'+TXT.viewGroup+'</a>'
+                    + '</div></div></div>'
+                    + '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-top:4px;">'
+                    + '<div style="display:flex;justify-content:space-between">'
+                    + '<span class="dark-text" style="font-weight:500">'+lat.toFixed(5)+', '+lon.toFixed(5)+'</span>'
+                    + '<span style="color:#9ca3af">±'+uncM+'m</span>'
+                    + '</div>'
+                    + '<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">'
+                    + '<button onclick="previewSuggestion('+lat+','+lon+','+uncM+')" style="color:#3b82f6;background:none;border:none;cursor:pointer;font-size:10px;padding:0">'+TXT.previewMap+'</button>'
+                    + '<button onclick="useSystemSuggestion('+i+')" class="use-similar-btn" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;">Use this</button>'
+                    + '<button onclick="openGroupOccPopup('+r.locality_group_id+','+r.occurrence_count+')" style="margin-left:auto;font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">{{ __("see list") }} ↗</button>'
+                    + '</div>'
+                    + '</div>'
+                    + '</div>';
+            }).join('');
         } catch(e) { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
     }
-    function applySystemSuggestion(index) {
+    function useSystemSuggestion(index) {
         const r = _sysSuggResults[index];
-        placeMarker(parseFloat(r.lat), parseFloat(r.lon));
+        if (!r) return;
+        const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+        placeMarker(lat, lng);
         if (r.uncertainty_m) {
-            document.getElementById('uncertainty-slider').max=Math.max(500000,Math.round(r.uncertainty_m*1.5));
-            setUncertainty(Math.round(r.uncertainty_m));
+            const uncInput = document.getElementById('uncertainty-input');
+            if (uncInput) { uncInput.value = Math.round(r.uncertainty_m); uncInput.dispatchEvent(new Event('input')); }
         }
-        map.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 14);
+        if (georefMode !== 'new') {
+            const modeBtn = document.getElementById('mode-toggle-btn');
+            if (modeBtn) modeBtn.click();
+        }
+        updateSubmitBtn();
+        const formWrap = document.querySelector('.p-4.overflow-y-auto');
+        if (formWrap) formWrap.scrollIntoView({behavior:'smooth',block:'nearest'});
     }
 
     // ── Nominatim ─────────────────────────────────────────────────────────────
