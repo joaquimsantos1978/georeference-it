@@ -36,12 +36,29 @@ class StatsController extends Controller
                 } finally {
                     $lock->release();
                 }
+            } elseif ($cached === null) {
+                // Someone else is already computing and we have nothing to serve yet
+                // (a cold cache right after deploy, hit by several requests at once).
+                // Wait briefly — well under a gateway timeout — for them to finish
+                // instead of also running the multi-minute scan ourselves.
+                try {
+                    $lock->block(10);
+                    $lock->release();
+                } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+                    // Still running after 10s — fall through to the empty-safe default below.
+                }
+                $cached = Cache::get('stats.georef.data');
             }
-            // If the lock is already held, someone else is recomputing — just serve
-            // whatever we have (possibly null on a genuinely cold cache) rather than wait.
         }
 
-        return $cached ?? $this->compute();
+        return $cached ?? [
+            (object) [
+                'total_occ' => 0, 'ungeoref_occ' => 0, 'pending_occ' => 0,
+                'gbif_occ' => 0, 'validated_occ' => 0, 'gbif_reviewed_occ' => 0,
+                'pending_groups' => 0,
+            ],
+            collect(),
+        ];
     }
 
     public function compute(): array

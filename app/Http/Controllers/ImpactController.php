@@ -100,7 +100,7 @@ class ImpactController extends Controller
                 ->distinct()
                 ->orderBy('country_code')
                 ->pluck('country_code');
-        });
+        }, collect());
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
     }
@@ -111,7 +111,7 @@ class ImpactController extends Controller
     // this page. Data is kept forever and only refreshed by whichever single request
     // wins the lock; everyone else (including that request, immediately) gets the last
     // known count instead of waiting on or duplicating the query.
-    private function staleWhileRevalidate(string $key, int $maxAgeSeconds, \Closure $compute)
+    private function staleWhileRevalidate(string $key, int $maxAgeSeconds, \Closure $compute, $emptyFallback = 0)
     {
         $dataKey = $key . ':data';
         $atKey   = $key . ':computed_at';
@@ -130,9 +130,21 @@ class ImpactController extends Controller
                 } finally {
                     $lock->release();
                 }
+            } elseif ($cached === null) {
+                // Someone else is already computing and we have nothing to serve yet
+                // (a cold cache right after deploy, hit by several requests at once).
+                // Wait briefly — well under a gateway timeout — instead of also
+                // running the same slow query ourselves.
+                try {
+                    $lock->block(10);
+                    $lock->release();
+                } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+                    // Still running after 10s — fall through to the safe default below.
+                }
+                $cached = \Illuminate\Support\Facades\Cache::get($dataKey);
             }
         }
 
-        return $cached ?? $compute();
+        return $cached ?? $emptyFallback;
     }
 }
