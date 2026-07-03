@@ -1161,6 +1161,9 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             return Math.abs(parseFloat(cs.decimal_latitude)  - lat) < 0.0001
                 && Math.abs(parseFloat(cs.decimal_longitude) - lon) < 0.0001;
         });
+        const remarksHtml = r.remarks
+            ? '<span class="remarks-btn" data-remarks="'+escHtml(r.remarks).replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>'
+            : '';
         return '<div style="border:1px solid #bbf7d0;border-radius:6px;padding:6px 8px;background:#f0fdf4;margin-bottom:4px;">'
             + '<div style="display:flex;align-items:flex-start;gap:6px;">'
             + '<span>📍</span>'
@@ -1175,6 +1178,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             + '<span class="dark-text" style="font-weight:500">'+lat.toFixed(5)+', '+lon.toFixed(5)+'</span>'
             + '<span style="color:#9ca3af">±'+uncM+'m</span>'
             + '</div>'
+            + (remarksHtml ? '<div style="margin-top:4px;">'+remarksHtml+'</div>' : '')
             + '<div style="display:flex;justify-content:flex-end;margin-top:4px;">'
             + '<button onclick="openGroupOccPopup('+r.locality_group_id+','+r.occurrence_count+',true)" style="font-size:10px;color:#3b82f6;background:none;border:none;cursor:pointer;padding:0;">'+r.occurrence_count+' '+TXT.occurrences+' · {{ __("see list") }} ↗</button>'
             + '</div>'
@@ -1190,7 +1194,25 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         if (hasMore) {
             html += '<button onclick="loadMoreSystemSuggestions()" style="width:100%;font-size:11px;padding:6px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;margin-top:2px;">'+TXT.loadMore+'</button>';
         }
-        document.getElementById('sys-sugg-list').innerHTML = html;
+        var list = document.getElementById('sys-sugg-list');
+        list.innerHTML = html;
+        list.querySelectorAll('.remarks-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var existing = document.getElementById('remarks-popup');
+                if (existing) existing.remove();
+                var popup = document.createElement('div');
+                popup.id = 'remarks-popup';
+                popup.style.cssText = 'position:fixed;z-index:9999;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:11px;color:#78350f;max-width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.15);line-height:1.5;';
+                popup.textContent = btn.dataset.remarks;
+                document.body.appendChild(popup);
+                var r = btn.getBoundingClientRect();
+                popup.style.left = Math.min(r.left, window.innerWidth - popup.offsetWidth - 8) + 'px';
+                popup.style.top  = (r.bottom + 4) + 'px';
+                var close = function(){ popup.remove(); document.removeEventListener('click', close); };
+                setTimeout(function(){ document.addEventListener('click', close); }, 0);
+            });
+        });
     }
     async function loadSystemSuggestions(query, silent) {
         if (!query) return;
@@ -1228,6 +1250,8 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             const uncInput = document.getElementById('uncertainty-input');
             if (uncInput) { uncInput.value = Math.round(r.uncertainty_m); uncInput.dispatchEvent(new Event('input')); }
         }
+        const remarksInput = document.getElementById('remarks-input');
+        if (remarksInput && r.remarks) remarksInput.value = r.remarks;
         if (georefMode !== 'new') {
             const modeBtn = document.getElementById('mode-toggle-btn');
             if (modeBtn) modeBtn.click();
@@ -1514,6 +1538,7 @@ function showVoteModeToast() {
 function clearPanel() {
     showOverlay();
     if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;} if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
+    if(_previewMarker){map.removeLayer(_previewMarker);_previewMarker=null;}
     if(window._nominatimPolygon){map.removeLayer(window._nominatimPolygon);window._nominatimPolygon=null;}
     clearSuggestionLayers(); closeImgViewer();
     document.getElementById('submit-btn').disabled=true;
@@ -2289,8 +2314,11 @@ window._groupMunicipalityBBox = null; // finest-grained bbox, softest check
             return '<div style="font-size:11px;border-bottom:1px solid #f3f4f6;padding-bottom:4px"><span style="font-weight:500">'+c.user_name+'</span><span style="color:#9ca3af;margin-left:4px">'+c.created_at+'</span><p style="color:#6b7280;margin-top:2px">'+c.body+'</p></div>';
         }).join('');
     }
+    var _previewMarker = null;
     function previewSuggestion(lat,lng,unc) {
         if(marker){map.removeLayer(marker);marker=null;} if(circle){map.removeLayer(circle);circle=null;} if(radiusHandle){map.removeLayer(radiusHandle);radiusHandle=null;}
+        if(_previewMarker){map.removeLayer(_previewMarker);_previewMarker=null;}
+        _previewMarker = L.circleMarker([lat,lng],{radius:6,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.8,weight:2}).addTo(map);
         if(unc) {
             circle=L.circle([lat,lng],{radius:unc,color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
             map.fitBounds(circle.getBounds(),{padding:[30,30]});

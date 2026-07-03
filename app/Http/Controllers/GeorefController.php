@@ -1060,7 +1060,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
         // exactly what "inconsistent" groups are). Prefer validated, then highest vote total.
         $suggestionsByGroup = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
             ->where('status', '!=', 'rejected')
-            ->get(['locality_group_id', 'decimal_latitude', 'decimal_longitude', 'coordinate_uncertainty_m', 'status', 'total_points'])
+            ->get(['locality_group_id', 'decimal_latitude', 'decimal_longitude', 'coordinate_uncertainty_m', 'status', 'total_points', 'georeference_remarks'])
             ->groupBy('locality_group_id');
 
         $bestSuggestion = $suggestionsByGroup->map(function ($rows) {
@@ -1105,6 +1105,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
                     'occurrence_count' => $g->occurrence_count,
                     'suggestion_count' => $counts['suggestion_count'],
                     'validated_count'  => $counts['validated_count'],
+                    'remarks'          => $s->georeference_remarks,
                 ];
             }
 
