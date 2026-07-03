@@ -1,6 +1,6 @@
 <x-layouts.app :title="$user->name" :description="$user->name . ' — georeferencing contributor on georeference.it'">
 
-    <div class="space-y-6 max-w-3xl mx-auto">
+    <div class="space-y-6">
 
         {{-- Header --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-5 flex items-center gap-5">
