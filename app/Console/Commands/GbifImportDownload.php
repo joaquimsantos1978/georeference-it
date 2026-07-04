@@ -74,10 +74,22 @@ class GbifImportDownload extends Command
             $this->importMultimedia($multimediaPath);
         }
 
-        // Step 5: cleanup
+        // Step 5: cleanup — once the data is safely in occurrences/locality_groups, the
+        // raw download artifacts (zip, extracted occurrence.txt, multimedia.txt) are no
+        // longer needed and are large (100GB+ each). Left alone, they accumulate every
+        // month and silently eat disk space (this is what filled the disk to 85% before
+        // anyone noticed). Only deleted on a fully successful run, so a failed run can
+        // still retry without re-downloading/re-extracting.
         if (!$this->option('skip-cleanup')) {
             $this->info('Truncating gbif_staging...');
             DB::statement('TRUNCATE TABLE gbif_staging');
+
+            foreach (array_filter([$zipPath, $csvPath ?? null, $multimediaPath ?? null]) as $file) {
+                if (is_string($file) && file_exists($file)) {
+                    unlink($file);
+                    $this->info("Removed {$file}");
+                }
+            }
         }
 
         $this->info('Done.');
