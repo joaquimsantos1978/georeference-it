@@ -232,15 +232,22 @@ class GbifImportDownload extends Command
         $location  = (string) ($core->files->location ?? 'occurrence.txt');
         $csvTarget = "{$this->storageDir}/" . basename($location);
 
-        // Stream-extract occurrence file (can be large)
-        $this->info("Extracting {$location} → {$csvTarget}");
-        $src  = $zip->getStream($location);
-        $dest = fopen($csvTarget, 'wb');
-        stream_copy_to_stream($src, $dest);
-        fclose($src);
-        fclose($dest);
+        // Stream-extract occurrence file (can be large) — skip if an extraction from
+        // this exact ZIP entry already exists on disk (matched by size, so a stale or
+        // partial leftover file from an unrelated run doesn't get reused by mistake).
+        $expectedSize = $zip->statName($location)['size'] ?? null;
+        if (file_exists($csvTarget) && $expectedSize !== null && filesize($csvTarget) === $expectedSize) {
+            $this->info("{$csvTarget} already extracted (" . $this->bytes(filesize($csvTarget)) . '), skipping');
+        } else {
+            $this->info("Extracting {$location} → {$csvTarget}");
+            $src  = $zip->getStream($location);
+            $dest = fopen($csvTarget, 'wb');
+            stream_copy_to_stream($src, $dest);
+            fclose($src);
+            fclose($dest);
 
-        $this->info('Extracted: ' . $this->bytes(filesize($csvTarget)));
+            $this->info('Extracted: ' . $this->bytes(filesize($csvTarget)));
+        }
 
         // Check if the DWCA has a header line to skip
         $ignoreHeader = (int) ($core['ignoreHeaderLines'] ?? 0);
@@ -260,14 +267,20 @@ class GbifImportDownload extends Command
                 $mLoc   = (string) ($ext->files->location ?? '');
                 if ($mLoc) {
                     $mTarget = "{$this->storageDir}/" . basename($mLoc);
-                    $mSrc    = $zip->getStream($mLoc);
-                    if ($mSrc) {
-                        $mDest = fopen($mTarget, 'wb');
-                        stream_copy_to_stream($mSrc, $mDest);
-                        fclose($mSrc);
-                        fclose($mDest);
+                    $mExpectedSize = $zip->statName($mLoc)['size'] ?? null;
+                    if (file_exists($mTarget) && $mExpectedSize !== null && filesize($mTarget) === $mExpectedSize) {
+                        $this->info("{$mTarget} already extracted (" . $this->bytes(filesize($mTarget)) . '), skipping');
                         $multimediaPath = $mTarget;
-                        $this->info("Extracted multimedia: " . $this->bytes(filesize($mTarget)));
+                    } else {
+                        $mSrc = $zip->getStream($mLoc);
+                        if ($mSrc) {
+                            $mDest = fopen($mTarget, 'wb');
+                            stream_copy_to_stream($mSrc, $mDest);
+                            fclose($mSrc);
+                            fclose($mDest);
+                            $multimediaPath = $mTarget;
+                            $this->info("Extracted multimedia: " . $this->bytes(filesize($mTarget)));
+                        }
                     }
                 }
                 break;
