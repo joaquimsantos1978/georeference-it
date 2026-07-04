@@ -2,6 +2,7 @@
 
 use App\Console\Commands\SendWeeklySummary;
 use App\Console\Commands\GbifMonthlyRefresh;
+use App\Console\Commands\GbifRefreshHeartbeat;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -47,6 +48,11 @@ return Application::configure(basePath: dirname(__DIR__))
         if (config('gbif.notification_email')) {
             $gbifRefresh->emailOutputOnFailure(config('gbif.notification_email'));
         }
+
+        // Progress snapshot by email every 2 hours — a no-op unless gbif:monthly-refresh
+        // is actually running (checked via the cache flag it sets), so this is safe to
+        // leave scheduled year-round.
+        $schedule->command(GbifRefreshHeartbeat::class)->everyTwoHours();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
