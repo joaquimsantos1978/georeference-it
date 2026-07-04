@@ -1040,14 +1040,16 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
                 ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count']);
         };
 
-        // Require every significant word to match first (AND), so a query with several
+        // Require every significant word to match (AND), so a query with several
         // distinctive words isn't drowned out by a single common one (e.g. "Coimbra").
-        // Fall back to plain OR only if the stricter search finds nothing.
+        // Only fall back to a looser OR search when there's a single token — with 2+
+        // tokens, OR degrades into "any word matches", which surfaced the same generic,
+        // unrelated top-relevance rows for every failed search instead of no results.
         $tokens = array_filter(preg_split('/\s+/', $ftQuery), fn($t) => mb_strlen($t) >= 3);
         $andQuery = implode(' ', array_map(fn($t) => '+' . $t . '*', $tokens));
 
         $groups = $andQuery !== '' ? $fetchGroups($andQuery) : collect();
-        if ($groups->isEmpty()) {
+        if ($groups->isEmpty() && count($tokens) <= 1) {
             $groups = $fetchGroups($ftQuery);
         }
 
