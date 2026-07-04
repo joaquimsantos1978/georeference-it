@@ -372,7 +372,7 @@ class GbifImportDownload extends Command
                 NOW(),
                 NOW()
             FROM gbif_staging
-            WHERE basis_of_record = 'PRESERVED_SPECIMEN'
+            WHERE basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')
             GROUP BY group_hash
         ");
 
@@ -385,7 +385,7 @@ class GbifImportDownload extends Command
         // INSERT ... ON DUPLICATE KEY UPDATE holds row locks on `occurrences` for a very long
         // time, which would stall user submissions for the duration. Chunking lets other
         // queries interleave between batches.
-        $bounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging WHERE basis_of_record = 'PRESERVED_SPECIMEN'");
+        $bounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging WHERE basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')");
 
         if ($bounds && $bounds->min_id !== null) {
             $batchSize = 200000;
@@ -452,7 +452,7 @@ class GbifImportDownload extends Command
                         NULLIF(LOWER(TRIM(COALESCE(s.higher_geography, ''))), ''),
                         NULLIF(LOWER(TRIM(COALESCE(s.location_remarks, ''))), '')
                     ))
-                    WHERE s.basis_of_record = 'PRESERVED_SPECIMEN'
+                    WHERE s.basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')
                         AND s.gbif_id BETWEEN {$from} AND {$to}
                     ON DUPLICATE KEY UPDATE
                         dataset_key                   = VALUES(dataset_key),

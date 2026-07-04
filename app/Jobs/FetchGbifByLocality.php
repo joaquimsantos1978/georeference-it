@@ -46,7 +46,7 @@ class FetchGbifByLocality implements ShouldQueue
                 $params = [
                     'locality'      => $localityString,
                     'hasCoordinate' => 'false',
-                    'basisOfRecord' => 'PRESERVED_SPECIMEN',
+                    'basisOfRecord' => ['PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN'],
                     'limit'         => 300,
                 ];
 
@@ -54,8 +54,18 @@ class FetchGbifByLocality implements ShouldQueue
                     $params['country'] = $this->countryCode;
                 }
 
+                // GBIF wants repeated "basisOfRecord=a&basisOfRecord=b" for an OR across
+                // values, not the "[0]=a&[1]=b" bracket form Http::get's array handling
+                // produces by default — build the query string manually.
+                $query = [];
+                foreach ($params as $key => $value) {
+                    foreach ((array) $value as $v) {
+                        $query[] = rawurlencode((string) $key) . '=' . rawurlencode((string) $v);
+                    }
+                }
+
                 $response = \Illuminate\Support\Facades\Http::timeout(30)
-                    ->get('https://api.gbif.org/v1/occurrence/search', $params);
+                    ->get('https://api.gbif.org/v1/occurrence/search?' . implode('&', $query));
 
                 if ($response->successful()) {
                     $results = $response->json()['results'] ?? [];

@@ -19,7 +19,7 @@ public function fetchByCountry(string $countryCode, int $offset = 0): array
     return $this->fetch([
         'country' => $countryCode,
         'hasCoordinate' => 'false',
-        'basisOfRecord' => 'PRESERVED_SPECIMEN',
+        'basisOfRecord' => ['PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN'],
         'limit' => self::PAGE_LIMIT,
         'offset' => $offset,
     ]);
@@ -30,7 +30,7 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
     return $this->fetch([
         'datasetKey' => $datasetKey,
         'hasCoordinate' => 'false',
-        'basisOfRecord' => 'PRESERVED_SPECIMEN',
+        'basisOfRecord' => ['PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN'],
         'limit' => self::PAGE_LIMIT,
         'offset' => $offset,
     ]);
@@ -47,11 +47,23 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         return $this->fetch($params);
     }
 
+    // GBIF's search API expects repeated "key=a&key=b" query params for an OR across
+    // multiple values of the same field, not the "key[0]=a&key[1]=b" bracket notation
+    // Guzzle/Laravel's Http::get produces by default for array values — GBIF silently
+    // ignores the bracketed form, so basisOfRecord filters with multiple values need to
+    // be built manually.
     private function fetch(array $params): array
     {
         try {
+            $query = [];
+            foreach ($params as $key => $value) {
+                foreach ((array) $value as $v) {
+                    $query[] = rawurlencode((string) $key) . '=' . rawurlencode((string) $v);
+                }
+            }
+
             $response = Http::timeout(30)
-                ->get(self::BASE_URL . '/occurrence/search', $params);
+                ->get(self::BASE_URL . '/occurrence/search?' . implode('&', $query));
 
             if (!$response->successful()) {
                 Log::error('GBIF API error', ['status' => $response->status(), 'params' => $params]);

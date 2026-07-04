@@ -77,7 +77,7 @@ class GbifRequestDownload extends Command
     private function buildPredicate(): array
     {
         $predicates = [
-            ['type' => 'equals', 'key' => 'BASIS_OF_RECORD', 'value' => 'PRESERVED_SPECIMEN'],
+            ['type' => 'in', 'key' => 'BASIS_OF_RECORD', 'values' => ['PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN']],
         ];
 
         if ($country = $this->option('country')) {
