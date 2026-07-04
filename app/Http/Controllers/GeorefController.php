@@ -12,6 +12,7 @@ use App\Models\Occurrence;
 use App\Models\PlatformSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -931,6 +932,53 @@ public function next(Request $request)
 
         return response()->json([]);
     }
+
+// Suggestions for the "Focus area" input — administrative areas only (municipality,
+// county, state/province), not individual locality descriptions. The old
+// searchLocality() endpoint ran a fulltext MATCH over locality_groups on every
+// keystroke, which got slow/blocked during heavy writes to that same table (e.g. the
+// monthly GBIF import). This filters an in-memory list built once (cached a day),
+// so typing never touches the database.
+public function searchFocusAreas(Request $request): \Illuminate\Http\JsonResponse
+{
+    $q = trim(mb_strtolower($request->get('q', '')));
+    if (strlen($q) < 2) {
+        return response()->json([]);
+    }
+
+    $areas = Cache::remember('georef:focus-areas', now()->addDay(), function () {
+        $rows = LocalityGroup::where('occurrence_count', '>', 0)
+            ->whereNull('deleted_at')
+            ->where(function ($sub) {
+                $sub->where('ungeoreferenced_count', '>', 0)
+                    ->orWhere('pending_count', '>', 0);
+            })
+            ->selectRaw('municipality, county, state_province, country_code, SUM(occurrence_count) as occ')
+            ->whereRaw("(municipality != '' OR county != '' OR state_province != '')")
+            ->groupBy('municipality', 'county', 'state_province', 'country_code')
+            ->get();
+
+        $areas = [];
+        foreach ($rows as $r) {
+            foreach (['municipality', 'county', 'state_province'] as $field) {
+                $name = trim((string) $r->$field);
+                if ($name === '') continue;
+                $key = mb_strtolower($name) . '|' . $r->country_code;
+                $areas[$key]['label']   = implode(', ', array_filter([$name, $r->country_code]));
+                $areas[$key]['name']    = $name;
+                $areas[$key]['country'] = $r->country_code;
+                $areas[$key]['occ']     = ($areas[$key]['occ'] ?? 0) + $r->occ;
+            }
+        }
+
+        return array_values($areas);
+    });
+
+    $matches = array_filter($areas, fn($a) => str_contains(mb_strtolower($a['name']), $q));
+    usort($matches, fn($a, $b) => $b['occ'] <=> $a['occ']);
+
+    return response()->json(array_slice(array_values($matches), 0, 8));
+}
 
 public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
 {

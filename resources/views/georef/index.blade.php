@@ -2547,22 +2547,17 @@ function loadByGbifKey(key) {
     function showFocusSuggestions(results) {
         if (!results.length) { hideFocusDropdown(); return; }
         focusDropdown.innerHTML = results.map(function(r) {
-            var badge = r.pending > 0
-                ? '<span style="font-size:9px;background:#fef9c3;color:#92400e;border-radius:3px;padding:1px 4px;margin-left:4px">'+r.pending+' pending</span>'
-                : (r.validated > 0 ? '<span style="font-size:9px;background:#dcfce7;color:#166534;border-radius:3px;padding:1px 4px;margin-left:4px">'+r.validated+' validated</span>' : '');
-            return '<div class="focus-ac-item" data-id="'+r.id+'" data-label="'+r.label.replace(/"/g,'&quot;')+'" style="padding:6px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;">' +
+            return '<div class="focus-ac-item" data-label="'+r.label.replace(/"/g,'&quot;')+'" style="padding:6px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;">' +
                 '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.label+'</span>' +
-                '<span style="flex-shrink:0;color:#9ca3af;font-size:10px;margin-left:6px;">'+r.occurrence_count+' occ.'+badge+'</span>' +
+                '<span style="flex-shrink:0;color:#9ca3af;font-size:10px;margin-left:6px;">'+r.occ+' occ.</span>' +
                 '</div>';
         }).join('');
         focusDropdown.querySelectorAll('.focus-ac-item').forEach(function(el) {
             el.addEventListener('mousedown', function(e) {
                 e.preventDefault();
                 focusInput.value = el.dataset.label;
-                window._georefFocus = el.dataset.label;
-                focusClear.style.display = 'block';
                 hideFocusDropdown();
-                loadGroup(parseInt(el.dataset.id));
+                applyFocus();
             });
             el.addEventListener('mouseover', function() { el.style.background = '#f9fafb'; });
             el.addEventListener('mouseout',  function() { el.style.background = ''; });
@@ -2575,7 +2570,7 @@ function loadByGbifKey(key) {
         var q = focusInput.value.trim();
         if (q.length < 2) { hideFocusDropdown(); return; }
         _focusTimer = setTimeout(function() {
-            fetch(APP_URL+'/georef/search-locality?q='+encodeURIComponent(q), {headers:{'Accept':'application/json'}})
+            fetch(APP_URL+'/georef/search-focus-areas?q='+encodeURIComponent(q), {headers:{'Accept':'application/json'}})
                 .then(r=>r.json()).then(showFocusSuggestions).catch(function(){});
         }, 250);
     });
