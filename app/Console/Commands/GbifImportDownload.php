@@ -53,13 +53,13 @@ class GbifImportDownload extends Command
             }
 
             // Step 2: extract occurrence.txt and parse meta.xml
-            [$csvPath, $colList, $ignoreHeader, $multimediaPath] = $this->extractAndMapColumns($zipPath);
+            [$csvPath, $colList, $ignoreHeader, $multimediaPath, $fieldsEnclosedBy] = $this->extractAndMapColumns($zipPath);
             if (!$csvPath) {
                 return self::FAILURE;
             }
 
             // Step 3: LOAD DATA LOCAL INFILE → gbif_staging
-            if (!$this->loadIntoStaging($csvPath, $colList)) {
+            if (!$this->loadIntoStaging($csvPath, $colList, $fieldsEnclosedBy)) {
                 return self::FAILURE;
             }
         } else {
@@ -245,6 +245,13 @@ class GbifImportDownload extends Command
         // Check if the DWCA has a header line to skip
         $ignoreHeader = (int) ($core['ignoreHeaderLines'] ?? 0);
 
+        // GBIF's occurrence.txt is a plain TSV with no field enclosure
+        // (fieldsEnclosedBy="" in meta.xml) — hardcoding ENCLOSED BY '"' let a single
+        // literal quote character anywhere in 283M rows of free-text fields (remarks,
+        // recordedBy, etc.) desync LOAD DATA's field parser for the rest of the file,
+        // silently collapsing everything after it into far fewer rows with no error.
+        $fieldsEnclosedBy = isset($core['fieldsEnclosedBy']) ? (string) $core['fieldsEnclosedBy'] : '"';
+
         // Also extract multimedia extension if present
         $multimediaPath = null;
         foreach ($xml->extension ?? [] as $ext) {
@@ -269,14 +276,14 @@ class GbifImportDownload extends Command
 
         $zip->close();
 
-        return [$csvTarget, $colList, $ignoreHeader, $multimediaPath];
+        return [$csvTarget, $colList, $ignoreHeader, $multimediaPath, $fieldsEnclosedBy];
     }
 
     // -------------------------------------------------------------------------
     // LOAD DATA LOCAL INFILE
     // -------------------------------------------------------------------------
 
-    private function loadIntoStaging(string $csvPath, array $colList): bool
+    private function loadIntoStaging(string $csvPath, array $colList, string $fieldsEnclosedBy = ''): bool
     {
         $this->info('Loading into gbif_staging...');
 
@@ -284,13 +291,20 @@ class GbifImportDownload extends Command
 
         $colString  = implode(', ', $colList);
         $escapedPath = str_replace('\\', '/', $csvPath);
+        // Only emit ENCLOSED BY when the archive actually declares one — GBIF's
+        // occurrence.txt normally has fieldsEnclosedBy="" (no quoting at all), and
+        // forcing '"' as an enclosure character lets a single stray quote in any
+        // free-text field desync the parser for the rest of the file.
+        $enclosedByClause = $fieldsEnclosedBy !== ''
+            ? "OPTIONALLY ENCLOSED BY '" . addslashes($fieldsEnclosedBy) . "'"
+            : '';
 
         try {
             DB::statement("
                 LOAD DATA LOCAL INFILE '{$escapedPath}'
                 INTO TABLE gbif_staging
                 CHARACTER SET utf8mb4
-                FIELDS TERMINATED BY '\\t' OPTIONALLY ENCLOSED BY '\"'
+                FIELDS TERMINATED BY '\\t' {$enclosedByClause}
                 LINES TERMINATED BY '\\n'
                 IGNORE 1 LINES
                 ({$colString})
