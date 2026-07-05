@@ -107,17 +107,9 @@ class ActivityController extends Controller
             ->limit(50)
             ->get();
 
-        $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
-            return DB::table('locality_groups')
-                ->select('country_code')
-                ->whereNull('deleted_at')
-                ->whereNotNull('country_code')
-                ->where('occurrence_count', '>', 0)
-                ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
-                ->distinct()
-                ->orderBy('country_code')
-                ->pluck('country_code');
-        });
+        // Pure cache read, refreshed hourly in the background by RefreshImpactCounts —
+        // see ImpactController for why this must never compute inline on a page request.
+        $countries = \Illuminate\Support\Facades\Cache::get('explore_countries:data', collect());
 
         return view('activity', compact('activities', 'filterUser', 'filterCountry', 'dropdownUsers', 'countries', 'isSystem'));
     }

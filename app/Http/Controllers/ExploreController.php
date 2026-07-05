@@ -78,17 +78,9 @@ class ExploreController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $countries = \Illuminate\Support\Facades\Cache::remember('explore_countries', 86400, function () {
-            return \Illuminate\Support\Facades\DB::table('locality_groups')
-                ->select('country_code')
-                ->whereNull('deleted_at')
-                ->whereNotNull('country_code')
-                ->where('occurrence_count', '>', 0)
-                ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
-                ->distinct()
-                ->orderBy('country_code')
-                ->pluck('country_code');
-        });
+        // Pure cache read, refreshed hourly in the background by RefreshImpactCounts —
+        // see ImpactController for why this must never compute inline on a page request.
+        $countries = \Illuminate\Support\Facades\Cache::get('explore_countries:data', collect());
 
         $currentDataset = null;
         if ($request->filled('dataset_key')) {

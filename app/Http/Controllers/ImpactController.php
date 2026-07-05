@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ImpactController extends Controller
@@ -17,15 +18,13 @@ class ImpactController extends Controller
         $perPage = 50;
         $page    = $request->integer('page', 1) ?: 1;
 
-        $cacheKey = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
-        $totalCount = $this->staleWhileRevalidate($cacheKey, 3600, function () use ($validStatuses, $status, $country) {
-            return DB::table('occurrences')
-                ->whereNull('deleted_at')
-                ->whereIn('georef_status', $validStatuses)
-                ->when($status && in_array($status, $validStatuses), fn($q) => $q->where('georef_status', $status))
-                ->when($country, fn($q) => $q->where('country_code', $country))
-                ->count();
-        });
+        // Pure cache read — never computes here. RefreshImpactCounts (scheduled hourly)
+        // is the only thing that ever runs this count query, so a page request can never
+        // be the one that gets stuck behind it. A previous version ran the count inline
+        // whenever the cache was stale, which still caused occasional 504s: whichever
+        // request happened to hit the stale window paid for the live query itself.
+        $cacheKey   = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
+        $totalCount = Cache::get($cacheKey . ':data', 0);
 
         $offset       = ($page - 1) * $perPage;
         $statusFilter = $status && in_array($status, $validStatuses) ? [$status] : $validStatuses;
@@ -90,61 +89,8 @@ class ImpactController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $countries = $this->staleWhileRevalidate('explore_countries', 86400, function () {
-            return DB::table('locality_groups')
-                ->select('country_code')
-                ->whereNull('deleted_at')
-                ->whereNotNull('country_code')
-                ->where('occurrence_count', '>', 0)
-                ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
-                ->distinct()
-                ->orderBy('country_code')
-                ->pluck('country_code');
-        }, collect());
+        $countries = Cache::get('explore_countries:data', collect());
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
-    }
-
-    // Same stale-while-revalidate pattern as StatsController: counting over ~230M
-    // occurrences is slow enough that a plain Cache::remember() TTL expiry let every
-    // concurrent request rerun the count in parallel — a stampede that caused 504s on
-    // this page. Data is kept forever and only refreshed by whichever single request
-    // wins the lock; everyone else (including that request, immediately) gets the last
-    // known count instead of waiting on or duplicating the query.
-    private function staleWhileRevalidate(string $key, int $maxAgeSeconds, \Closure $compute, $emptyFallback = 0)
-    {
-        $dataKey = $key . ':data';
-        $atKey   = $key . ':computed_at';
-        $cached  = \Illuminate\Support\Facades\Cache::get($dataKey);
-
-        $isStale = $cached === null
-            || \Illuminate\Support\Facades\Cache::get($atKey, 0) < now()->subSeconds($maxAgeSeconds)->timestamp;
-
-        if ($isStale) {
-            $lock = \Illuminate\Support\Facades\Cache::lock($key . ':lock', 300);
-            if ($lock->get()) {
-                try {
-                    $cached = $compute();
-                    \Illuminate\Support\Facades\Cache::forever($dataKey, $cached);
-                    \Illuminate\Support\Facades\Cache::forever($atKey, now()->timestamp);
-                } finally {
-                    $lock->release();
-                }
-            } elseif ($cached === null) {
-                // Someone else is already computing and we have nothing to serve yet
-                // (a cold cache right after deploy, hit by several requests at once).
-                // Wait briefly — well under a gateway timeout — instead of also
-                // running the same slow query ourselves.
-                try {
-                    $lock->block(10);
-                    $lock->release();
-                } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
-                    // Still running after 10s — fall through to the safe default below.
-                }
-                $cached = \Illuminate\Support\Facades\Cache::get($dataKey);
-            }
-        }
-
-        return $cached ?? $emptyFallback;
     }
 }

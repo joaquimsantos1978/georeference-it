@@ -3,6 +3,7 @@
 use App\Console\Commands\SendWeeklySummary;
 use App\Console\Commands\GbifMonthlyRefresh;
 use App\Console\Commands\GbifRefreshHeartbeat;
+use App\Console\Commands\RefreshImpactCounts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -53,6 +54,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // is actually running (checked via the cache flag it sets), so this is safe to
         // leave scheduled year-round.
         $schedule->command(GbifRefreshHeartbeat::class)->everyTwoHours();
+
+        // Keeps Impact/Explore/Activity's counts fresh without ever computing them
+        // inline on a page request (see ImpactController for why that caused 504s).
+        $schedule->command(RefreshImpactCounts::class)->hourly()->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
