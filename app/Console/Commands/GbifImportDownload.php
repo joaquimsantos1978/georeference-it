@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use SimpleXMLElement;
@@ -83,6 +84,7 @@ class GbifImportDownload extends Command
         if (!$this->option('skip-cleanup')) {
             $this->info('Truncating gbif_staging...');
             DB::statement('TRUNCATE TABLE gbif_staging');
+            Cache::forget('gbif:staging-loaded-from');
 
             foreach (array_filter([$zipPath, $csvPath ?? null, $multimediaPath ?? null]) as $file) {
                 if (is_string($file) && file_exists($file)) {
@@ -310,9 +312,29 @@ class GbifImportDownload extends Command
 
     private function loadIntoStaging(string $csvPath, array $colList, string $fieldsEnclosedBy = ''): bool
     {
+        // Skip re-running LOAD DATA if gbif_staging already holds this exact file (by
+        // path+size+mtime — cheap to check, unlike re-verifying via COUNT(*) on a
+        // 200M+ row table). This is the difference between a retry after a downstream
+        // failure taking minutes instead of redoing an hours-long reload for no reason —
+        // observed costing hours on production when a --key retry blindly re-truncated
+        // and reloaded staging that was already complete and correct.
+        $fingerprint = [
+            'path'  => realpath($csvPath) ?: $csvPath,
+            'size'  => filesize($csvPath),
+            'mtime' => filemtime($csvPath),
+        ];
+        $previous = Cache::get('gbif:staging-loaded-from');
+        if ($previous && $previous['path'] === $fingerprint['path']
+            && $previous['size'] === $fingerprint['size']
+            && $previous['mtime'] === $fingerprint['mtime']) {
+            $this->info("gbif_staging already loaded from this exact file ({$previous['rows']} rows), skipping LOAD DATA");
+            return true;
+        }
+
         $this->info('Loading into gbif_staging...');
 
         DB::statement('TRUNCATE TABLE gbif_staging');
+        Cache::forget('gbif:staging-loaded-from');
 
         $colString  = implode(', ', $colList);
         $escapedPath = str_replace('\\', '/', $csvPath);
@@ -343,6 +365,7 @@ class GbifImportDownload extends Command
 
         $count = DB::table('gbif_staging')->count();
         $this->info("Staged {$count} records");
+        Cache::forever('gbif:staging-loaded-from', $fingerprint + ['rows' => $count]);
         return true;
     }
 
