@@ -29,10 +29,33 @@ class GbifMonthlyRefresh extends Command
         Cache::forever(self::STATUS_KEY, $status);
     }
 
+    // A TTL-based lock doesn't fit how this actually gets operated: a stuck run is
+    // routinely killed by hand and immediately retried, and any fixed TTL is either too
+    // short (expires mid-legitimate-run, letting a real duplicate start) or too long
+    // (blocks a manual retry for hours after a kill, since SIGTERM/SIGKILL skip our own
+    // release-the-lock code). Recording the PID and checking /proc/{pid} instead means a
+    // killed process is detected as gone essentially immediately, no timeout to tune.
+    private function isProcessAlive(int $pid): bool
+    {
+        return @file_exists("/proc/{$pid}");
+    }
+
     public function handle(): int
     {
+        // ->withoutOverlapping() on the schedule only guards runs the scheduler itself
+        // kicks off — a manual `php artisan gbif:monthly-refresh --key=...` (which is
+        // exactly how this gets retried after a failure) bypasses it entirely. Nothing
+        // stopped two invocations from running concurrently and fighting over the same
+        // tables.
+        $existing = Cache::get(self::STATUS_KEY);
+        if ($existing && !empty($existing['running']) && !empty($existing['pid']) && $this->isProcessAlive($existing['pid'])) {
+            $this->error("Another gbif:monthly-refresh (PID {$existing['pid']}) is already running — exiting.");
+            Log::channel('single')->warning("[gbif:monthly-refresh] Skipped: PID {$existing['pid']} is still running");
+            return self::FAILURE;
+        }
+
         $start = now();
-        Cache::forever(self::STATUS_KEY, ['running' => true, 'started_at' => $start, 'step' => 'Starting', 'updated_at' => $start]);
+        Cache::forever(self::STATUS_KEY, ['running' => true, 'pid' => getmypid(), 'started_at' => $start, 'step' => 'Starting', 'updated_at' => $start]);
         Log::channel('single')->info('[gbif:monthly-refresh] Starting monthly refresh');
         $this->info("Starting monthly GBIF refresh at {$start}...");
 

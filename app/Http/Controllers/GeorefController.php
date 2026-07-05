@@ -946,7 +946,7 @@ public function searchFocusAreas(Request $request): \Illuminate\Http\JsonRespons
         return response()->json([]);
     }
 
-    $areas = Cache::remember('georef:focus-areas', now()->addDay(), function () {
+    $areas = $this->rememberWithLock('georef:focus-areas', now()->addDay(), function () {
         $rows = LocalityGroup::where('occurrence_count', '>', 0)
             ->whereNull('deleted_at')
             ->where(function ($sub) {
@@ -972,12 +972,45 @@ public function searchFocusAreas(Request $request): \Illuminate\Http\JsonRespons
         }
 
         return array_values($areas);
-    });
+    }, []);
 
     $matches = array_filter($areas, fn($a) => str_contains(mb_strtolower($a['name']), $q));
     usort($matches, fn($a, $b) => $b['occ'] <=> $a['occ']);
 
     return response()->json(array_slice(array_values($matches), 0, 8));
+}
+
+// Cache::remember() alone recomputes inline whenever the TTL expires — fine for a cheap
+// query, but locality_groups grew to tens of millions of rows, and this GROUP BY was
+// observed taking 280+ seconds. Two concurrent focus-input keystrokes hitting the same
+// expired cache both ran it in full, in parallel — the same stampede pattern fixed for
+// Impact/Stats earlier, just discovered here later once the table grew.
+private function rememberWithLock(string $key, \Illuminate\Support\Carbon $ttl, \Closure $compute, $emptyFallback)
+{
+    $dataKey = $key . ':data';
+    $cached  = Cache::get($dataKey);
+
+    if ($cached === null) {
+        $lock = Cache::lock($key . ':lock', 600);
+        if ($lock->get()) {
+            try {
+                $cached = $compute();
+                Cache::put($dataKey, $cached, $ttl);
+            } finally {
+                $lock->release();
+            }
+        } else {
+            try {
+                $lock->block(10);
+                $lock->release();
+            } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+                // Still running after 10s — fall through to the safe default below.
+            }
+            $cached = Cache::get($dataKey);
+        }
+    }
+
+    return $cached ?? $emptyFallback;
 }
 
 public function searchLocality(Request $request): \Illuminate\Http\JsonResponse
