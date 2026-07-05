@@ -362,58 +362,87 @@ class GbifImportDownload extends Command
         DB::statement("UPDATE gbif_staging SET county            = NULL WHERE county            REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'");
         DB::statement("UPDATE gbif_staging SET state_province    = NULL WHERE state_province    REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'");
 
-        $this->info('Step 1/3: Creating locality groups from staging...');
+        $this->info('Step 1/3: Creating locality groups from staging (in batches)...');
 
-        // Replicates LocalityGroup::hashFromOccurrence() in SQL:
-        // SHA1 of non-empty lowercased fields joined by '|'
-        // NULLIF(LOWER(TRIM(...)), '') converts empty → NULL so CONCAT_WS skips them
-        // COALESCE(verbatim_locality, locality): use verbatimLocality if present,
-        // else fall back to locality (DwC interpreted field). Both map to verbatim_locality
-        // column in locality_groups for grouping and display.
-        DB::statement("
-            INSERT IGNORE INTO locality_groups
-                (group_hash, country_code, continent, state_province, county, municipality,
-                 verbatim_locality, location_remarks, higher_geography, locality_string, created_at, updated_at)
-            SELECT
-                SHA1(CONCAT_WS('|',
-                    NULLIF(LOWER(TRIM(COALESCE(continent, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(country_code, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(state_province, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(county, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(municipality, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''), ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(water_body, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(island_group, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(island, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(higher_geography, ''))), ''),
-                    NULLIF(LOWER(TRIM(COALESCE(location_remarks, ''))), '')
-                )) AS group_hash,
-                MIN(country_code),
-                MIN(continent),
-                MIN(state_province),
-                MIN(county),
-                MIN(municipality),
-                MIN(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''))) ,
-                MIN(location_remarks),
-                MIN(higher_geography),
-                MIN(TRIM(CONCAT_WS(', ',
-                    NULLIF(continent, ''),
-                    NULLIF(country_code, ''),
-                    NULLIF(state_province, ''),
-                    NULLIF(county, ''),
-                    NULLIF(municipality, ''),
-                    NULLIF(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),'')), ''),
-                    NULLIF(water_body, ''),
-                    NULLIF(island_group, ''),
-                    NULLIF(island, ''),
-                    NULLIF(location_remarks, '')
-                ))),
-                NOW(),
-                NOW()
-            FROM gbif_staging
-            WHERE basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')
-            GROUP BY group_hash
-        ");
+        // Batched by gbif_id range, same reasoning as the occurrences upsert below: the
+        // single-statement version of this ran as ONE transaction over all 283M staging
+        // rows, observed locking 174M+ rows and 500MB+ of pure lock-structure memory for
+        // 4+ hours straight — a major contributor to the memory pressure that kept
+        // building throughout this import. INSERT IGNORE is safe to run per-chunk since
+        // group_hash already exists for a locality is simply skipped on later chunks;
+        // the only difference from one global GROUP BY is that MIN(country_code) etc. is
+        // taken from whichever chunk hashes to that group first, which is the same value
+        // in practice since every occurrence sharing a group_hash also shares those fields.
+        $groupBounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging WHERE basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')");
+
+        if ($groupBounds && $groupBounds->min_id !== null) {
+            $groupBatchSize = 500000;
+            $groupMinId     = (int) $groupBounds->min_id;
+            $groupMaxId     = (int) $groupBounds->max_id;
+            $groupTotalBatches = (int) ceil((($groupMaxId - $groupMinId) + 1) / $groupBatchSize);
+            $groupBatchNum  = 0;
+
+            for ($from = $groupMinId; $from <= $groupMaxId; $from += $groupBatchSize) {
+                $to = min($from + $groupBatchSize - 1, $groupMaxId);
+                $groupBatchNum++;
+
+                // Replicates LocalityGroup::hashFromOccurrence() in SQL:
+                // SHA1 of non-empty lowercased fields joined by '|'
+                // NULLIF(LOWER(TRIM(...)), '') converts empty → NULL so CONCAT_WS skips them
+                // COALESCE(verbatim_locality, locality): use verbatimLocality if present,
+                // else fall back to locality (DwC interpreted field). Both map to
+                // verbatim_locality column in locality_groups for grouping and display.
+                DB::statement("
+                    INSERT IGNORE INTO locality_groups
+                        (group_hash, country_code, continent, state_province, county, municipality,
+                         verbatim_locality, location_remarks, higher_geography, locality_string, created_at, updated_at)
+                    SELECT
+                        SHA1(CONCAT_WS('|',
+                            NULLIF(LOWER(TRIM(COALESCE(continent, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(country_code, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(state_province, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(county, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(municipality, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''), ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(water_body, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(island_group, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(island, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(higher_geography, ''))), ''),
+                            NULLIF(LOWER(TRIM(COALESCE(location_remarks, ''))), '')
+                        )) AS group_hash,
+                        MIN(country_code),
+                        MIN(continent),
+                        MIN(state_province),
+                        MIN(county),
+                        MIN(municipality),
+                        MIN(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''))) ,
+                        MIN(location_remarks),
+                        MIN(higher_geography),
+                        MIN(TRIM(CONCAT_WS(', ',
+                            NULLIF(continent, ''),
+                            NULLIF(country_code, ''),
+                            NULLIF(state_province, ''),
+                            NULLIF(county, ''),
+                            NULLIF(municipality, ''),
+                            NULLIF(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),'')), ''),
+                            NULLIF(water_body, ''),
+                            NULLIF(island_group, ''),
+                            NULLIF(island, ''),
+                            NULLIF(location_remarks, '')
+                        ))),
+                        NOW(),
+                        NOW()
+                    FROM gbif_staging
+                    WHERE basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')
+                        AND gbif_id BETWEEN {$from} AND {$to}
+                    GROUP BY group_hash
+                ");
+
+                if ($groupBatchNum % 20 === 0 || $groupBatchNum === $groupTotalBatches) {
+                    $this->line("  Batch {$groupBatchNum}/{$groupTotalBatches} (gbif_id {$from}-{$to})");
+                }
+            }
+        }
 
         $groupCount = DB::table('locality_groups')->count();
         $this->info("  Locality groups total: {$groupCount}");
