@@ -369,21 +369,41 @@ class GbifImportDownload extends Command
         return true;
     }
 
+    // Each of these used to be one UPDATE over all 283M staging rows in a single
+    // transaction — observed holding 100M+ rows locked and 300MB+ of pure
+    // lock-structure memory after 36 minutes, on track to OOM before finishing (same
+    // failure class as the unbatched locality_groups INSERT below). Batching by
+    // gbif_id range keeps each transaction's lock footprint bounded; safe to redo a
+    // batch since every predicate here is idempotent (re-nulling an already-null or
+    // already-valid value is a no-op).
+    private function cleanupStagingBatched(): void
+    {
+        $bounds = DB::table('gbif_staging')->selectRaw('MIN(gbif_id) as min_id, MAX(gbif_id) as max_id')->first();
+        if (!$bounds || $bounds->min_id === null) {
+            return;
+        }
+
+        $batchSize = 500000;
+        for ($start = $bounds->min_id; $start <= $bounds->max_id; $start += $batchSize) {
+            $end = $start + $batchSize - 1;
+
+            DB::statement("UPDATE gbif_staging SET country_code = NULL WHERE gbif_id BETWEEN ? AND ? AND country_code NOT REGEXP '^[A-Z]{2}$'", [$start, $end]);
+            DB::statement("UPDATE gbif_staging SET verbatim_locality = NULL WHERE gbif_id BETWEEN ? AND ? AND verbatim_locality REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'", [$start, $end]);
+            DB::statement("UPDATE gbif_staging SET locality          = NULL WHERE gbif_id BETWEEN ? AND ? AND locality          REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'", [$start, $end]);
+            DB::statement("UPDATE gbif_staging SET municipality      = NULL WHERE gbif_id BETWEEN ? AND ? AND municipality      REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+            DB::statement("UPDATE gbif_staging SET county            = NULL WHERE gbif_id BETWEEN ? AND ? AND county            REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+            DB::statement("UPDATE gbif_staging SET state_province    = NULL WHERE gbif_id BETWEEN ? AND ? AND state_province    REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // staging → locality_groups + occurrences
     // -------------------------------------------------------------------------
 
     private function processStaging(bool $pruneDeleted = false): void
     {
-        // Nullify country_code values that are not valid ISO 3166-1 alpha-2
-        DB::statement("UPDATE gbif_staging SET country_code = NULL WHERE country_code NOT REGEXP '^[A-Z]{2}$'");
-
-        // Nullify fields that contain obviously wrong data (UUIDs, ISO timestamps, empty-ish values)
-        DB::statement("UPDATE gbif_staging SET verbatim_locality = NULL WHERE verbatim_locality REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'");
-        DB::statement("UPDATE gbif_staging SET locality          = NULL WHERE locality          REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'");
-        DB::statement("UPDATE gbif_staging SET municipality      = NULL WHERE municipality      REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'");
-        DB::statement("UPDATE gbif_staging SET county            = NULL WHERE county            REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'");
-        DB::statement("UPDATE gbif_staging SET state_province    = NULL WHERE state_province    REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'");
+        $this->info('Step 0/3: Cleaning staged data (in batches)...');
+        $this->cleanupStagingBatched();
 
         $this->info('Step 1/3: Creating locality groups from staging (in batches)...');
 
