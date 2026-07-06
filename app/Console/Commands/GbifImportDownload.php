@@ -396,7 +396,14 @@ class GbifImportDownload extends Command
         // the only difference from one global GROUP BY is that MIN(country_code) etc. is
         // taken from whichever chunk hashes to that group first, which is the same value
         // in practice since every occurrence sharing a group_hash also shares those fields.
-        $groupBounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging WHERE basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')");
+        // Unfiltered on purpose: gbif_id is the primary key, so this is an instant lookup
+        // of the first/last row. Adding "WHERE basis_of_record IN (...)" here (there's no
+        // index on that column) forced a full 283M-row scan just to pick batch
+        // boundaries — observed taking 90+ minutes on production. The filter itself still
+        // applies correctly inside each batch's own INSERT below; an unfiltered ID range
+        // is fine for chunking purposes, it just means some chunks may include gbif_ids
+        // that don't match and contribute nothing.
+        $groupBounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging");
 
         if ($groupBounds && $groupBounds->min_id !== null) {
             $groupBatchSize = 500000;
@@ -476,7 +483,12 @@ class GbifImportDownload extends Command
         // INSERT ... ON DUPLICATE KEY UPDATE holds row locks on `occurrences` for a very long
         // time, which would stall user submissions for the duration. Chunking lets other
         // queries interleave between batches.
-        $bounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging WHERE basis_of_record IN ('PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN')");
+        //
+        // Unfiltered on purpose (see the identical comment above for Step 1) — gbif_id is
+        // the primary key, so this is instant; filtering by the unindexed basis_of_record
+        // forces a full table scan just to pick batch boundaries. The filter still applies
+        // inside each batch's own INSERT below.
+        $bounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging");
 
         if ($bounds && $bounds->min_id !== null) {
             $batchSize = 200000;
