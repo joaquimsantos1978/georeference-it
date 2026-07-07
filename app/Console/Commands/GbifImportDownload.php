@@ -29,10 +29,11 @@ class GbifImportDownload extends Command
     // showed the top-level "Step 2/6: Importing", with no visibility into hours of work
     // happening underneath it. Harmless no-op cache entry when run standalone outside
     // gbif:monthly-refresh (no 'running' flag set, so the heartbeat's own check ignores it).
-    private function markProgress(string $step): void
+    private function markProgress(string $step, array $counters = []): void
     {
         $status = Cache::get(\App\Console\Commands\GbifMonthlyRefresh::STATUS_KEY, []);
         $status['substep']    = $step;
+        $status['counters']   = $counters;
         $status['updated_at'] = now();
         Cache::forever(\App\Console\Commands\GbifMonthlyRefresh::STATUS_KEY, $status);
     }
@@ -405,21 +406,25 @@ class GbifImportDownload extends Command
         $batchSize    = 500000;
         $totalBatches = (int) ceil((($bounds->max_id - $bounds->min_id) + 1) / $batchSize);
         $batchNum     = 0;
+        $totals = [
+            'country_code_nulled' => 0, 'verbatim_locality_nulled' => 0, 'locality_nulled' => 0,
+            'municipality_nulled' => 0, 'county_nulled' => 0, 'state_province_nulled' => 0,
+        ];
 
         for ($start = $bounds->min_id; $start <= $bounds->max_id; $start += $batchSize) {
             $end = $start + $batchSize - 1;
             $batchNum++;
 
-            DB::statement("UPDATE gbif_staging SET country_code = NULL WHERE gbif_id BETWEEN ? AND ? AND country_code NOT REGEXP '^[A-Z]{2}$'", [$start, $end]);
-            DB::statement("UPDATE gbif_staging SET verbatim_locality = NULL WHERE gbif_id BETWEEN ? AND ? AND verbatim_locality REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'", [$start, $end]);
-            DB::statement("UPDATE gbif_staging SET locality          = NULL WHERE gbif_id BETWEEN ? AND ? AND locality          REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'", [$start, $end]);
-            DB::statement("UPDATE gbif_staging SET municipality      = NULL WHERE gbif_id BETWEEN ? AND ? AND municipality      REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
-            DB::statement("UPDATE gbif_staging SET county            = NULL WHERE gbif_id BETWEEN ? AND ? AND county            REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
-            DB::statement("UPDATE gbif_staging SET state_province    = NULL WHERE gbif_id BETWEEN ? AND ? AND state_province    REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+            $totals['country_code_nulled']      += DB::affectingStatement("UPDATE gbif_staging SET country_code = NULL WHERE gbif_id BETWEEN ? AND ? AND country_code NOT REGEXP '^[A-Z]{2}$'", [$start, $end]);
+            $totals['verbatim_locality_nulled'] += DB::affectingStatement("UPDATE gbif_staging SET verbatim_locality = NULL WHERE gbif_id BETWEEN ? AND ? AND verbatim_locality REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'", [$start, $end]);
+            $totals['locality_nulled']          += DB::affectingStatement("UPDATE gbif_staging SET locality          = NULL WHERE gbif_id BETWEEN ? AND ? AND locality          REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'", [$start, $end]);
+            $totals['municipality_nulled']      += DB::affectingStatement("UPDATE gbif_staging SET municipality      = NULL WHERE gbif_id BETWEEN ? AND ? AND municipality      REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+            $totals['county_nulled']            += DB::affectingStatement("UPDATE gbif_staging SET county            = NULL WHERE gbif_id BETWEEN ? AND ? AND county            REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+            $totals['state_province_nulled']    += DB::affectingStatement("UPDATE gbif_staging SET state_province    = NULL WHERE gbif_id BETWEEN ? AND ? AND state_province    REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
 
             if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
                 $this->line("  Cleanup batch {$batchNum}/{$totalBatches}");
-                $this->markProgress("Cleaning staged data: batch {$batchNum}/{$totalBatches}");
+                $this->markProgress("Cleaning staged data: batch {$batchNum}/{$totalBatches}", $totals);
             }
         }
     }
@@ -459,6 +464,7 @@ class GbifImportDownload extends Command
             $groupMaxId     = (int) $groupBounds->max_id;
             $groupTotalBatches = (int) ceil((($groupMaxId - $groupMinId) + 1) / $groupBatchSize);
             $groupBatchNum  = 0;
+            $groupsCreated  = 0;
 
             for ($from = $groupMinId; $from <= $groupMaxId; $from += $groupBatchSize) {
                 $to = min($from + $groupBatchSize - 1, $groupMaxId);
@@ -470,7 +476,7 @@ class GbifImportDownload extends Command
                 // COALESCE(verbatim_locality, locality): use verbatimLocality if present,
                 // else fall back to locality (DwC interpreted field). Both map to
                 // verbatim_locality column in locality_groups for grouping and display.
-                DB::statement("
+                $groupsCreated += DB::affectingStatement("
                     INSERT IGNORE INTO locality_groups
                         (group_hash, country_code, continent, state_province, county, municipality,
                          verbatim_locality, location_remarks, higher_geography, locality_string, created_at, updated_at)
@@ -518,7 +524,7 @@ class GbifImportDownload extends Command
 
                 if ($groupBatchNum % 20 === 0 || $groupBatchNum === $groupTotalBatches) {
                     $this->line("  Batch {$groupBatchNum}/{$groupTotalBatches} (gbif_id {$from}-{$to})");
-                    $this->markProgress("Creating locality groups: batch {$groupBatchNum}/{$groupTotalBatches}");
+                    $this->markProgress("Creating locality groups: batch {$groupBatchNum}/{$groupTotalBatches}", ['new_locality_groups' => $groupsCreated]);
                 }
             }
         }
@@ -545,12 +551,13 @@ class GbifImportDownload extends Command
             $maxId     = (int) $bounds->max_id;
             $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
             $batchNum  = 0;
+            $rowsTouched = 0; // MySQL counts an INSERT as 1 and an ON DUPLICATE KEY UPDATE as 2 affected rows
 
             for ($from = $minId; $from <= $maxId; $from += $batchSize) {
                 $to = min($from + $batchSize - 1, $maxId);
                 $batchNum++;
 
-                DB::statement("
+                $rowsTouched += DB::affectingStatement("
                     INSERT INTO occurrences
                         (gbif_occurrence_key, dataset_key, publisher_key, basis_of_record,
                          institution_code, collection_code, catalog_number, recorded_by,
@@ -629,7 +636,7 @@ class GbifImportDownload extends Command
 
                 $this->line("  Batch {$batchNum}/{$totalBatches} done (gbif_id {$from}–{$to})");
                 if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
-                    $this->markProgress("Upserting occurrences: batch {$batchNum}/{$totalBatches}");
+                    $this->markProgress("Upserting occurrences: batch {$batchNum}/{$totalBatches}", ['occurrence_rows_touched' => $rowsTouched]);
                 }
 
                 // Brief pause between batches so queued user requests get a chance to run.
@@ -655,12 +662,13 @@ class GbifImportDownload extends Command
                 $maxId        = (int) $occBounds->max_id;
                 $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
                 $batchNum     = 0;
+                $softDeleted  = 0;
 
                 for ($from = $minId; $from <= $maxId; $from += $batchSize) {
                     $to = min($from + $batchSize - 1, $maxId);
                     $batchNum++;
 
-                    DB::statement("
+                    $softDeleted += DB::affectingStatement("
                         UPDATE occurrences o
                         LEFT JOIN gbif_staging s ON s.gbif_id = CAST(o.gbif_occurrence_key AS UNSIGNED)
                         SET o.deleted_at = NOW()
@@ -671,7 +679,7 @@ class GbifImportDownload extends Command
 
                     $this->line("  Batch {$batchNum}/{$totalBatches} done (occurrence id {$from}–{$to})");
                     if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
-                        $this->markProgress("Soft-deleting removed occurrences: batch {$batchNum}/{$totalBatches}");
+                        $this->markProgress("Soft-deleting removed occurrences: batch {$batchNum}/{$totalBatches}", ['occurrences_soft_deleted' => $softDeleted]);
                     }
                     usleep(200000);
                 }
