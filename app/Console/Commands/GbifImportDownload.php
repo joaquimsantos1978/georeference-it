@@ -38,6 +38,31 @@ class GbifImportDownload extends Command
         Cache::forever(\App\Console\Commands\GbifMonthlyRefresh::STATUS_KEY, $status);
     }
 
+    // Checkpointing so a crash/restart resumes from the last completed batch instead of
+    // redoing hours of already-processed gbif_id ranges from scratch every time — this
+    // used to be a real cost, not just wasted time: each restart re-ran already-finished
+    // batches, which is what kept triggering fresh OOM exposure windows on a server that's
+    // already crashing under memory pressure. A per-row status column on gbif_staging
+    // (283M rows) would mean writing to every row at least twice; a single cached integer
+    // per stage is free by comparison and just as correct, since batches are always walked
+    // in the same gbif_id order.
+    private function getCheckpoint(string $stage): ?int
+    {
+        return Cache::get("gbif:progress:{$stage}");
+    }
+
+    private function setCheckpoint(string $stage, int $throughId): void
+    {
+        Cache::forever("gbif:progress:{$stage}", $throughId);
+    }
+
+    private function clearCheckpoints(): void
+    {
+        foreach (['cleanup', 'locality_groups', 'occurrences_upsert', 'prune_deleted'] as $stage) {
+            Cache::forget("gbif:progress:{$stage}");
+        }
+    }
+
     public function handle(): int
     {
         $this->storageDir = storage_path('gbif');
@@ -101,6 +126,7 @@ class GbifImportDownload extends Command
             $this->markProgress('Cleaning up: truncating gbif_staging and removing downloaded files');
             DB::statement('TRUNCATE TABLE gbif_staging');
             Cache::forget('gbif:staging-loaded-from');
+            $this->clearCheckpoints();
 
             foreach (array_filter([$zipPath, $csvPath ?? null, $multimediaPath ?? null]) as $file) {
                 if (is_string($file) && file_exists($file)) {
@@ -355,6 +381,7 @@ class GbifImportDownload extends Command
 
         DB::statement('TRUNCATE TABLE gbif_staging');
         Cache::forget('gbif:staging-loaded-from');
+        $this->clearCheckpoints(); // stale otherwise — staging content is about to change
 
         $colString  = implode(', ', $colList);
         $escapedPath = str_replace('\\', '/', $csvPath);
@@ -405,13 +432,18 @@ class GbifImportDownload extends Command
 
         $batchSize    = 500000;
         $totalBatches = (int) ceil((($bounds->max_id - $bounds->min_id) + 1) / $batchSize);
-        $batchNum     = 0;
+        $resumeFrom   = $this->getCheckpoint('cleanup');
+        $startId      = $resumeFrom !== null ? $resumeFrom + 1 : (int) $bounds->min_id;
+        $batchNum     = $resumeFrom !== null ? (int) floor(($resumeFrom - $bounds->min_id + 1) / $batchSize) : 0;
+        if ($resumeFrom !== null) {
+            $this->info("  Resuming cleanup from gbif_id {$startId} (batch " . ($batchNum + 1) . "/{$totalBatches})");
+        }
         $totals = [
             'country_code_nulled' => 0, 'verbatim_locality_nulled' => 0, 'locality_nulled' => 0,
             'municipality_nulled' => 0, 'county_nulled' => 0, 'state_province_nulled' => 0,
         ];
 
-        for ($start = $bounds->min_id; $start <= $bounds->max_id; $start += $batchSize) {
+        for ($start = $startId; $start <= $bounds->max_id; $start += $batchSize) {
             $end = $start + $batchSize - 1;
             $batchNum++;
 
@@ -421,6 +453,8 @@ class GbifImportDownload extends Command
             $totals['municipality_nulled']      += DB::affectingStatement("UPDATE gbif_staging SET municipality      = NULL WHERE gbif_id BETWEEN ? AND ? AND municipality      REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
             $totals['county_nulled']            += DB::affectingStatement("UPDATE gbif_staging SET county            = NULL WHERE gbif_id BETWEEN ? AND ? AND county            REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
             $totals['state_province_nulled']    += DB::affectingStatement("UPDATE gbif_staging SET state_province    = NULL WHERE gbif_id BETWEEN ? AND ? AND state_province    REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+
+            $this->setCheckpoint('cleanup', $end);
 
             if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
                 $this->line("  Cleanup batch {$batchNum}/{$totalBatches}");
@@ -463,10 +497,15 @@ class GbifImportDownload extends Command
             $groupMinId     = (int) $groupBounds->min_id;
             $groupMaxId     = (int) $groupBounds->max_id;
             $groupTotalBatches = (int) ceil((($groupMaxId - $groupMinId) + 1) / $groupBatchSize);
-            $groupBatchNum  = 0;
-            $groupsCreated  = 0;
+            $groupResumeFrom = $this->getCheckpoint('locality_groups');
+            $groupStartId    = $groupResumeFrom !== null ? $groupResumeFrom + 1 : $groupMinId;
+            $groupBatchNum   = $groupResumeFrom !== null ? (int) floor(($groupResumeFrom - $groupMinId + 1) / $groupBatchSize) : 0;
+            $groupsCreated   = 0;
+            if ($groupResumeFrom !== null) {
+                $this->info("  Resuming locality_groups from gbif_id {$groupStartId} (batch " . ($groupBatchNum + 1) . "/{$groupTotalBatches})");
+            }
 
-            for ($from = $groupMinId; $from <= $groupMaxId; $from += $groupBatchSize) {
+            for ($from = $groupStartId; $from <= $groupMaxId; $from += $groupBatchSize) {
                 $to = min($from + $groupBatchSize - 1, $groupMaxId);
                 $groupBatchNum++;
 
@@ -522,6 +561,8 @@ class GbifImportDownload extends Command
                     GROUP BY group_hash
                 ");
 
+                $this->setCheckpoint('locality_groups', $to);
+
                 if ($groupBatchNum % 20 === 0 || $groupBatchNum === $groupTotalBatches) {
                     $this->line("  Batch {$groupBatchNum}/{$groupTotalBatches} (gbif_id {$from}-{$to})");
                     $this->markProgress("Creating locality groups: batch {$groupBatchNum}/{$groupTotalBatches}", ['new_locality_groups' => $groupsCreated]);
@@ -550,10 +591,15 @@ class GbifImportDownload extends Command
             $minId     = (int) $bounds->min_id;
             $maxId     = (int) $bounds->max_id;
             $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
-            $batchNum  = 0;
+            $resumeFrom = $this->getCheckpoint('occurrences_upsert');
+            $startId    = $resumeFrom !== null ? $resumeFrom + 1 : $minId;
+            $batchNum   = $resumeFrom !== null ? (int) floor(($resumeFrom - $minId + 1) / $batchSize) : 0;
             $rowsTouched = 0; // MySQL counts an INSERT as 1 and an ON DUPLICATE KEY UPDATE as 2 affected rows
+            if ($resumeFrom !== null) {
+                $this->info("  Resuming occurrences upsert from gbif_id {$startId} (batch " . ($batchNum + 1) . "/{$totalBatches})");
+            }
 
-            for ($from = $minId; $from <= $maxId; $from += $batchSize) {
+            for ($from = $startId; $from <= $maxId; $from += $batchSize) {
                 $to = min($from + $batchSize - 1, $maxId);
                 $batchNum++;
 
@@ -634,6 +680,8 @@ class GbifImportDownload extends Command
                         updated_at = NOW()
                 ");
 
+                $this->setCheckpoint('occurrences_upsert', $to);
+
                 $this->line("  Batch {$batchNum}/{$totalBatches} done (gbif_id {$from}–{$to})");
                 if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
                     $this->markProgress("Upserting occurrences: batch {$batchNum}/{$totalBatches}", ['occurrence_rows_touched' => $rowsTouched]);
@@ -661,10 +709,15 @@ class GbifImportDownload extends Command
                 $minId        = (int) $occBounds->min_id;
                 $maxId        = (int) $occBounds->max_id;
                 $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
-                $batchNum     = 0;
+                $resumeFrom   = $this->getCheckpoint('prune_deleted');
+                $startId      = $resumeFrom !== null ? $resumeFrom + 1 : $minId;
+                $batchNum     = $resumeFrom !== null ? (int) floor(($resumeFrom - $minId + 1) / $batchSize) : 0;
                 $softDeleted  = 0;
+                if ($resumeFrom !== null) {
+                    $this->info("  Resuming prune-deleted from occurrence id {$startId} (batch " . ($batchNum + 1) . "/{$totalBatches})");
+                }
 
-                for ($from = $minId; $from <= $maxId; $from += $batchSize) {
+                for ($from = $startId; $from <= $maxId; $from += $batchSize) {
                     $to = min($from + $batchSize - 1, $maxId);
                     $batchNum++;
 
@@ -676,6 +729,8 @@ class GbifImportDownload extends Command
                           AND o.deleted_at IS NULL
                           AND o.id BETWEEN {$from} AND {$to}
                     ");
+
+                    $this->setCheckpoint('prune_deleted', $to);
 
                     $this->line("  Batch {$batchNum}/{$totalBatches} done (occurrence id {$from}–{$to})");
                     if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
