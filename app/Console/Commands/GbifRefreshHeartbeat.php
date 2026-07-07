@@ -49,6 +49,7 @@ class GbifRefreshHeartbeat extends Command
 
         $elapsed  = $status['started_at']->diffForHumans(now(), true);
         $step     = $status['step'] ?? 'unknown';
+        $substep  = $status['substep'] ?? null;
         $stagingCount = (int) DB::table('gbif_staging')->count();
 
         $freeGb = round(disk_free_space('/') / 1024 / 1024 / 1024, 1);
@@ -60,6 +61,7 @@ class GbifRefreshHeartbeat extends Command
 
         $body = "GBIF monthly refresh is still running ({$elapsed} elapsed).\n\n"
             . "Current step: {$step}\n"
+            . ($substep ? "Current sub-step: {$substep}\n" : '')
             . "gbif_staging rows: " . number_format($stagingCount) . "\n"
             . "Disk free: {$freeGb} GB\n"
             . ($memAvailableGb !== null ? "Memory available: {$memAvailableGb} GB\n" : '');

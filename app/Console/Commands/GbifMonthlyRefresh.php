@@ -25,6 +25,7 @@ class GbifMonthlyRefresh extends Command
     {
         $status = Cache::get(self::STATUS_KEY, []);
         $status['step'] = $step;
+        unset($status['substep']); // stale otherwise — see GbifImportDownload::markProgress()
         $status['updated_at'] = now();
         Cache::forever(self::STATUS_KEY, $status);
     }

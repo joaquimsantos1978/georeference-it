@@ -23,6 +23,20 @@ class GbifImportDownload extends Command
 
     private string $storageDir;
 
+    // Writes into the same cache key GbifRefreshHeartbeat reads, so the periodic email
+    // reports which actual sub-phase is running (LOAD DATA vs cleanup vs locality_groups
+    // vs occurrences upsert) and how far along it is — previously the heartbeat only ever
+    // showed the top-level "Step 2/6: Importing", with no visibility into hours of work
+    // happening underneath it. Harmless no-op cache entry when run standalone outside
+    // gbif:monthly-refresh (no 'running' flag set, so the heartbeat's own check ignores it).
+    private function markProgress(string $step): void
+    {
+        $status = Cache::get(\App\Console\Commands\GbifMonthlyRefresh::STATUS_KEY, []);
+        $status['substep']    = $step;
+        $status['updated_at'] = now();
+        Cache::forever(\App\Console\Commands\GbifMonthlyRefresh::STATUS_KEY, $status);
+    }
+
     public function handle(): int
     {
         $this->storageDir = storage_path('gbif');
@@ -83,6 +97,7 @@ class GbifImportDownload extends Command
         // still retry without re-downloading/re-extracting.
         if (!$this->option('skip-cleanup')) {
             $this->info('Truncating gbif_staging...');
+            $this->markProgress('Cleaning up: truncating gbif_staging and removing downloaded files');
             DB::statement('TRUNCATE TABLE gbif_staging');
             Cache::forget('gbif:staging-loaded-from');
 
@@ -112,6 +127,7 @@ class GbifImportDownload extends Command
         }
 
         $this->info("Polling GBIF download status for: {$key}");
+        $this->markProgress('Waiting for GBIF to prepare the download');
 
         for ($attempt = 0; $attempt < 480; $attempt++) { // max 8 hours
             $response = Http::get("https://api.gbif.org/v1/occurrence/download/{$key}");
@@ -144,6 +160,7 @@ class GbifImportDownload extends Command
     private function downloadZip(string $url, string $targetPath): ?string
     {
         $this->info("Downloading: {$url}");
+        $this->markProgress('Downloading ZIP from GBIF');
 
         $user = config('gbif.username');
         $pass = config('gbif.password');
@@ -254,6 +271,7 @@ class GbifImportDownload extends Command
             $this->info("{$csvTarget} already extracted (" . $this->bytes(filesize($csvTarget)) . '), skipping');
         } else {
             $this->info("Extracting {$location} → {$csvTarget}");
+            $this->markProgress("Extracting {$location} from ZIP");
             $src  = $zip->getStream($location);
             $dest = fopen($csvTarget, 'wb');
             stream_copy_to_stream($src, $dest);
@@ -332,6 +350,7 @@ class GbifImportDownload extends Command
         }
 
         $this->info('Loading into gbif_staging...');
+        $this->markProgress('LOAD DATA INFILE → gbif_staging (single long-running statement, no batch progress)');
 
         DB::statement('TRUNCATE TABLE gbif_staging');
         Cache::forget('gbif:staging-loaded-from');
@@ -383,9 +402,13 @@ class GbifImportDownload extends Command
             return;
         }
 
-        $batchSize = 500000;
+        $batchSize    = 500000;
+        $totalBatches = (int) ceil((($bounds->max_id - $bounds->min_id) + 1) / $batchSize);
+        $batchNum     = 0;
+
         for ($start = $bounds->min_id; $start <= $bounds->max_id; $start += $batchSize) {
             $end = $start + $batchSize - 1;
+            $batchNum++;
 
             DB::statement("UPDATE gbif_staging SET country_code = NULL WHERE gbif_id BETWEEN ? AND ? AND country_code NOT REGEXP '^[A-Z]{2}$'", [$start, $end]);
             DB::statement("UPDATE gbif_staging SET verbatim_locality = NULL WHERE gbif_id BETWEEN ? AND ? AND verbatim_locality REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'", [$start, $end]);
@@ -393,6 +416,11 @@ class GbifImportDownload extends Command
             DB::statement("UPDATE gbif_staging SET municipality      = NULL WHERE gbif_id BETWEEN ? AND ? AND municipality      REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
             DB::statement("UPDATE gbif_staging SET county            = NULL WHERE gbif_id BETWEEN ? AND ? AND county            REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
             DB::statement("UPDATE gbif_staging SET state_province    = NULL WHERE gbif_id BETWEEN ? AND ? AND state_province    REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'", [$start, $end]);
+
+            if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
+                $this->line("  Cleanup batch {$batchNum}/{$totalBatches}");
+                $this->markProgress("Cleaning staged data: batch {$batchNum}/{$totalBatches}");
+            }
         }
     }
 
@@ -490,6 +518,7 @@ class GbifImportDownload extends Command
 
                 if ($groupBatchNum % 20 === 0 || $groupBatchNum === $groupTotalBatches) {
                     $this->line("  Batch {$groupBatchNum}/{$groupTotalBatches} (gbif_id {$from}-{$to})");
+                    $this->markProgress("Creating locality groups: batch {$groupBatchNum}/{$groupTotalBatches}");
                 }
             }
         }
@@ -599,6 +628,9 @@ class GbifImportDownload extends Command
                 ");
 
                 $this->line("  Batch {$batchNum}/{$totalBatches} done (gbif_id {$from}–{$to})");
+                if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
+                    $this->markProgress("Upserting occurrences: batch {$batchNum}/{$totalBatches}");
+                }
 
                 // Brief pause between batches so queued user requests get a chance to run.
                 usleep(200000);
@@ -638,6 +670,9 @@ class GbifImportDownload extends Command
                     ");
 
                     $this->line("  Batch {$batchNum}/{$totalBatches} done (occurrence id {$from}–{$to})");
+                    if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
+                        $this->markProgress("Soft-deleting removed occurrences: batch {$batchNum}/{$totalBatches}");
+                    }
                     usleep(200000);
                 }
             }
@@ -737,6 +772,7 @@ class GbifImportDownload extends Command
     private function importMultimedia(string $path): void
     {
         $this->info('Importing multimedia...');
+        $this->markProgress('Importing multimedia');
 
         $fh = fopen($path, 'r');
         if (!$fh) {
