@@ -58,7 +58,7 @@ class GbifImportDownload extends Command
 
     private function clearCheckpoints(): void
     {
-        foreach (['cleanup', 'locality_groups', 'occurrences_upsert', 'prune_deleted'] as $stage) {
+        foreach (['cleanup', 'staging_process', 'prune_deleted'] as $stage) {
             Cache::forget("gbif:progress:{$stage}");
         }
     }
@@ -469,45 +469,47 @@ class GbifImportDownload extends Command
 
     private function processStaging(bool $pruneDeleted = false): void
     {
-        $this->info('Step 0/3: Cleaning staged data (in batches)...');
+        $this->info('Step 0/2: Cleaning staged data (in batches)...');
         $this->cleanupStagingBatched();
 
-        $this->info('Step 1/3: Creating locality groups from staging (in batches)...');
+        $this->info('Step 1/2: Creating locality groups + upserting occurrences together, per batch...');
 
-        // Batched by gbif_id range, same reasoning as the occurrences upsert below: the
-        // single-statement version of this ran as ONE transaction over all 283M staging
-        // rows, observed locking 174M+ rows and 500MB+ of pure lock-structure memory for
-        // 4+ hours straight — a major contributor to the memory pressure that kept
-        // building throughout this import. INSERT IGNORE is safe to run per-chunk since
-        // group_hash already exists for a locality is simply skipped on later chunks;
-        // the only difference from one global GROUP BY is that MIN(country_code) etc. is
-        // taken from whichever chunk hashes to that group first, which is the same value
-        // in practice since every occurrence sharing a group_hash also shares those fields.
-        // Unfiltered on purpose: gbif_id is the primary key, so this is an instant lookup
-        // of the first/last row. Adding "WHERE basis_of_record IN (...)" here (there's no
-        // index on that column) forced a full 283M-row scan just to pick batch
-        // boundaries — observed taking 90+ minutes on production. The filter itself still
-        // applies correctly inside each batch's own INSERT below; an unfiltered ID range
-        // is fine for chunking purposes, it just means some chunks may include gbif_ids
-        // that don't match and contribute nothing.
-        $groupBounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging");
+        // Locality-group creation and the occurrences upsert used to be two separate
+        // full passes over all 283M staging rows — first create every group, then a
+        // second pass to look each one up again. That's redundant: within a single
+        // gbif_id batch, INSERT IGNORE INTO locality_groups already guarantees every
+        // group_hash *that batch itself needs* exists by the time the occurrences
+        // INSERT for that same batch runs its JOIN — a later batch can never be the
+        // one that first creates a group an earlier batch's rows depend on, since each
+        // batch only ever looks up hashes computed from its own rows. So both
+        // statements can run back-to-back per batch instead of as two separate loops,
+        // halving the number of full scans over gbif_staging and cutting the resumable
+        // unit down to one checkpoint instead of two.
+        //
+        // Unfiltered bounds on purpose: gbif_id is the primary key, so this is an
+        // instant lookup of the first/last row. Filtering by the unindexed
+        // basis_of_record here would force a full 283M-row scan just to pick batch
+        // boundaries — observed taking 90+ minutes on production. The filter still
+        // applies correctly inside each batch's own INSERTs below.
+        $bounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging");
 
-        if ($groupBounds && $groupBounds->min_id !== null) {
-            $groupBatchSize = 500000;
-            $groupMinId     = (int) $groupBounds->min_id;
-            $groupMaxId     = (int) $groupBounds->max_id;
-            $groupTotalBatches = (int) ceil((($groupMaxId - $groupMinId) + 1) / $groupBatchSize);
-            $groupResumeFrom = $this->getCheckpoint('locality_groups');
-            $groupStartId    = $groupResumeFrom !== null ? $groupResumeFrom + 1 : $groupMinId;
-            $groupBatchNum   = $groupResumeFrom !== null ? (int) floor(($groupResumeFrom - $groupMinId + 1) / $groupBatchSize) : 0;
-            $groupsCreated   = 0;
-            if ($groupResumeFrom !== null) {
-                $this->info("  Resuming locality_groups from gbif_id {$groupStartId} (batch " . ($groupBatchNum + 1) . "/{$groupTotalBatches})");
+        if ($bounds && $bounds->min_id !== null) {
+            $batchSize = 200000;
+            $minId     = (int) $bounds->min_id;
+            $maxId     = (int) $bounds->max_id;
+            $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
+            $resumeFrom = $this->getCheckpoint('staging_process');
+            $startId    = $resumeFrom !== null ? $resumeFrom + 1 : $minId;
+            $batchNum   = $resumeFrom !== null ? (int) floor(($resumeFrom - $minId + 1) / $batchSize) : 0;
+            $groupsCreated = 0;
+            $rowsTouched   = 0; // MySQL counts an INSERT as 1 and an ON DUPLICATE KEY UPDATE as 2 affected rows
+            if ($resumeFrom !== null) {
+                $this->info("  Resuming from gbif_id {$startId} (batch " . ($batchNum + 1) . "/{$totalBatches})");
             }
 
-            for ($from = $groupStartId; $from <= $groupMaxId; $from += $groupBatchSize) {
-                $to = min($from + $groupBatchSize - 1, $groupMaxId);
-                $groupBatchNum++;
+            for ($from = $startId; $from <= $maxId; $from += $batchSize) {
+                $to = min($from + $batchSize - 1, $maxId);
+                $batchNum++;
 
                 // Replicates LocalityGroup::hashFromOccurrence() in SQL:
                 // SHA1 of non-empty lowercased fields joined by '|'
@@ -560,48 +562,6 @@ class GbifImportDownload extends Command
                         AND gbif_id BETWEEN {$from} AND {$to}
                     GROUP BY group_hash
                 ");
-
-                $this->setCheckpoint('locality_groups', $to);
-
-                if ($groupBatchNum % 20 === 0 || $groupBatchNum === $groupTotalBatches) {
-                    $this->line("  Batch {$groupBatchNum}/{$groupTotalBatches} (gbif_id {$from}-{$to})");
-                    $this->markProgress("Creating locality groups: batch {$groupBatchNum}/{$groupTotalBatches}", ['new_locality_groups' => $groupsCreated]);
-                }
-            }
-        }
-
-        $groupCount = DB::table('locality_groups')->count();
-        $this->info("  Locality groups total: {$groupCount}");
-
-        $this->info('Step 2/3: Upserting occurrences in batches (keeps the site responsive)...');
-
-        // Batch by gbif_id range instead of one giant statement — a single multi-million-row
-        // INSERT ... ON DUPLICATE KEY UPDATE holds row locks on `occurrences` for a very long
-        // time, which would stall user submissions for the duration. Chunking lets other
-        // queries interleave between batches.
-        //
-        // Unfiltered on purpose (see the identical comment above for Step 1) — gbif_id is
-        // the primary key, so this is instant; filtering by the unindexed basis_of_record
-        // forces a full table scan just to pick batch boundaries. The filter still applies
-        // inside each batch's own INSERT below.
-        $bounds = DB::selectOne("SELECT MIN(gbif_id) AS min_id, MAX(gbif_id) AS max_id FROM gbif_staging");
-
-        if ($bounds && $bounds->min_id !== null) {
-            $batchSize = 200000;
-            $minId     = (int) $bounds->min_id;
-            $maxId     = (int) $bounds->max_id;
-            $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
-            $resumeFrom = $this->getCheckpoint('occurrences_upsert');
-            $startId    = $resumeFrom !== null ? $resumeFrom + 1 : $minId;
-            $batchNum   = $resumeFrom !== null ? (int) floor(($resumeFrom - $minId + 1) / $batchSize) : 0;
-            $rowsTouched = 0; // MySQL counts an INSERT as 1 and an ON DUPLICATE KEY UPDATE as 2 affected rows
-            if ($resumeFrom !== null) {
-                $this->info("  Resuming occurrences upsert from gbif_id {$startId} (batch " . ($batchNum + 1) . "/{$totalBatches})");
-            }
-
-            for ($from = $startId; $from <= $maxId; $from += $batchSize) {
-                $to = min($from + $batchSize - 1, $maxId);
-                $batchNum++;
 
                 $rowsTouched += DB::affectingStatement("
                     INSERT INTO occurrences
@@ -680,11 +640,14 @@ class GbifImportDownload extends Command
                         updated_at = NOW()
                 ");
 
-                $this->setCheckpoint('occurrences_upsert', $to);
+                $this->setCheckpoint('staging_process', $to);
 
                 $this->line("  Batch {$batchNum}/{$totalBatches} done (gbif_id {$from}–{$to})");
                 if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
-                    $this->markProgress("Upserting occurrences: batch {$batchNum}/{$totalBatches}", ['occurrence_rows_touched' => $rowsTouched]);
+                    $this->markProgress("Creating groups + upserting occurrences: batch {$batchNum}/{$totalBatches}", [
+                        'new_locality_groups'     => $groupsCreated,
+                        'occurrence_rows_touched' => $rowsTouched,
+                    ]);
                 }
 
                 // Brief pause between batches so queued user requests get a chance to run.
@@ -692,10 +655,13 @@ class GbifImportDownload extends Command
             }
         }
 
+        $groupCount = DB::table('locality_groups')->count();
+        $this->info("  Locality groups total: {$groupCount}");
+
         if (!$pruneDeleted) {
-            $this->line('Step 2b/3: Skipped (pass --prune-deleted on a full, unfiltered import to enable).');
+            $this->line('Step 1b/2: Skipped (pass --prune-deleted on a full, unfiltered import to enable).');
         } else {
-            $this->info('Step 2b/3: Soft-deleting occurrences no longer present in GBIF...');
+            $this->info('Step 1b/2: Soft-deleting occurrences no longer present in GBIF...');
 
             // Anything currently in `occurrences` whose key isn't in the fresh full staging import
             // is gone from GBIF (retracted, dataset removed, etc). Soft-delete rather than hard-delete
@@ -744,7 +710,7 @@ class GbifImportDownload extends Command
         $occCount = DB::table('occurrences')->count();
         $this->info("  Occurrences total: {$occCount}");
 
-        $this->info('Step 3/3: Updating group counters in batches...');
+        $this->info('Step 2/2: Updating group counters in batches...');
 
         // Batch by locality_groups.id range, same reasoning as the occurrences upsert above —
         // locality_groups is read on every /georef page load, so one giant UPDATE touching
