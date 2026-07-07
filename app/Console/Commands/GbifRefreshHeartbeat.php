@@ -22,6 +22,27 @@ class GbifRefreshHeartbeat extends Command
         }
 
         $email = config('gbif.notification_email');
+
+        // A crash (uncaught exception, e.g. the DB connection dropping mid-query when
+        // MariaDB itself gets OOM-killed) skips GbifMonthlyRefresh's own cleanup code
+        // entirely, leaving this status stuck at running=true forever with a PID that no
+        // longer exists — otherwise we'd keep emailing "still running" indefinitely for a
+        // process that's actually dead.
+        if (!empty($status['pid']) && !@file_exists("/proc/{$status['pid']}")) {
+            Cache::forget(GbifMonthlyRefresh::STATUS_KEY);
+            if ($email) {
+                try {
+                    Mail::raw(
+                        "GBIF monthly refresh (PID {$status['pid']}) is no longer running but never reported completion — it likely crashed. Last known step: " . ($status['step'] ?? 'unknown'),
+                        fn($m) => $m->to($email)->subject('GBIF monthly refresh — crashed')
+                    );
+                } catch (\Throwable $e) {
+                    $this->error('Failed to send crash notice email: ' . $e->getMessage());
+                }
+            }
+            return self::SUCCESS;
+        }
+
         if (!$email) {
             return self::SUCCESS;
         }
