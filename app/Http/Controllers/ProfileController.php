@@ -32,7 +32,9 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();
-        $user->fill(collect($request->validated())->except('avatar')->all());
+        // 'orcid' is never accepted here — only SocialiteController's OAuth callback may
+        // set it, so a stray/forged 'orcid' key in the request can't overwrite it.
+        $user->fill(collect($request->validated())->except(['avatar', 'orcid'])->all());
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

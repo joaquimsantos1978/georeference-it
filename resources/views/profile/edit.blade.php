@@ -106,11 +106,12 @@
                     @error('bio')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
 
-                {{-- ORCID: read-only if connected via OAuth, editable otherwise --}}
+                {{-- ORCID: only ever set via the real OAuth connection, never free text — a
+                     typed-in value would be an unverified claim with no proof of ownership,
+                     defeating the point of showing it as a "verified researcher" badge. --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         ORCID iD
-                        <span class="text-xs font-normal text-gray-400">(formato: 0000-0000-0000-0000)</span>
                     </label>
                     @if($user->provider === 'orcid')
                         <div class="flex items-center gap-3">
@@ -131,13 +132,12 @@
                                 class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
                         </div>
                     @else
-                        <input type="text" name="orcid" value="{{ old('orcid', $user->orcid) }}"
-                            placeholder="0000-0000-0000-0000"
-                            class="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500">
-                        @error('orcid')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
-                        <a href="{{ route('auth.social.redirect', 'orcid') }}" class="mt-1 inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline">
+                        @if($user->orcid)
+                            <p class="text-sm text-gray-500 mb-1">{{ $user->orcid }} <span class="text-xs text-gray-400">({{ __('not verified — connect via ORCID to confirm ownership') }})</span></p>
+                        @endif
+                        <a href="{{ route('auth.social.redirect', 'orcid') }}" class="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline">
                             <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-3 h-3">
-                            {{ __('Or connect your ORCID account') }}
+                            {{ __('Connect your ORCID account') }}
                         </a>
                     @endif
                 </div>

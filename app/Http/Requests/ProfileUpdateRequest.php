@@ -23,7 +23,10 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
             'bio'                  => ['nullable', 'string', 'max:500'],
-            'orcid'                => ['nullable', 'string', 'regex:/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/'],
+            // Deliberately no 'orcid' rule: it must only ever be set via the actual ORCID
+            // OAuth connection (SocialiteController), never typed in free-text — otherwise
+            // anyone could claim someone else's ORCID iD with zero proof of ownership,
+            // defeating the point of showing it as a "verified researcher" badge.
             'preferred_task'       => ['nullable', 'in:georef,validate,both'],
             'email_notifications'  => ['boolean'],
             'public_name'          => ['boolean'],
