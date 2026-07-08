@@ -116,10 +116,18 @@
                             <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-4 h-4">
                             <span class="text-sm text-gray-700 dark:text-gray-300">{{ $user->orcid }}</span>
                             <span class="text-xs text-gray-400">({{ __('connected via ORCID OAuth') }})</span>
-                            <form method="POST" action="{{ route('profile.orcid.disconnect') }}">
-                                @csrf @method('DELETE')
-                                <button type="submit" id="orcid-disconnect-btn" class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
-                            </form>
+                            {{-- Deliberately NOT a <form> here: this sits inside the "Profile information"
+                                 form above, and nested <form> elements are invalid HTML — the browser's
+                                 parser silently drops the inner <form> tag (keeping its child inputs/button,
+                                 but with no form of its own), so the button ends up submitting the OUTER
+                                 profile-update form instead. Confirmed live: no request to /profile/orcid
+                                 ever reached the server, no console error, because there was no bug in the
+                                 JS — there was simply no inner form to submit. Built dynamically instead,
+                                 appended to <body> (a valid, non-nested location) at click time. --}}
+                            <button type="button" id="orcid-disconnect-btn"
+                                data-disconnect-url="{{ route('profile.orcid.disconnect') }}"
+                                data-csrf-token="{{ csrf_token() }}"
+                                class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
                         </div>
                     @else
                         <input type="text" name="orcid" value="{{ old('orcid', $user->orcid) }}"
@@ -220,16 +228,10 @@
 
     @push('scripts')
     <script>
-        // Not using a native confirm() here — some environment (browser dialog suppression,
-        // a translation/DOM-rewriting extension, etc; unconfirmed which) was swallowing it
-        // silently: click did nothing, no console error, no request ever reached the server.
-        // A same-page two-click confirmation sidesteps native dialogs. The button stays a
-        // real type="submit" and the second click is left to submit natively — no
-        // getElementById()/.submit() call at click time, since something in the same
-        // environment was also turning that into "document.getElementById(...) is null"
-        // between the first and second click (DOM node presumably replaced by whatever's
-        // rewriting the page); preventDefault-then-let-through avoids depending on the node
-        // still being the one originally queried.
+        // Not using a native confirm() here — same-page two-click confirmation instead
+        // (also sidesteps a separate issue where some environment was silently swallowing
+        // confirm() with no dialog, no error). The button itself is deliberately not inside
+        // a <form> — see the HTML comment above it for why a nested one never worked.
         (function () {
             var btn = document.getElementById('orcid-disconnect-btn');
             if (!btn) return;
@@ -237,18 +239,37 @@
             var confirming = false;
             var resetTimer = null;
 
-            btn.addEventListener('click', function (e) {
+            btn.addEventListener('click', function () {
                 if (!confirming) {
-                    e.preventDefault();
                     confirming = true;
                     btn.textContent = {!! json_encode(__('Click again to confirm')) !!};
                     resetTimer = setTimeout(function () {
                         confirming = false;
                         btn.textContent = originalText;
                     }, 4000);
+                    return;
                 }
-                // Second click while confirming: no preventDefault — the browser submits
-                // the form natively.
+                clearTimeout(resetTimer);
+
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = btn.dataset.disconnectUrl;
+                form.style.display = 'none';
+
+                var tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '_token';
+                tokenInput.value = btn.dataset.csrfToken;
+                form.appendChild(tokenInput);
+
+                var methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'DELETE';
+                form.appendChild(methodInput);
+
+                document.body.appendChild(form);
+                form.submit();
             });
         })();
     </script>
