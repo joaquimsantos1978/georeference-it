@@ -51,6 +51,17 @@ class RefreshImpactCounts extends Command
 
         $this->info('Refreshed impact_count_* for ' . $statusOptions->count() . ' statuses x ' . $countryOptions->count() . ' countries');
 
+        // Pre-computes the Explore page's default (no filters applied) total count — by far
+        // the most common case, hit by anyone just landing on the page — so that view never
+        // has to fall back to computing it live (see ExploreController::countWithStaleWhileRevalidate).
+        // Filtered/searched views still compute lazily on demand; there are too many possible
+        // filter combinations to precompute them all here.
+        $exploreDefaultCount = DB::table('locality_groups')->where('occurrence_count', '>', 0)->count();
+        $exploreDefaultKey   = 'explore_count_' . md5(json_encode([]));
+        Cache::forever($exploreDefaultKey . ':data', $exploreDefaultCount);
+        Cache::forever($exploreDefaultKey . ':computed_at', now()->timestamp);
+        $this->info('Refreshed explore default count (' . $exploreDefaultCount . ')');
+
         return self::SUCCESS;
     }
 }

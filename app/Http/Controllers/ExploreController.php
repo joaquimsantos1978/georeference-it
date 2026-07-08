@@ -60,7 +60,7 @@ class ExploreController extends Controller
         $perPage  = 50;
         $page     = $request->integer('page', 1) ?: 1;
         $cacheKey = 'explore_count_' . md5(json_encode($request->only(['q', 'country', 'dataset_key', 'status'])));
-        $total    = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, fn() => (clone $query)->count());
+        $total    = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $query)->count());
 
         if ($request->filled('q')) {
             $q    = $request->q;
@@ -95,5 +95,44 @@ class ExploreController extends Controller
         }
 
         return view('explore', compact('groups', 'countries', 'currentDataset'));
+    }
+
+    // COUNT(*) with a locality_groups filter was observed taking minutes on this table
+    // (tens of millions of rows, no index covers the combination of filters well) —
+    // a plain Cache::remember() with a 1h TTL meant the request that landed right after
+    // expiry paid that cost inline and 504'd, same failure mode as Stats/Impact before
+    // (see StatsController::getWithStaleWhileRevalidate). Data never actually goes stale
+    // here: only one request (the lock winner) recomputes; everyone else gets the last
+    // known count immediately, or a safe 0 if nothing has ever been cached yet.
+    private function countWithStaleWhileRevalidate(string $cacheKey, \Closure $compute): int
+    {
+        $dataKey = $cacheKey . ':data';
+        $cached  = \Illuminate\Support\Facades\Cache::get($dataKey);
+
+        $isStale = $cached === null
+            || \Illuminate\Support\Facades\Cache::get($cacheKey . ':computed_at', 0) < now()->subHour()->timestamp;
+
+        if ($isStale) {
+            $lock = \Illuminate\Support\Facades\Cache::lock($cacheKey . ':lock', 300);
+            if ($lock->get()) {
+                try {
+                    $cached = $compute();
+                    \Illuminate\Support\Facades\Cache::forever($dataKey, $cached);
+                    \Illuminate\Support\Facades\Cache::forever($cacheKey . ':computed_at', now()->timestamp);
+                } finally {
+                    $lock->release();
+                }
+            } elseif ($cached === null) {
+                try {
+                    $lock->block(10);
+                    $lock->release();
+                } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+                    // Still running after 10s — fall through to the safe default below.
+                }
+                $cached = \Illuminate\Support\Facades\Cache::get($dataKey);
+            }
+        }
+
+        return $cached ?? 0;
     }
 }
