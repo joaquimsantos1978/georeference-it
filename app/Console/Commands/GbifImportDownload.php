@@ -629,12 +629,26 @@ class GbifImportDownload extends Command
                         gbif_decimal_longitude        = VALUES(gbif_decimal_longitude),
                         gbif_coordinate_uncertainty_m = VALUES(gbif_coordinate_uncertainty_m),
                         gbif_geodetic_datum           = VALUES(gbif_geodetic_datum),
-                        locality_group_id             = VALUES(locality_group_id),
+                        -- Must run BEFORE the locality_group_id assignment below: MySQL applies
+                        -- ON DUPLICATE KEY UPDATE assignments in order, so a bare column
+                        -- reference here still sees the OLD (pre-update) locality_group_id.
+                        --
+                        -- 'gbif_reviewed' is a judgment about the occurrence's OWN GBIF
+                        -- coordinates and stays valid regardless of which group it's in, so
+                        -- it's preserved unconditionally. 'validated'/'has_suggestion'/
+                        -- 'conflicted' all describe the state of a georef_suggestions row
+                        -- scoped to a specific locality_group — if the group changes (GBIF's
+                        -- locality text got renormalized, producing a different group_hash),
+                        -- that suggestion still lives under the OLD group and no longer
+                        -- applies here, so recompute fresh instead of carrying the status over.
                         georef_status = IF(
-                            georef_status IN ('validated', 'gbif_reviewed', 'has_suggestion', 'conflicted'),
+                            georef_status = 'gbif_reviewed'
+                                OR (locality_group_id = VALUES(locality_group_id)
+                                    AND georef_status IN ('validated', 'has_suggestion', 'conflicted')),
                             georef_status,
                             VALUES(georef_status)
                         ),
+                        locality_group_id             = VALUES(locality_group_id),
                         deleted_at = NULL,
                         synced_at  = NOW(),
                         updated_at = NOW()
