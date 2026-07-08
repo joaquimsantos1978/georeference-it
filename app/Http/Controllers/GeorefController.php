@@ -207,6 +207,7 @@ public function next(Request $request)
                     $q->whereRaw('0'); // no siblings if not normalized yet
                 }
             })
+            ->where('occurrence_count', '>', 0)
             ->where(function ($q) {
                 $q->where('ungeoreferenced_count', '>', 0)->orWhere('pending_count', '>', 0);
             })
@@ -297,6 +298,7 @@ public function next(Request $request)
 
             // No ORDER BY — fulltext index is used directly; we random() the results anyway
             $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                ->where('occurrence_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
                 ->tap($focusMatch)
                 ->tap($excludeCorrupted)
@@ -306,6 +308,7 @@ public function next(Request $request)
 
             if ($candidates->isEmpty()) {
                 $candidates = LocalityGroup::where('pending_count', '>', 0)
+                    ->where('occurrence_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
                     ->tap($focusMatch)
                     ->tap($excludeCorrupted)
@@ -324,6 +327,7 @@ public function next(Request $request)
         } else {
             if ($wantsGeoref) {
                 $georefCandidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                    ->where('occurrence_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
                     ->tap($scope)
                     ->tap($excludeCorrupted)
@@ -336,6 +340,7 @@ public function next(Request $request)
 
             if (!$group && $wantsValidate) {
                 $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
+                    ->where('occurrence_count', '>', 0)
                     ->tap($scope)
                     ->tap($excludeCorrupted)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
