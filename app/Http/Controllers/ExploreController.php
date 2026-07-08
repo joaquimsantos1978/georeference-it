@@ -14,21 +14,12 @@ class ExploreController extends Controller
             abort(404);
         }
 
-        // Groups with nothing in any of the fields the "Locality" column actually displays
-        // (see the same verbatim_locality ?: municipality ?: county ?: state_province
-        // fallback in explore.blade.php) render as a blank row — mostly a transient
-        // artifact of the in-progress GBIF import reprocessing older records with a
-        // since-fixed parsing bug, not something a locality browser should surface.
-        // locality_string alone isn't a reliable filter here: it still gets populated from
-        // continent/country_code via CONCAT_WS even when all four of these are empty.
-        $query = LocalityGroup::query()
-            ->where('occurrence_count', '>', 0)
-            ->where(function ($q) {
-                $q->where('verbatim_locality', '!=', '')
-                  ->orWhere('municipality', '!=', '')
-                  ->orWhere('county', '!=', '')
-                  ->orWhere('state_province', '!=', '');
-            });
+        // NOTE: a filter for blank-locality rows (verbatim_locality/municipality/county/
+        // state_province all empty) was tried here and reverted — the OR across four
+        // unindexed columns forced a slow scan over tens of millions of rows, which piled
+        // up alongside the concurrent GBIF import and starved it of I/O. Revisit with a
+        // proper index (or a generated/stored column) once the import isn't running.
+        $query = LocalityGroup::query()->where('occurrence_count', '>', 0);
 
         if ($request->filled('q')) {
             $q = $request->q;
