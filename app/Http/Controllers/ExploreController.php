@@ -14,13 +14,21 @@ class ExploreController extends Controller
             abort(404);
         }
 
-        // Groups with no locality text at all (every location field empty) all hash to the
-        // same value and collapse into one giant, uninformative "blank" entry — mostly a
-        // transient artifact of the in-progress GBIF import reprocessing older records with
-        // a since-fixed parsing bug, not something a locality browser should surface.
+        // Groups with nothing in any of the fields the "Locality" column actually displays
+        // (see the same verbatim_locality ?: municipality ?: county ?: state_province
+        // fallback in explore.blade.php) render as a blank row — mostly a transient
+        // artifact of the in-progress GBIF import reprocessing older records with a
+        // since-fixed parsing bug, not something a locality browser should surface.
+        // locality_string alone isn't a reliable filter here: it still gets populated from
+        // continent/country_code via CONCAT_WS even when all four of these are empty.
         $query = LocalityGroup::query()
             ->where('occurrence_count', '>', 0)
-            ->where('locality_string', '!=', '');
+            ->where(function ($q) {
+                $q->where('verbatim_locality', '!=', '')
+                  ->orWhere('municipality', '!=', '')
+                  ->orWhere('county', '!=', '')
+                  ->orWhere('state_province', '!=', '');
+            });
 
         if ($request->filled('q')) {
             $q = $request->q;
