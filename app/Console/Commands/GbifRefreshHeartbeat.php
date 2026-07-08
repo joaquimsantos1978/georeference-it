@@ -51,7 +51,12 @@ class GbifRefreshHeartbeat extends Command
         $step     = $status['step'] ?? 'unknown';
         $substep  = $status['substep'] ?? null;
         $counters = $status['counters'] ?? [];
-        $stagingCount = (int) DB::table('gbif_staging')->count();
+        // COUNT(*) on gbif_staging (283M+ rows) requires a full InnoDB scan every time —
+        // observed running 90+ minutes and piling up across successive heartbeat runs,
+        // itself competing with the import for I/O. The row count is already known and
+        // doesn't change during processStaging() (only UPDATEd, never inserted/deleted),
+        // so reuse the figure recorded once when LOAD DATA finished instead of re-scanning.
+        $stagingCount = Cache::get('gbif:staging-loaded-from')['rows'] ?? null;
 
         $freeGb = round(disk_free_space('/') / 1024 / 1024 / 1024, 1);
         $memInfo = @file_get_contents('/proc/meminfo');
@@ -69,7 +74,7 @@ class GbifRefreshHeartbeat extends Command
             . "Current step: {$step}\n"
             . ($substep ? "Current sub-step: {$substep}\n" : '')
             . $countersText
-            . "gbif_staging rows: " . number_format($stagingCount) . "\n"
+            . ($stagingCount !== null ? "gbif_staging rows: " . number_format($stagingCount) . "\n" : '')
             . "Disk free: {$freeGb} GB\n"
             . ($memAvailableGb !== null ? "Memory available: {$memAvailableGb} GB\n" : '');
 
