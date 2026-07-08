@@ -2005,10 +2005,10 @@ function updateHistoryNav() {
             {key:'island',            label:{!! json_encode(__('Island')) !!}},
             {key:'island_group',      label:{!! json_encode(__('Island group')) !!}},
             {key:'water_body',        label:{!! json_encode(__('Water body')) !!}},
+            {key:'country_code',      label:{!! json_encode(__('Country')) !!}},
             {key:'continent',         label:{!! json_encode(__('Continent')) !!}},
             {key:'higher_geography',  label:{!! json_encode(__('Higher geography')) !!}},
             {key:'location_remarks',  label:{!! json_encode(__('Location remarks')) !!}},
-            {key:'country_code',      label:{!! json_encode(__('Country')) !!}},
         ];
         document.getElementById('locality-fields').innerHTML=fieldDefs
             .filter(d=>group[d.key])
@@ -2265,6 +2265,13 @@ window._groupMunicipalityBBox = null; // finest-grained bbox, softest check
     const queries = [];
     if (county && prov) queries.push('county='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
     if (county && prov) queries.push('city='+encodeURIComponent(county)+'&state='+encodeURIComponent(prov));
+    // Free-text search before the unconstrained (no-state) structured fallbacks below —
+    // those are dangerous for a name like "Pico" (an island, not an official county/city),
+    // where a structured "city=Pico" with no state ends up matching an unrelated village
+    // on the Portuguese mainland instead of the actual island in the Açores. Nominatim's
+    // free-text search handles informal/non-administrative names (islands, colloquial
+    // locality names) far better than the structured county=/city= params.
+    if (county && prov) queries.push('q='+encodeURIComponent(county+', '+prov));
     if (county)         queries.push('county='+encodeURIComponent(county));
     if (county)         queries.push('city='+encodeURIComponent(county));
     if (prov)           queries.push('state='+encodeURIComponent(prov));
