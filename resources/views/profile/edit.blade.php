@@ -116,10 +116,9 @@
                             <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-4 h-4">
                             <span class="text-sm text-gray-700 dark:text-gray-300">{{ $user->orcid }}</span>
                             <span class="text-xs text-gray-400">({{ __('connected via ORCID OAuth') }})</span>
-                            <form method="POST" action="{{ route('profile.orcid.disconnect') }}"
-                                onsubmit="return confirm('{{ __('Disconnect ORCID login? You can reconnect at any time, or use password recovery to set a password.') }}')">
+                            <form method="POST" action="{{ route('profile.orcid.disconnect') }}" id="orcid-disconnect-form">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
+                                <button type="button" id="orcid-disconnect-btn" class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
                             </form>
                         </div>
                     @else
@@ -218,4 +217,37 @@
         </div>
 
     </div>
+
+    @push('scripts')
+    <script>
+        // Not using a native confirm() here: if a user has ever dismissed a prior JS dialog
+        // on this page with "Prevent this page from creating additional dialogs" (a real
+        // Firefox/Chrome feature), the browser silently suppresses every confirm() after
+        // that for the rest of the tab's session — confirm() just returns false immediately,
+        // no dialog, no error, the form never submits. Observed exactly this: click does
+        // nothing, no console error, no request ever reaches the server. A same-page
+        // two-click confirmation sidesteps native dialogs entirely.
+        (function () {
+            var btn = document.getElementById('orcid-disconnect-btn');
+            if (!btn) return;
+            var originalText = btn.textContent;
+            var confirming = false;
+            var resetTimer = null;
+
+            btn.addEventListener('click', function () {
+                if (!confirming) {
+                    confirming = true;
+                    btn.textContent = {!! json_encode(__('Click again to confirm')) !!};
+                    resetTimer = setTimeout(function () {
+                        confirming = false;
+                        btn.textContent = originalText;
+                    }, 4000);
+                    return;
+                }
+                clearTimeout(resetTimer);
+                document.getElementById('orcid-disconnect-form').submit();
+            });
+        })();
+    </script>
+    @endpush
 </x-layouts.app>
