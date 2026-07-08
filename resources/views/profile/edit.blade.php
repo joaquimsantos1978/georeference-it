@@ -76,6 +76,7 @@
         @if(session('status') === 'profile-updated')
             <p class="text-sm text-green-600 font-medium">{{ __('Profile saved.') }}</p>
         @endif
+        @error('social')<p class="text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
 
         {{-- Profile information --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
@@ -134,6 +135,10 @@
                             placeholder="0000-0000-0000-0000"
                             class="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500">
                         @error('orcid')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                        <a href="{{ route('auth.social.redirect', 'orcid') }}" class="mt-1 inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline">
+                            <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-3 h-3">
+                            {{ __('Or connect your ORCID account') }}
+                        </a>
                     @endif
                 </div>
 

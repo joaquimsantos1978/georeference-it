@@ -33,6 +33,31 @@ public function redirect(string $provider)
             ->where('provider_id', $socialUser->getId())
             ->first();
 
+        // Someone is logged in, connected a provider identity that turns out to already
+        // belong to a DIFFERENT account — without this check they'd silently end up logged
+        // into that other account at the end of this method (Auth::login($user) below).
+        if ($user && Auth::check() && Auth::id() !== $user->id) {
+            return redirect()->route('profile.edit')
+                ->withErrors(['social' => 'This ' . ucfirst($provider) . ' account is already connected to a different georeference.it account.']);
+        }
+
+        // Already logged in and connecting a provider from the profile page (e.g. a user
+        // who registered with email+password wants to add ORCID login): link to THIS
+        // account rather than trying to match by email, which doesn't work at all when
+        // the provider doesn't expose one (ORCID routinely doesn't) — that previously left
+        // such users stuck with no way to connect ORCID to their existing account, only
+        // ever hitting the "create a new account" path below.
+        if (!$user && Auth::check()) {
+            $user = Auth::user();
+            $user->update([
+                'provider'    => $provider,
+                'provider_id' => $socialUser->getId(),
+                'orcid'       => $provider === 'orcid' ? $socialUser->getId() : $user->orcid,
+            ]);
+
+            return redirect()->route('profile.edit')->with('status', 'profile-updated');
+        }
+
         if (!$user) {
             // ORCID frequently doesn't expose a public email — getEmail() is then null, and
             // `where('email', null)` never matches anything in SQL (not even NULL rows), so
