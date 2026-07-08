@@ -3,6 +3,7 @@
 use App\Console\Commands\SendWeeklySummary;
 use App\Console\Commands\GbifMonthlyRefresh;
 use App\Console\Commands\GbifRefreshHeartbeat;
+use App\Console\Commands\GbifWatchdog;
 use App\Console\Commands\RefreshImpactCounts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -54,6 +55,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // is actually running (checked via the cache flag it sets), so this is safe to
         // leave scheduled year-round.
         $schedule->command(GbifRefreshHeartbeat::class)->everyTwoHours();
+
+        // Detects a crashed gbif:monthly-refresh (PID gone, no completion ever reported —
+        // e.g. MariaDB itself getting OOM-killed mid-query) and auto-resumes it with the
+        // same download key, up to a few retries — a no-op unless a crash is actually
+        // detected, so safe to leave scheduled year-round like the heartbeat above.
+        $schedule->command(GbifWatchdog::class)->everyFiveMinutes();
 
         // Keeps Impact/Explore/Activity's counts fresh without ever computing them
         // inline on a page request (see ImpactController for why that caused 504s).

@@ -21,6 +21,12 @@ class GbifMonthlyRefresh extends Command
     // in progress and report on it — see that command for the periodic-email side of this.
     const STATUS_KEY = 'gbif:monthly-refresh:status';
 
+    // Cache key gbif:watchdog reads to know which download key to auto-resume with after
+    // a crash. Kept separate from STATUS_KEY (rather than nested inside it) so its
+    // lifecycle is exactly "set for the duration of a live run, cleared on any exit path" —
+    // simple enough that the watchdog never has to guess whether a value it read is stale.
+    const ACTIVE_KEY_CACHE = 'gbif:monthly-refresh:active-key';
+
     private function markStep(string $step): void
     {
         $status = Cache::get(self::STATUS_KEY, []);
@@ -57,6 +63,12 @@ class GbifMonthlyRefresh extends Command
 
         $start = now();
         Cache::forever(self::STATUS_KEY, ['running' => true, 'pid' => getmypid(), 'started_at' => $start, 'step' => 'Starting', 'updated_at' => $start]);
+        // A genuinely fresh run (not a watchdog auto-resume) resets the retry bookkeeping —
+        // otherwise a crash-loop from months ago could leave gbif:watchdog permanently
+        // silenced for this month's run too.
+        Cache::forget('gbif:monthly-refresh:watchdog:retries');
+        Cache::forget('gbif:monthly-refresh:watchdog:last_attempt');
+        Cache::forget('gbif:monthly-refresh:watchdog:exhausted-notified');
         Log::channel('single')->info('[gbif:monthly-refresh] Starting monthly refresh');
         $this->info("Starting monthly GBIF refresh at {$start}...");
 
@@ -85,6 +97,7 @@ class GbifMonthlyRefresh extends Command
         }
 
         $this->info("Using download key: {$key}");
+        Cache::forever(self::ACTIVE_KEY_CACHE, $key);
 
         // Step 2: poll, download, and import (gbif:import-download already polls internally
         // for up to 8 hours, downloads the DWCA, stages it, and upserts in batches)
@@ -128,6 +141,7 @@ class GbifMonthlyRefresh extends Command
         Log::channel('single')->info("[gbif:monthly-refresh] Completed successfully in {$duration}");
 
         Cache::forget(self::STATUS_KEY);
+        Cache::forget(self::ACTIVE_KEY_CACHE);
         $this->sendReport(true, $duration);
 
         return self::SUCCESS;
@@ -138,6 +152,7 @@ class GbifMonthlyRefresh extends Command
         $this->error($message);
         Log::channel('single')->error("[gbif:monthly-refresh] {$message}");
         Cache::forget(self::STATUS_KEY);
+        Cache::forget(self::ACTIVE_KEY_CACHE);
         $this->sendReport(false, null, $message);
         return self::FAILURE;
     }
