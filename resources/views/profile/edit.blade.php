@@ -116,9 +116,9 @@
                             <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-4 h-4">
                             <span class="text-sm text-gray-700 dark:text-gray-300">{{ $user->orcid }}</span>
                             <span class="text-xs text-gray-400">({{ __('connected via ORCID OAuth') }})</span>
-                            <form method="POST" action="{{ route('profile.orcid.disconnect') }}" id="orcid-disconnect-form">
+                            <form method="POST" action="{{ route('profile.orcid.disconnect') }}">
                                 @csrf @method('DELETE')
-                                <button type="button" id="orcid-disconnect-btn" class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
+                                <button type="submit" id="orcid-disconnect-btn" class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
                             </form>
                         </div>
                     @else
@@ -220,13 +220,16 @@
 
     @push('scripts')
     <script>
-        // Not using a native confirm() here: if a user has ever dismissed a prior JS dialog
-        // on this page with "Prevent this page from creating additional dialogs" (a real
-        // Firefox/Chrome feature), the browser silently suppresses every confirm() after
-        // that for the rest of the tab's session — confirm() just returns false immediately,
-        // no dialog, no error, the form never submits. Observed exactly this: click does
-        // nothing, no console error, no request ever reaches the server. A same-page
-        // two-click confirmation sidesteps native dialogs entirely.
+        // Not using a native confirm() here — some environment (browser dialog suppression,
+        // a translation/DOM-rewriting extension, etc; unconfirmed which) was swallowing it
+        // silently: click did nothing, no console error, no request ever reached the server.
+        // A same-page two-click confirmation sidesteps native dialogs. The button stays a
+        // real type="submit" and the second click is left to submit natively — no
+        // getElementById()/.submit() call at click time, since something in the same
+        // environment was also turning that into "document.getElementById(...) is null"
+        // between the first and second click (DOM node presumably replaced by whatever's
+        // rewriting the page); preventDefault-then-let-through avoids depending on the node
+        // still being the one originally queried.
         (function () {
             var btn = document.getElementById('orcid-disconnect-btn');
             if (!btn) return;
@@ -234,18 +237,18 @@
             var confirming = false;
             var resetTimer = null;
 
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function (e) {
                 if (!confirming) {
+                    e.preventDefault();
                     confirming = true;
                     btn.textContent = {!! json_encode(__('Click again to confirm')) !!};
                     resetTimer = setTimeout(function () {
                         confirming = false;
                         btn.textContent = originalText;
                     }, 4000);
-                    return;
                 }
-                clearTimeout(resetTimer);
-                document.getElementById('orcid-disconnect-form').submit();
+                // Second click while confirming: no preventDefault — the browser submits
+                // the form natively.
             });
         })();
     </script>
