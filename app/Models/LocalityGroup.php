@@ -86,8 +86,8 @@ class LocalityGroup extends Model
             JOIN (
                 SELECT
                     COUNT(*)                             AS total,
-                    SUM(georef_status = 'validated')     AS validated,
-                    SUM(georef_status = 'ungeoreferenced') AS ungeoreferenced
+                    COALESCE(SUM(georef_status = 'validated'), 0)     AS validated,
+                    COALESCE(SUM(georef_status = 'ungeoreferenced'), 0) AS ungeoreferenced
                 FROM occurrences
                 WHERE locality_group_id = ?
             ) occ ON lg.id = ?
