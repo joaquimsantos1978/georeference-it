@@ -59,6 +59,12 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // Without this, raw SQL NOW() (used throughout the GBIF import commands) writes
+            // the DB server's SYSTEM timezone (CEST on production, UTC+2 in summer), while
+            // Carbon reads every timestamp back assuming UTC (config('app.timezone')) — a
+            // write made "right now" then displays as being ~2h in the future. Forcing the
+            // session to UTC makes NOW() match what Carbon expects everywhere.
+            'timezone' => '+00:00',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
                 PDO::MYSQL_ATTR_LOCAL_INFILE => true,
@@ -80,6 +86,8 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // See the identical option in the 'mysql' connection above for why this matters.
+            'timezone' => '+00:00',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
