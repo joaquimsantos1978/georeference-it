@@ -264,6 +264,18 @@ public function next(Request $request)
         $scopes[] = fn($q) => $q; // fallback: any (skip when country filter is active)
     }
 
+    // Hides groups whose verbatim_locality is obviously corrupted by the original import's
+    // parsing bug (a stray quote desynced column boundaries, so several unrelated DWC
+    // fields — collector name, event date, catalog number, scientific name — got
+    // concatenated into one locality string). The signature that reliably identifies this:
+    // an embedded ISO timestamp (a real locality description never contains one). Reprocessing
+    // by the corrected import will eventually clear these; until then, don't hand them to
+    // georeferencers as if they were legitimate work.
+    $excludeCorrupted = fn($q) => $q->where(function ($q2) {
+        $q2->whereNull('verbatim_locality')
+           ->orWhereRaw("verbatim_locality NOT REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
+    });
+
     $group  = null;
     $userId = auth()->check() ? auth()->id() : null;
 
@@ -287,6 +299,7 @@ public function next(Request $request)
             $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
                 ->tap($focusMatch)
+                ->tap($excludeCorrupted)
                 ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                 ->limit(50)
                 ->get();
@@ -295,6 +308,7 @@ public function next(Request $request)
                 $candidates = LocalityGroup::where('pending_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
                     ->tap($focusMatch)
+                    ->tap($excludeCorrupted)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->limit(50)
                     ->get();
@@ -312,6 +326,7 @@ public function next(Request $request)
                 $georefCandidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                     ->where('occurrence_count', '<', 10000)
                     ->tap($scope)
+                    ->tap($excludeCorrupted)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->orderByDesc('occurrence_count')
                     ->limit(50)
@@ -322,6 +337,7 @@ public function next(Request $request)
             if (!$group && $wantsValidate) {
                 $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
                     ->tap($scope)
+                    ->tap($excludeCorrupted)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
                     ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
                         $s->where('user_id', auth()->id())->where('status', 'pending')
