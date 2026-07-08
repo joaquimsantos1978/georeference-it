@@ -95,9 +95,12 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        // Only disconnect OAuth link — keep orcid field so badge still shows
+        // Clears orcid too — it must only ever reflect a live OAuth connection (an
+        // "unverified" leftover value with no proof of ownership defeats the point of
+        // showing it as a verified-researcher badge).
         $user->provider    = null;
         $user->provider_id = null;
+        $user->orcid       = null;
         $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');

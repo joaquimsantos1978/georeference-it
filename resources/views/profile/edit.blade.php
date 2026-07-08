@@ -78,6 +78,15 @@
         @endif
         @error('social')<p class="text-sm text-red-600 font-medium">{{ $message }}</p>@enderror
 
+        {{-- Placeholder email: assigned automatically when someone registers via ORCID and
+             their ORCID doesn't expose a public email (SocialiteController) — not usable for
+             notifications or password recovery, so keep nudging until they set a real one. --}}
+        @if(str_ends_with($user->email, '@no-email.georeference.it'))
+            <div class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                {{ __('Your ORCID account didn\'t provide an email, so a placeholder was used. Please set a real email below so you can receive notifications and recover your account if needed.') }}
+            </div>
+        @endif
+
         {{-- Profile information --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
             <h2 class="font-semibold text-gray-900 dark:text-white mb-4">{{ __('Profile information') }}</h2>
@@ -132,9 +141,6 @@
                                 class="text-xs text-red-500 hover:text-red-700 hover:underline">{{ __('Disconnect') }}</button>
                         </div>
                     @else
-                        @if($user->orcid)
-                            <p class="text-sm text-gray-500 mb-1">{{ $user->orcid }} <span class="text-xs text-gray-400">({{ __('not verified — connect via ORCID to confirm ownership') }})</span></p>
-                        @endif
                         <a href="{{ route('auth.social.redirect', 'orcid') }}" class="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline">
                             <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" class="w-3 h-3">
                             {{ __('Connect your ORCID account') }}
