@@ -14,7 +14,13 @@ class ExploreController extends Controller
             abort(404);
         }
 
-        $query = LocalityGroup::query()->where('occurrence_count', '>', 0);
+        // Groups with no locality text at all (every location field empty) all hash to the
+        // same value and collapse into one giant, uninformative "blank" entry — mostly a
+        // transient artifact of the in-progress GBIF import reprocessing older records with
+        // a since-fixed parsing bug, not something a locality browser should surface.
+        $query = LocalityGroup::query()
+            ->where('occurrence_count', '>', 0)
+            ->where('locality_string', '!=', '');
 
         if ($request->filled('q')) {
             $q = $request->q;
