@@ -64,7 +64,16 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Keeps Impact/Explore/Activity's counts fresh without ever computing them
         // inline on a page request (see ImpactController for why that caused 504s).
-        $schedule->command(RefreshImpactCounts::class)->hourly()->withoutOverlapping();
+        // Skipped while a GBIF import is running: its distinct-country_code query was
+        // observed taking 10-15 minutes on the grown locality_groups table (a full scan,
+        // no index covers the combination of filters well) and competing for I/O with the
+        // import's own batches every single hour — a bad trade during a days-long import
+        // for numbers that are only cosmetic (Impact/Explore/Activity pages, not correctness-
+        // critical). Self-resuming: no manual re-enable needed once the import finishes.
+        $schedule->command(RefreshImpactCounts::class)
+            ->hourly()
+            ->withoutOverlapping()
+            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
