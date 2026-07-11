@@ -881,7 +881,13 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     function setUncertainty(v) {
         v = Math.max(1, Math.round(v));
         document.getElementById('uncertainty-input').value = v;
-        document.getElementById('uncertainty-slider').value = Math.min(v, 500000);
+        // Grow the slider's max instead of clamping the value down to it — a static
+        // max="500000" meant the slider thumb could never move past 500km even when the
+        // (unbounded) number input held a larger value, since every sync here reset the
+        // slider back to min(v, 500000).
+        const slider = document.getElementById('uncertainty-slider');
+        if (v > +slider.max) slider.max = v;
+        slider.value = v;
         document.getElementById('uncertainty-display').textContent = v.toLocaleString() + 'm';
         if (circle) { circle.setRadius(v); updateRadiusHandle(); }
     }
@@ -918,17 +924,16 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             const center = circle.getLatLng();
             const handle = e.target.getLatLng();
             const newRadius = Math.round(center.distanceTo(handle));
-            circle.setRadius(newRadius);
-            document.getElementById('uncertainty-input').value = newRadius;
-            document.getElementById('uncertainty-slider').value = Math.min(newRadius, 500000);
-            document.getElementById('uncertainty-display').textContent = newRadius.toLocaleString() + 'm';
+            setUncertainty(newRadius);
         });
         radiusHandle.on('dragend', () => updateRadiusHandle()); // snap handle to East
 
         document.getElementById('lat-input').value = lat.toFixed(7);
         document.getElementById('lng-input').value = lng.toFixed(7);
+        const uncSlider = document.getElementById('uncertainty-slider');
+        if (unc > +uncSlider.max) uncSlider.max = unc;
+        uncSlider.value = unc;
         document.getElementById('uncertainty-display').textContent = unc.toLocaleString() + 'm';
-        document.getElementById('uncertainty-slider').value = Math.min(unc, 500000);
         updateSubmitBtn();
         var ms = document.getElementById('mob-submit-btn'); if(ms){ms.disabled=false;ms.style.opacity='1';}
 
