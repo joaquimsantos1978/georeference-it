@@ -58,7 +58,7 @@ class GbifImportDownload extends Command
 
     private function clearCheckpoints(): void
     {
-        foreach (['cleanup', 'staging_process', 'prune_deleted'] as $stage) {
+        foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted'] as $stage) {
             Cache::forget("gbif:progress:{$stage}");
         }
     }
@@ -736,9 +736,14 @@ class GbifImportDownload extends Command
             $minId        = (int) $lgBounds->min_id;
             $maxId        = (int) $lgBounds->max_id;
             $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
-            $batchNum     = 0;
+            $resumeFrom   = $this->getCheckpoint('counters_update');
+            $startId      = $resumeFrom !== null ? $resumeFrom + 1 : $minId;
+            $batchNum     = $resumeFrom !== null ? (int) floor(($resumeFrom - $minId + 1) / $batchSize) : 0;
+            if ($resumeFrom !== null) {
+                $this->info("  Resuming counters update from locality_group id {$startId} (batch " . ($batchNum + 1) . "/{$totalBatches})");
+            }
 
-            for ($from = $minId; $from <= $maxId; $from += $batchSize) {
+            for ($from = $startId; $from <= $maxId; $from += $batchSize) {
                 $to = min($from + $batchSize - 1, $maxId);
                 $batchNum++;
 
@@ -800,7 +805,12 @@ class GbifImportDownload extends Command
                     ");
                 }
 
+                $this->setCheckpoint('counters_update', $to);
+
                 $this->line("  Batch {$batchNum}/{$totalBatches} done (locality_group id {$from}–{$to})");
+                if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
+                    $this->markProgress("Updating group counters: batch {$batchNum}/{$totalBatches}");
+                }
                 usleep(200000);
             }
         }
