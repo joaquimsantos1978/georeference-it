@@ -62,6 +62,51 @@ class RefreshImpactCounts extends Command
         Cache::forever($exploreDefaultKey . ':computed_at', now()->timestamp);
         $this->info('Refreshed explore default count (' . $exploreDefaultCount . ')');
 
+        // Moved here from StatsController's own lock-protected inline compute: that
+        // approach still let whichever request won the lock pay the multi-minute cost
+        // itself, and repeatedly observed multiple copies of the exact same expensive
+        // query running at once in production despite the lock (root cause unconfirmed —
+        // possibly abandoned queries from OOM-killed PHP-FPM workers never actually
+        // released it). Same fix as Impact/Explore: never compute this on a web request.
+        $global = DB::table('occurrences')
+            ->whereNull('deleted_at')
+            ->selectRaw("
+                COUNT(*)                                             AS total_occ,
+                SUM(georef_status = 'ungeoreferenced')               AS ungeoref_occ,
+                SUM(georef_status = 'has_suggestion')                AS pending_occ,
+                SUM(georef_status = 'gbif_georeferenced')            AS gbif_occ,
+                SUM(georef_status = 'validated')                     AS validated_occ,
+                SUM(georef_status = 'gbif_reviewed')                 AS gbif_reviewed_occ
+            ")
+            ->first();
+
+        $global->pending_groups = DB::table('locality_groups')
+            ->whereNull('deleted_at')
+            ->whereRaw('ungeoreferenced_count > 0 OR pending_count > 0')
+            ->count();
+
+        $byCountry = DB::table('locality_groups')
+            ->selectRaw('
+                country_code,
+                SUM(occurrence_count)                                         AS total_occ,
+                SUM(ungeoreferenced_count)                                    AS ungeoref_occ,
+                SUM(pending_count)                                            AS pending_occ,
+                SUM(validated_count)                                          AS validated_occ,
+                SUM(GREATEST(0, CAST(occurrence_count AS SIGNED) - CAST(ungeoreferenced_count AS SIGNED) - CAST(pending_count AS SIGNED))) AS georef_occ,
+                COUNT(*)                                                      AS total_groups,
+                SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
+            ')
+            ->whereNull('deleted_at')
+            ->where('occurrence_count', '>', 0)
+            ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
+            ->groupBy('country_code')
+            ->orderByDesc('ungeoref_occ')
+            ->get();
+
+        Cache::forever('stats.georef.data', [$global, $byCountry]);
+        Cache::forever('stats.georef.computed_at', now()->timestamp);
+        $this->info('Refreshed stats.georef');
+
         return self::SUCCESS;
     }
 }
