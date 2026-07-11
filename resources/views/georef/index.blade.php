@@ -974,6 +974,21 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         return m >= 1000 ? (m/1000).toFixed(2) + ' km' : Math.round(m) + ' m';
     }
 
+    // Decimal places shouldn't exceed what the stated uncertainty actually justifies —
+    // showing "23.400000°" for a point known only to ±50km falsely implies meter-level
+    // precision. Follows the standard degrees-to-distance table used in GBIF's
+    // Georeferencing Best Practices (Chapman & Wieczorek 2020): 1 decimal ≈ 11.1km,
+    // 2 ≈ 1.1km, 3 ≈ 111m, 4 ≈ 11m, 5 ≈ 1.1m, etc. (111.32km per degree at the equator).
+    function decimalsForUncertainty(uncertaintyM) {
+        if (!uncertaintyM || uncertaintyM <= 0) return 5;
+        return Math.max(0, Math.min(7, Math.ceil(Math.log10(111320 / uncertaintyM))));
+    }
+
+    function formatCoordForUncertainty(lat, lng, uncertaintyM) {
+        const d = decimalsForUncertainty(uncertaintyM);
+        return parseFloat(lat).toFixed(d) + ', ' + parseFloat(lng).toFixed(d);
+    }
+
     function updateMeasureLabel() {
         if (!measurePoints.length) return;
         let total = 0;
@@ -1879,7 +1894,7 @@ function updateHistoryNav() {
                 const simMarkerPct = Math.min(100, Math.max(0, (simPts + THRESHOLD) / (2 * THRESHOLD) * 100));
                 return '<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-top:4px;">'
                     + '<div style="display:flex;justify-content:space-between">'
-                    + '<span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span>'
+                    + '<span class="dark-text" style="font-weight:500">'+formatCoordForUncertainty(s.decimal_latitude, s.decimal_longitude, s.coordinate_uncertainty_m)+'</span>'
                     + '<span style="color:#9ca3af">±'+uncM+'m</span>'
                     + '</div>'
                     + '<div style="display:flex;justify-content:flex-end;margin-top:4px;">'
@@ -2148,7 +2163,7 @@ function updateHistoryNav() {
             suggestions.forEach(function(s,i){
                 var color=colors[i%colors.length];
                 var c=L.circle([s.decimal_latitude,s.decimal_longitude],{radius:s.coordinate_uncertainty_m||1000,color:color,fillColor:color,fillOpacity:0.1,weight:2,dashArray:'6'}).addTo(map);
-                var m=L.circleMarker([s.decimal_latitude,s.decimal_longitude],{radius:6,color:color,fillColor:color,fillOpacity:0.8,weight:2}).bindTooltip(parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'<br>'+s.submitted_by+' · ±'+s.coordinate_uncertainty_m+'m · '+s.total_points+'pts',{permanent:false}).addTo(map);
+                var m=L.circleMarker([s.decimal_latitude,s.decimal_longitude],{radius:6,color:color,fillColor:color,fillOpacity:0.8,weight:2}).bindTooltip(formatCoordForUncertainty(s.decimal_latitude, s.decimal_longitude, s.coordinate_uncertainty_m)+'<br>'+s.submitted_by+' · ±'+s.coordinate_uncertainty_m+'m · '+s.total_points+'pts',{permanent:false}).addTo(map);
                 window._suggestionLayers.push(c,m);
                 var pts=s.total_points||0;
                 var markerPct=Math.min(100,Math.max(0,(pts+THRESHOLD)/(2*THRESHOLD)*100));
@@ -2176,7 +2191,7 @@ function updateHistoryNav() {
                 sugHtml+='<div class="sugg-card" style="font-size:11px;border-radius:6px;padding:8px;margin-bottom:4px">'+
                     '<div style="display:flex;align-items:flex-start;gap:4px">'+dot+
                     '<div style="flex:1">'+
-                    '<div style="display:flex;justify-content:space-between"><span class="dark-text" style="font-weight:500">'+parseFloat(s.decimal_latitude).toFixed(5)+', '+parseFloat(s.decimal_longitude).toFixed(5)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
+                    '<div style="display:flex;justify-content:space-between"><span class="dark-text" style="font-weight:500">'+formatCoordForUncertainty(s.decimal_latitude, s.decimal_longitude, s.coordinate_uncertainty_m)+'</span><span style="color:#9ca3af">±'+s.coordinate_uncertainty_m+'m</span></div>'+
                     seeListRow+
                     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px;color:#9ca3af"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">'+s.submitted_by+(!s.is_system && s.georeference_remarks?'<span class="remarks-btn" data-remarks="'+s.georeference_remarks.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" style="cursor:pointer;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;flex-shrink:0;">remarks</span>':'')+'</span><div style="display:flex;gap:8px;flex-shrink:0;margin-left:4px;">'+valButtons+'</div></div>'+
                     '<div onclick="showVotesPopup('+s.id+',event)" style="cursor:pointer;position:relative;height:6px;border-radius:4px;margin-top:6px;background:linear-gradient(to right,#b91c1c,#f59e0b,#15803d);" class="sugg-bar-bg">'+
