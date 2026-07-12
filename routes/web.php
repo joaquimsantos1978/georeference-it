@@ -65,7 +65,7 @@ Route::get('/georef/suggestion/{suggestion}/georef-occurrences', [GeorefControll
 Route::get('/georef/suggestion/{suggestion}/votes', [GeorefController::class, 'suggestionVotes'])->name('georef.suggestion.votes');
 Route::get('/georef/occurrences-by-ids', [GeorefController::class, 'occurrencesByIds'])->name('georef.occurrences-by-ids');
 Route::post('/georef/group/{groupId}/not-georeferenceable', [GeorefController::class, 'markGroupNotGeoreferenceable'])->name('georef.group.not-georeferenceable');
-Route::delete('/georef/occurrence/{occurrenceId}/not-georeferenceable', [GeorefController::class, 'unmarkNotGeoreferenceable'])->name('georef.occurrence.not-georeferenceable.undo');
+Route::delete('/georef/group/{groupId}/not-georeferenceable', [GeorefController::class, 'unmarkGroupNotGeoreferenceable'])->name('georef.group.not-georeferenceable.undo');
 
 Route::get('/georef/detect-location', [GeorefController::class, 'detectLocation'])->name('georef.detect-location');
 Route::get('/georef/search-locality', [GeorefController::class, 'searchLocality'])->name('georef.search-locality');

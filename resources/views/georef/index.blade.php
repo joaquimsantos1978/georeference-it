@@ -259,10 +259,6 @@
                 </div>
                 <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="flex:1;min-height:0;"></div>
                 <button id="load-more-occ-btn" onclick="loadMoreUngeoref()" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:5px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;flex-shrink:0;">{{ __('Load more') }}</button>
-                <div id="not-georef-section" style="display:none;flex-shrink:0;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:6px;">
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Marked not georeferenceable') }}</span>
-                    <div id="not-georef-list" class="space-y-0.5" style="max-height:150px;overflow-y-auto;margin-top:4px;"></div>
-                </div>
             </div>
         </div>
 
@@ -1593,7 +1589,7 @@ function loadNextGroup() {
         if(data.group){
             addToHistory(data.group);
             currentGroup=data.group;
-            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[],data.not_georeferenceable_occurrences||[]);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[],data.not_georeferenceable_count||0);
             updateUrl(data.group.id);
         } else {
             document.getElementById('occurrence-info').classList.remove('hidden');
@@ -1619,7 +1615,7 @@ function loadGroup(groupId) {
         if(data.group){
             currentGroup=data.group;
             addToHistory(data.group);
-            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[],data.not_georeferenceable_occurrences||[]);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[],data.not_georeferenceable_count||0);
             updateUrl(data.group.id);
             updateHistoryNav();
         }
@@ -1716,21 +1712,51 @@ function updateHistoryNav() {
     // Two-click confirmation (not native confirm() — see the ORCID disconnect fix for why
     // that was unreliable). This marks the whole locality group as not georeferenceable
     // ("in the woods", no usable place name) — not a single occurrence.
+    // Single group-level button, toggling between "mark" (🚫, nothing marked yet) and
+    // "undo" (↩️, group already has occurrences marked not-georeferenceable) — both the
+    // mark and the undo act on the whole group, never a single occurrence.
+    var NOT_GEOREF_MARK_TITLE = {!! json_encode(__('Mark this locality as not georeferenceable — no usable locality info (e.g. \'in the woods\', no country given)')) !!};
+    var NOT_GEOREF_UNDO_TITLE = {!! json_encode(__('Undo: this locality is currently marked as not georeferenceable')) !!};
+
+    function setNotGeorefButtonState(count) {
+        var btn = document.getElementById('not-georef-group-btn');
+        if (!btn) return;
+        btn.dataset.mode = count > 0 ? 'undo' : 'mark';
+        btn.dataset.confirming = '0';
+        clearTimeout(btn._resetTimer);
+        btn.disabled = false;
+        if (count > 0) {
+            btn.textContent = '↩️';
+            btn.title = NOT_GEOREF_UNDO_TITLE;
+            btn.style.color = '#2563eb';
+            btn.style.borderColor = '#dbeafe';
+        } else {
+            btn.textContent = '🚫';
+            btn.title = NOT_GEOREF_MARK_TITLE;
+            btn.style.color = '#9ca3af';
+            btn.style.borderColor = '#e5e7eb';
+        }
+    }
+
     document.getElementById('not-georef-group-btn').addEventListener('click', function(e) {
         var btn = e.target;
         if (!currentGroup) return;
+        var mode = btn.dataset.mode || 'mark';
+        var confirmColor = '#ef4444';
 
         if (btn.dataset.confirming !== '1') {
             btn.dataset.confirming = '1';
             btn.dataset.original = btn.textContent;
+            btn.dataset.originalColor = btn.style.color;
+            btn.dataset.originalBorder = btn.style.borderColor;
             btn.textContent = {!! json_encode(__('Confirm?')) !!};
-            btn.style.color = '#ef4444';
-            btn.style.borderColor = '#ef4444';
+            btn.style.color = confirmColor;
+            btn.style.borderColor = confirmColor;
             btn._resetTimer = setTimeout(function () {
                 btn.dataset.confirming = '0';
                 btn.textContent = btn.dataset.original;
-                btn.style.color = '#9ca3af';
-                btn.style.borderColor = '#e5e7eb';
+                btn.style.color = btn.dataset.originalColor;
+                btn.style.borderColor = btn.dataset.originalBorder;
             }, 4000);
             return;
         }
@@ -1738,7 +1764,7 @@ function updateHistoryNav() {
         clearTimeout(btn._resetTimer);
         btn.disabled = true;
         fetch(APP_URL + '/georef/group/' + currentGroup.id + '/not-georeferenceable', {
-            method: 'POST',
+            method: mode === 'undo' ? 'DELETE' : 'POST',
             headers: {'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json', 'Accept': 'application/json'},
         })
             .then(function (r) { return r.json(); })
@@ -1749,45 +1775,8 @@ function updateHistoryNav() {
                     btn.disabled = false;
                     btn.dataset.confirming = '0';
                     btn.textContent = btn.dataset.original;
-                    btn.style.color = '#9ca3af';
-                    btn.style.borderColor = '#e5e7eb';
-                }
-            });
-    });
-
-    function renderNotGeoreferenceableSection(list) {
-        var section = document.getElementById('not-georef-section');
-        var container = document.getElementById('not-georef-list');
-        if (!list.length) {
-            section.style.display = 'none';
-            container.innerHTML = '';
-            return;
-        }
-        section.style.display = '';
-        container.innerHTML = list.map(function(o) {
-            var label = [o.recorded_by, o.event_date].filter(Boolean).join(' · ') || o.gbif_occurrence_key;
-            var when = o.not_georeferenceable_at ? new Date(o.not_georeferenceable_at).toLocaleDateString() : '';
-            return '<div style="display:flex;align-items:center;gap:6px;padding:3px 6px;font-size:11px">' +
-                '<div style="flex:1;min-width:0;color:#9ca3af;word-break:break-word">' + label + (when ? ' <span style="opacity:.7">(' + when + ')</span>' : '') + '</div>' +
-                '<button type="button" class="undo-not-georef-btn" data-occ-id="' + o.id + '" style="flex-shrink:0;font-size:9px;color:#2563eb;background:none;border:1px solid #dbeafe;border-radius:3px;padding:1px 4px;cursor:pointer;white-space:nowrap">{{ __('Undo') }}</button>' +
-                '</div>';
-        }).join('');
-    }
-
-    document.getElementById('not-georef-list').addEventListener('click', function(e) {
-        var btn = e.target.closest('.undo-not-georef-btn');
-        if (!btn) return;
-        btn.disabled = true;
-        fetch(APP_URL + '/georef/occurrence/' + btn.dataset.occId + '/not-georeferenceable', {
-            method: 'DELETE',
-            headers: {'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json', 'Accept': 'application/json'},
-        })
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                if (d.success && currentGroup) {
-                    loadGroup(currentGroup.id);
-                } else {
-                    btn.disabled = false;
+                    btn.style.color = btn.dataset.originalColor;
+                    btn.style.borderColor = btn.dataset.originalBorder;
                 }
             });
     });
@@ -2079,22 +2068,24 @@ function updateHistoryNav() {
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments, similarGroups, notGeoreferenceableOccurrences) {
+    function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments, similarGroups, notGeoreferenceableCount) {
         hideFocusDropdown();
         document.getElementById('occurrence-info').classList.remove('hidden');
-        renderNotGeoreferenceableSection(notGeoreferenceableOccurrences || []);
         _currentOccurrences = occurrences;
         _ungeorefTotal = ungeorefTotal;
         _ungeorefLoaded = occurrences.length;
         _correctSuggestionIds = new Set();
         _correctGbifOccurrenceIds = new Set();
         _isAllGeoref = (ungeorefTotal === 0 && georefOccurrences.length > 0);
-        // Only useful while the group still has occurrences that could receive a
-        // georeference — nothing to mark once everything is already resolved.
-        // Guarded with optional chaining: if the page's cached view predates this
-        // button, a hard crash here must not take down the rest of renderGroup().
+        // Visible while the group still has occurrences that could receive a
+        // georeference, OR already has some marked not-georeferenceable (so it can be
+        // undone). Guarded: if the page's cached view predates this button, a hard
+        // crash here must not take down the rest of renderGroup().
         var notGeorefGroupBtnEl = document.getElementById('not-georef-group-btn');
-        if (notGeorefGroupBtnEl) notGeorefGroupBtnEl.style.display = ungeorefTotal > 0 ? '' : 'none';
+        if (notGeorefGroupBtnEl) {
+            notGeorefGroupBtnEl.style.display = (ungeorefTotal > 0 || notGeoreferenceableCount > 0) ? '' : 'none';
+            setNotGeorefButtonState(notGeoreferenceableCount || 0);
+        }
         const fieldDefs = [
             {key:'verbatim_locality', label:{!! json_encode(__('Locality')) !!}},
             {key:'municipality',      label:{!! json_encode(__('Municipality')) !!}},

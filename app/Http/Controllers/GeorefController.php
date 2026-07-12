@@ -110,10 +110,9 @@ class GeorefController extends Controller
         });
         $suggestions = $mapped;
 
-        $notGeoreferenceableOccurrences = Occurrence::where('locality_group_id', $group->id)
+        $notGeoreferenceableCount = Occurrence::where('locality_group_id', $group->id)
             ->where('georef_status', 'not_georeferenceable')
-            ->limit(100)
-            ->get(array_merge(self::OCC_COLUMNS, ['not_georeferenceable_by', 'not_georeferenceable_at']));
+            ->count();
 
         $comments = LocalityGroupComment::where('locality_group_id', $group->id)
             ->with('user')->latest()->take(20)->get()
@@ -170,7 +169,7 @@ class GeorefController extends Controller
             'occurrences'         => $ungeorefOccurrences,
             'ungeoref_total'      => $ungeorefTotal,
             'georef_occurrences'  => $georefOccurrences,
-            'not_georeferenceable_occurrences' => $notGeoreferenceableOccurrences,
+            'not_georeferenceable_count' => $notGeoreferenceableCount,
             'suggestions'         => $suggestions,
             'comments'            => $comments,
             'similar_groups'      => $similarGroups,
@@ -425,28 +424,24 @@ public function next(Request $request)
         return response()->json(['success' => true]);
     }
 
-    // Reversible by design — anyone (including the original marker) can undo a
-    // not-georeferenceable mark if they disagree, per the "keep it simple but
-    // reversible" decision (no multi-user consensus required to mark or unmark).
-    public function unmarkNotGeoreferenceable(Request $request, int $occurrenceId): \Illuminate\Http\JsonResponse
+    // Reversible by design — anyone (including the original marker) can undo the mark
+    // if they disagree, per the "keep it simple but reversible" decision (no multi-user
+    // consensus required). Mirrors markGroupNotGeoreferenceable: acts on the whole group.
+    public function unmarkGroupNotGeoreferenceable(Request $request, int $groupId): \Illuminate\Http\JsonResponse
     {
         session()->save();
 
-        $occurrence = Occurrence::findOrFail($occurrenceId);
+        $group = LocalityGroup::findOrFail($groupId);
 
-        if ($occurrence->georef_status !== 'not_georeferenceable') {
-            return response()->json(['success' => false, 'message' => 'Occurrence is not marked as not georeferenceable.'], 422);
-        }
+        Occurrence::where('locality_group_id', $group->id)
+            ->where('georef_status', 'not_georeferenceable')
+            ->update([
+                'georef_status' => 'ungeoreferenced',
+                'not_georeferenceable_by' => null,
+                'not_georeferenceable_at' => null,
+            ]);
 
-        $occurrence->georef_status = 'ungeoreferenced';
-        $occurrence->not_georeferenceable_by = null;
-        $occurrence->not_georeferenceable_at = null;
-        $occurrence->save();
-
-        if ($occurrence->locality_group_id) {
-            $group = LocalityGroup::find($occurrence->locality_group_id);
-            $group?->recalculateCounters();
-        }
+        $group->recalculateCounters();
 
         return response()->json(['success' => true]);
     }
