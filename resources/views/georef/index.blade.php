@@ -272,30 +272,15 @@
             </div>
         </div>
 
-        {{-- System suggestions popup (draggable window, like image viewer) --}}
-        <div id="sys-sugg-popup" style="display:none;position:absolute;top:60px;right:340px;z-index:30;width:320px;height:340px;min-width:240px;min-height:200px;"
-            class="bg-white dark:bg-gray-900 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
-            <div id="sys-sugg-bar" class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 cursor-move select-none shrink-0 border-b border-gray-200 dark:border-gray-700">
-                <span class="text-xs text-gray-500 truncate flex-1 mr-2">{{ __('Search already-georeferenced locations') }}</span>
-                <button onclick="document.getElementById('sys-sugg-popup').style.display='none'" class="text-gray-400 hover:text-gray-600 text-sm leading-none ml-1">✕</button>
-            </div>
-            <form id="sys-sugg-form" class="flex gap-1 px-2 pt-2 shrink-0" onsubmit="event.preventDefault(); loadSystemSuggestions(document.getElementById('sys-sugg-input').value.trim());">
-                <input type="text" id="sys-sugg-input" name="sys-sugg-search" autocomplete="off" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Search place name...') }}">
-                <button type="submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-200 shrink-0">🔍</button>
-            </form>
-            <div id="sys-sugg-list" class="overflow-y-auto flex-1 px-3 py-2 space-y-1" style="min-height:0;font-size:11px;"></div>
-            <div id="sys-sugg-resize" style="position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:se-resize;z-index:10;">
-                <svg viewBox="0 0 16 16" style="width:16px;height:16px;opacity:0.4;"><line x1="4" y1="16" x2="16" y2="4" stroke="#6b7280" stroke-width="1.5"/><line x1="8" y1="16" x2="16" y2="8" stroke="#6b7280" stroke-width="1.5"/><line x1="12" y1="16" x2="16" y2="12" stroke="#6b7280" stroke-width="1.5"/></svg>
-            </div>
-        </div>
-
         {{-- MAP --}}
         <div id="map" style="flex:1; position:relative; z-index:0;"></div>
 
-        {{-- Centered "find coordinates" search bar, floating over the map --}}
+        {{-- Centered locality search bar, floating over the map. One search covers both
+             already-georeferenced localities on this platform and OpenStreetMap/Nominatim
+             places — results from both stay listed side by side until closed. --}}
         <div id="map-search-bar-wrap" style="position:absolute;top:12px;left:260px;right:320px;z-index:20;display:flex;justify-content:center;pointer-events:none;">
             <div style="pointer-events:auto;width:100%;max-width:420px;">
-                <form id="nominatim-form" class="flex gap-1" onsubmit="event.preventDefault(); searchNominatim(document.getElementById('nominatim-input').value.trim());">
+                <form id="nominatim-form" class="flex gap-1" onsubmit="event.preventDefault(); searchLocality(document.getElementById('nominatim-input').value.trim());">
                     <input type="text" id="nominatim-input" name="nominatim-search" autocomplete="on"
                         class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                         style="background:white;box-shadow:0 1px 4px rgba(0,0,0,0.15);"
@@ -303,13 +288,21 @@
                     <button id="nominatim-btn" type="submit" title="{{ __('Search') }}"
                         class="text-xs bg-white border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50 shrink-0"
                         style="box-shadow:0 1px 4px rgba(0,0,0,0.15);">🔍</button>
-                    <button type="button" title="{{ __('Search already-georeferenced locations') }}"
-                        onclick="loadSystemSuggestions(document.getElementById('nominatim-input').value.trim() || (currentGroup ? buildLocalityString(currentGroup) : ''))"
-                        class="text-xs bg-white border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50 shrink-0"
-                        style="box-shadow:0 1px 4px rgba(0,0,0,0.15);">📍</button>
                 </form>
-                <div id="nominatim-results" class="mt-1 space-y-1 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
-                    style="display:none;max-height:280px;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+                <div id="nominatim-results" class="mt-1 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    style="display:none;max-height:340px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                    <div style="display:flex;justify-content:flex-end;padding:2px 4px 0;">
+                        <button type="button" onclick="closeLocalitySearchResults()" title="{{ __('Close') }}" style="font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:2px 4px;">✕</button>
+                    </div>
+                    <div id="sys-sugg-section" style="display:none;padding:0 6px 6px;">
+                        <div style="font-size:10px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:.03em;padding:2px 2px 4px;">{{ __('Already georeferenced') }}</div>
+                        <div id="sys-sugg-list" style="font-size:11px;"></div>
+                    </div>
+                    <div id="osm-results-section" style="display:none;padding:0 6px 6px;">
+                        <div style="font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;padding:2px 2px 4px;">{{ __('OpenStreetMap') }}</div>
+                        <div id="osm-results-list" class="space-y-1"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1131,21 +1124,6 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         window.addEventListener('mouseup', ()=>{ drag=false; res=false; });
     })();
 
-    // ── System suggestions popup drag & resize ──────────────────────────────────
-    (function(){
-        const win = document.getElementById('sys-sugg-popup');
-        const bar = document.getElementById('sys-sugg-bar');
-        const rh  = document.getElementById('sys-sugg-resize');
-        let drag=false,dx,dy,res=false,sx,sy,sw,sh;
-        bar.addEventListener('mousedown', e=>{ drag=true; dx=e.clientX-win.offsetLeft; dy=e.clientY-win.offsetTop; e.preventDefault(); });
-        rh.addEventListener('mousedown',  e=>{ res=true; sx=e.clientX; sy=e.clientY; sw=win.offsetWidth; sh=win.offsetHeight; e.preventDefault(); });
-        window.addEventListener('mousemove', e=>{
-            if(drag){ win.style.left=Math.max(0,e.clientX-dx)+'px'; win.style.top=Math.max(0,e.clientY-dy)+'px'; win.style.right='auto'; }
-            if(res){ win.style.width=Math.max(240,sw+e.clientX-sx)+'px'; win.style.height=Math.max(200,sh+e.clientY-sy)+'px'; }
-        });
-        window.addEventListener('mouseup', ()=>{ drag=false; res=false; });
-    })();
-
     // Position `popup` right below `avoid` if `avoid` is currently visible, so the two
     // draggable windows don't default to stacking exactly on top of each other. Only
     // applied when opening — doesn't fight the user once they've dragged either one.
@@ -1218,6 +1196,8 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         if (hasMore) {
             html += '<button onclick="loadMoreSystemSuggestions()" style="width:100%;font-size:11px;padding:6px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;margin-top:2px;">'+TXT.loadMore+'</button>';
         }
+        document.getElementById('sys-sugg-section').style.display = '';
+        showLocalitySearchResults();
         var list = document.getElementById('sys-sugg-list');
         list.innerHTML = html;
         list.querySelectorAll('.remarks-btn').forEach(function(btn) {
@@ -1242,19 +1222,22 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         if (!query) return;
         _sysSuggQuery = query;
         _sysSuggResults = [];
-        openPopupAvoidingOverlap(document.getElementById('sys-sugg-popup'), document.getElementById('occ-popup'));
-        document.getElementById('sys-sugg-list').innerHTML = '<p style="color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
+        if (!silent) {
+            document.getElementById('sys-sugg-section').style.display = '';
+            document.getElementById('sys-sugg-list').innerHTML = '<p style="color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
+            showLocalitySearchResults();
+        }
         try {
             const excludeId = currentGroup ? currentGroup.id : '';
             const data = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(query)+'&exclude_group_id='+excludeId)).json();
             _sysSuggResults = data.results;
             if (!data.results.length) {
-                if (silent) { document.getElementById('sys-sugg-popup').style.display='none'; }
-                else { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; }
+                document.getElementById('sys-sugg-section').style.display = 'none';
+                if (!silent) { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; document.getElementById('sys-sugg-section').style.display=''; }
                 return;
             }
             renderSystemSuggestionList(data.has_more);
-        } catch(e) { document.getElementById('sys-sugg-list').innerHTML='<p style="color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
+        } catch(e) { document.getElementById('sys-sugg-section').style.display=''; document.getElementById('sys-sugg-list').innerHTML='<p style="color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
     }
     async function loadMoreSystemSuggestions() {
         if (!_sysSuggQuery) return;
@@ -1298,40 +1281,57 @@ function buildLocalityString(g) {
     if (cty && !locLower.includes(cty.toLowerCase())) parts.push(cty);
     return parts.join(', ');
 }
-    // Results stay visible after a pick — with several ambiguous hits, users need to
-    // click through a few before knowing which is right, so the list (and the pins
-    // dropped for all of them on the map) only clear on a new search or explicit close.
-    function clearNominatimResults() {
-        var el = document.getElementById('nominatim-results');
-        el.innerHTML = '';
-        el.style.display = 'none';
+    // Unified locality search: one query, two independent sections (already-georeferenced
+    // localities on this platform, and OpenStreetMap/Nominatim places) shown side by side
+    // in the same dropdown. Results stay visible after a pick — with several ambiguous
+    // hits, users need to click through a few before knowing which is right — so the
+    // panel (and the pins dropped on the map for every Nominatim hit) only clears on a
+    // new search or an explicit close.
+    function showLocalitySearchResults() {
+        document.getElementById('nominatim-results').style.display = '';
+    }
+
+    function closeLocalitySearchResults() {
+        document.getElementById('nominatim-results').style.display = 'none';
+        document.getElementById('sys-sugg-section').style.display = 'none';
+        document.getElementById('sys-sugg-list').innerHTML = '';
+        document.getElementById('osm-results-section').style.display = 'none';
+        document.getElementById('osm-results-list').innerHTML = '';
         window._nominatimResults = [];
         (window._nominatimResultMarkers || []).forEach(m => map.removeLayer(m));
         window._nominatimResultMarkers = [];
     }
 
+    function searchLocality(query) {
+        if (!query) return;
+        closeLocalitySearchResults();
+        loadSystemSuggestions(query, false);
+        searchNominatim(query);
+    }
+
     function renderNominatimResultsList(selectedIndex) {
         var results = window._nominatimResults || [];
-        var el = document.getElementById('nominatim-results');
         var itemsHtml = results.map((r, i) =>
             '<button onclick="applyNominatimResult('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid '+(i===selectedIndex?'#16a34a':'#e5e7eb')+';margin-bottom:2px;background:'+(i===selectedIndex?'#f0fdf4':'white')+';cursor:pointer" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\''+(i===selectedIndex?'#f0fdf4':'white')+'\'">'+
             '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+(i===selectedIndex?'✓ ':'')+r.display_name+'</span>'+
             '<span style="color:#9ca3af">'+r.type+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
         ).join('');
-        el.innerHTML = '<div style="display:flex;justify-content:flex-end;padding:2px 2px 0">'+
-            '<button onclick="clearNominatimResults()" title="{{ __("Close") }}" style="font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:2px 4px;">✕</button></div>'+
-            '<div style="padding:0 4px 4px">'+itemsHtml+'</div>';
-        el.style.display = '';
+        document.getElementById('osm-results-section').style.display = '';
+        document.getElementById('osm-results-list').innerHTML = itemsHtml;
+        showLocalitySearchResults();
     }
 
     async function searchNominatim(query) {
         if (!query) return;
-        clearNominatimResults();
-        document.getElementById('nominatim-results').style.display = '';
-        document.getElementById('nominatim-results').innerHTML = '<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
+        (window._nominatimResultMarkers || []).forEach(m => map.removeLayer(m));
+        window._nominatimResultMarkers = [];
+        window._nominatimResults = [];
+        document.getElementById('osm-results-section').style.display = '';
+        document.getElementById('osm-results-list').innerHTML = '<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
+        showLocalitySearchResults();
         try {
             const results = await (await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&polygon_geojson=1&limit=15', { headers: {'Accept-Language':'en'} })).json();
-            if (!results.length) { document.getElementById('nominatim-results').innerHTML='<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; return; }
+            if (!results.length) { document.getElementById('osm-results-list').innerHTML='<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; return; }
             window._nominatimResults = results;
             // Drop a marker for every hit so they can be compared on the map at a glance,
             // not just one at a time.
@@ -1343,7 +1343,7 @@ function buildLocalityString(g) {
                     .addTo(map);
             });
             renderNominatimResultsList(null);
-        } catch(e) { document.getElementById('nominatim-results').innerHTML='<p style="font-size:11px;color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
+        } catch(e) { document.getElementById('osm-results-list').innerHTML='<p style="font-size:11px;color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>'; }
     }
     function applyNominatimResult(index) {
         const r=window._nominatimResults[index], lat=parseFloat(r.lat), lon=parseFloat(r.lon);
@@ -1613,9 +1613,7 @@ function clearPanel() {
     document.getElementById('occurrences-list').innerHTML='';
     document.getElementById('suggestions-list').innerHTML='<p id="suggestions-empty" style="font-size:11px;color:#9ca3af;font-style:italic;padding:4px 0">{{ __("No suggestions yet for this group.") }}</p>';
     document.getElementById('comments-list').innerHTML='';
-    clearNominatimResults();
-    document.getElementById('sys-sugg-popup').style.display='none';
-    document.getElementById('sys-sugg-list').innerHTML='';
+    closeLocalitySearchResults();
     var sgw=document.getElementById('similar-groups-wrap'); if(sgw) sgw.style.display='none';
     var sgl=document.getElementById('similar-groups-list'); if(sgl) sgl.innerHTML='';
 }
@@ -1895,7 +1893,7 @@ function updateHistoryNav() {
         _occPopupOffset = 0;
         _occPopupTotal = count;
         _occPopupIds = [];
-        openPopupAvoidingOverlap(document.getElementById('occ-popup'), document.getElementById('sys-sugg-popup'));
+        openPopupAvoidingOverlap(document.getElementById('occ-popup'), null);
         document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
         document.getElementById('occ-popup-loadmore').style.display = 'none';
         fetchOccPopupPage(true);
@@ -1908,7 +1906,7 @@ function updateHistoryNav() {
         _occPopupOffset = 0;
         _occPopupTotal = count;
         _occPopupIds = ids || [];
-        openPopupAvoidingOverlap(document.getElementById('occ-popup'), document.getElementById('sys-sugg-popup'));
+        openPopupAvoidingOverlap(document.getElementById('occ-popup'), null);
         document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
         document.getElementById('occ-popup-loadmore').style.display = 'none';
         fetchOccPopupPage(true);
@@ -1920,7 +1918,7 @@ function updateHistoryNav() {
         _occPopupOffset = 0;
         _occPopupTotal = ids.length;
         _occPopupIds = ids;
-        openPopupAvoidingOverlap(document.getElementById('occ-popup'), document.getElementById('sys-sugg-popup'));
+        openPopupAvoidingOverlap(document.getElementById('occ-popup'), null);
         document.getElementById('occ-popup-list').innerHTML = '<p style="color:#9ca3af;font-size:11px;padding:8px">{{ __("Loading...") }}</p>';
         document.getElementById('occ-popup-loadmore').style.display = 'none';
         fetchOccPopupPage(true);
@@ -2158,11 +2156,10 @@ function updateHistoryNav() {
                 '</div>'
             ).join('');
         document.getElementById('nominatim-input').value=buildLocalityString(group);
-        clearNominatimResults();
+        closeLocalitySearchResults();
 
         const sysSuggQuery = buildLocalityString(group);
-        document.getElementById('sys-sugg-input').value = sysSuggQuery;
-        if (sysSuggQuery) loadSystemSuggestions(sysSuggQuery, true); else document.getElementById('sys-sugg-popup').style.display='none';
+        if (sysSuggQuery) loadSystemSuggestions(sysSuggQuery, true);
 
         var allGeoref = ungeorefTotal === 0 && georefOccurrences.length > 0;
         document.getElementById('occ-panel-label').textContent = allGeoref
