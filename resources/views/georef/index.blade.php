@@ -301,19 +301,19 @@
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px 0;">
                         <div id="locality-filter-toggle" style="display:flex;gap:2px;background:#f3f4f6;border-radius:6px;padding:2px;">
                             <button type="button" id="locality-filter-both"   onclick="setLocalityResultsFilter('both')"   style="font-size:10px;padding:2px 7px;border-radius:4px;border:none;cursor:pointer;background:#16a34a;color:white;font-weight:600;">{{ __('Both') }}</button>
-                            <button type="button" id="locality-filter-georef" onclick="setLocalityResultsFilter('georef')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:none;cursor:pointer;">{{ __('Georeferenced') }}</button>
                             <button type="button" id="locality-filter-osm"    onclick="setLocalityResultsFilter('osm')"    style="font-size:10px;padding:2px 7px;border-radius:4px;border:none;cursor:pointer;">{{ __('OpenStreetMap') }}</button>
+                            <button type="button" id="locality-filter-georef" onclick="setLocalityResultsFilter('georef')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:none;cursor:pointer;">{{ __('Georeferenced') }}</button>
                         </div>
                         <button type="button" onclick="closeLocalitySearchResults()" title="{{ __('Close') }}" style="font-size:11px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0;">✕</button>
                     </div>
                     <div style="display:flex;flex-wrap:wrap;align-items:flex-start;">
-                        <div id="sys-sugg-section" style="display:none;padding:4px 6px 6px;flex:1 1 260px;min-width:240px;max-width:100%;">
-                            <div style="font-size:10px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:.03em;padding:2px 2px 4px;">{{ __('Already georeferenced') }}</div>
-                            <div id="sys-sugg-list" style="font-size:11px;"></div>
-                        </div>
                         <div id="osm-results-section" style="display:none;padding:4px 6px 6px;flex:1 1 260px;min-width:240px;max-width:100%;">
                             <div style="font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;padding:2px 2px 4px;">{{ __('OpenStreetMap') }}</div>
                             <div id="osm-results-list" class="space-y-1"></div>
+                        </div>
+                        <div id="sys-sugg-section" style="display:none;padding:4px 6px 6px;flex:1 1 260px;min-width:240px;max-width:100%;">
+                            <div style="font-size:10px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:.03em;padding:2px 2px 4px;">{{ __('Already georeferenced') }}</div>
+                            <div id="sys-sugg-list" style="font-size:11px;"></div>
                         </div>
                     </div>
                 </div>
@@ -1363,6 +1363,7 @@ function buildLocalityString(g) {
         window._nominatimResults = [];
         (window._nominatimResultMarkers || []).forEach(m => map.removeLayer(m));
         window._nominatimResultMarkers = [];
+        _nominatimHasMore = false;
     }
 
     function searchLocality(query) {
@@ -1372,6 +1373,12 @@ function buildLocalityString(g) {
         searchNominatim(query);
     }
 
+    const NOMINATIM_PAGE_SIZE = 15;
+    let _nominatimQuery = '';
+    // Nominatim doesn't report a total count — treat a full page as a signal there may
+    // be more, and stop offering "load more" once a page comes back short.
+    let _nominatimHasMore = false;
+
     function renderNominatimResultsList(selectedIndex) {
         var results = window._nominatimResults || [];
         var itemsHtml = results.map((r, i) =>
@@ -1379,14 +1386,29 @@ function buildLocalityString(g) {
             '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+(i===selectedIndex?'✓ ':'')+r.display_name+'</span>'+
             '<span style="color:#9ca3af">'+r.type+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
         ).join('');
+        if (_nominatimHasMore) {
+            itemsHtml += '<button onclick="loadMoreNominatimResults()" style="width:100%;font-size:11px;padding:6px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;margin-top:2px;">'+TXT.loadMore+'</button>';
+        }
         setSectionVisible('osm', true);
         document.getElementById('osm-results-list').innerHTML = itemsHtml;
         showLocalitySearchResults();
     }
 
+    function addNominatimMarkers(results, startIndex) {
+        (window._nominatimResultMarkers || []).push(...results.map((r, i) => {
+            var lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+            return L.circleMarker([lat, lon], {radius: 6, color: '#16a34a', weight: 2, fillColor: '#fff', fillOpacity: 0.9})
+                .bindTooltip(r.display_name, {direction: 'top'})
+                .on('click', () => applyNominatimResult(startIndex + i))
+                .addTo(map);
+        }));
+    }
+
     async function searchNominatim(query) {
         if (!query) return;
         const token = _localitySearchToken;
+        _nominatimQuery = query;
+        _nominatimHasMore = false;
         (window._nominatimResultMarkers || []).forEach(m => map.removeLayer(m));
         window._nominatimResultMarkers = [];
         window._nominatimResults = [];
@@ -1394,24 +1416,35 @@ function buildLocalityString(g) {
         document.getElementById('osm-results-list').innerHTML = '<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.searching+'</p>';
         showLocalitySearchResults();
         try {
-            const results = await (await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&polygon_geojson=1&limit=15', { headers: {'Accept-Language':'en'} })).json();
+            const results = await (await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&polygon_geojson=1&limit='+NOMINATIM_PAGE_SIZE, { headers: {'Accept-Language':'en'} })).json();
             if (token !== _localitySearchToken) return; // a newer search/close superseded this one
             if (!results.length) { document.getElementById('osm-results-list').innerHTML='<p style="font-size:11px;color:#9ca3af;padding:4px">'+TXT.noResults+'</p>'; return; }
             window._nominatimResults = results;
+            _nominatimHasMore = results.length >= NOMINATIM_PAGE_SIZE;
             // Drop a marker for every hit so they can be compared on the map at a glance,
             // not just one at a time.
-            window._nominatimResultMarkers = results.map((r, i) => {
-                var lat = parseFloat(r.lat), lon = parseFloat(r.lon);
-                return L.circleMarker([lat, lon], {radius: 6, color: '#16a34a', weight: 2, fillColor: '#fff', fillOpacity: 0.9})
-                    .bindTooltip(r.display_name, {direction: 'top'})
-                    .on('click', () => applyNominatimResult(i))
-                    .addTo(map);
-            });
+            addNominatimMarkers(results, 0);
             renderNominatimResultsList(null);
         } catch(e) {
             if (token !== _localitySearchToken) return;
             document.getElementById('osm-results-list').innerHTML='<p style="font-size:11px;color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>';
         }
+    }
+
+    async function loadMoreNominatimResults() {
+        if (!_nominatimQuery) return;
+        const token = _localitySearchToken;
+        const excludeIds = (window._nominatimResults || []).map(r => r.place_id).filter(Boolean).join(',');
+        try {
+            const results = await (await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(_nominatimQuery)+'&format=json&polygon_geojson=1&limit='+NOMINATIM_PAGE_SIZE+(excludeIds ? '&exclude_place_ids='+excludeIds : ''), { headers: {'Accept-Language':'en'} })).json();
+            if (token !== _localitySearchToken) return;
+            _nominatimHasMore = results.length >= NOMINATIM_PAGE_SIZE;
+            if (results.length) {
+                addNominatimMarkers(results, (window._nominatimResults || []).length);
+                window._nominatimResults = (window._nominatimResults || []).concat(results);
+            }
+            renderNominatimResultsList(null);
+        } catch(e) { /* keep existing list on failure */ }
     }
     function applyNominatimResult(index) {
         const r=window._nominatimResults[index], lat=parseFloat(r.lat), lon=parseFloat(r.lon);
