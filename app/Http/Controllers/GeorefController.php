@@ -402,28 +402,25 @@ public function next(Request $request)
         return response()->json(['occurrences' => $occurrences]);
     }
 
-    // For records with no usable locality info at all ("in the woods", no place name or
-    // even country) — keeps them from being served up as work again to this or any other
-    // user, without requiring a real (impossible) coordinate to be entered.
-    public function markNotGeoreferenceable(Request $request, int $occurrenceId): \Illuminate\Http\JsonResponse
+    // For localities with no usable info at all ("in the woods", no place name or even
+    // country) — applies to the whole group (not a single occurrence), keeping every
+    // ungeoreferenced/has_suggestion occurrence in it from being served up as work again
+    // to this or any other user, without requiring a real (impossible) coordinate.
+    public function markGroupNotGeoreferenceable(Request $request, int $groupId): \Illuminate\Http\JsonResponse
     {
         session()->save();
 
-        $occurrence = Occurrence::findOrFail($occurrenceId);
+        $group = LocalityGroup::findOrFail($groupId);
 
-        if (!in_array($occurrence->georef_status, ['ungeoreferenced', 'has_suggestion'], true)) {
-            return response()->json(['success' => false, 'message' => 'Only ungeoreferenced occurrences can be marked this way.'], 422);
-        }
+        Occurrence::where('locality_group_id', $group->id)
+            ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
+            ->update([
+                'georef_status' => 'not_georeferenceable',
+                'not_georeferenceable_by' => auth()->id(),
+                'not_georeferenceable_at' => now(),
+            ]);
 
-        $occurrence->georef_status = 'not_georeferenceable';
-        $occurrence->not_georeferenceable_by = auth()->id();
-        $occurrence->not_georeferenceable_at = now();
-        $occurrence->save();
-
-        if ($occurrence->locality_group_id) {
-            $group = LocalityGroup::find($occurrence->locality_group_id);
-            $group?->recalculateCounters();
-        }
+        $group->recalculateCounters();
 
         return response()->json(['success' => true]);
     }

@@ -228,6 +228,8 @@
                         <button id="share-btn" title="{{ __('Copy link to this locality') }}"
                             style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#16a34a;font-size:11px;margin-top:1px;"
                             onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">🔗</button>
+                        <button id="not-georef-group-btn" type="button" title="{{ __('Mark this locality as not georeferenceable — no usable locality info (e.g. \'in the woods\', no country given)') }}"
+                            style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#9ca3af;font-size:11px;margin-top:1px;white-space:nowrap;">🚫</button>
                     </div>
                     <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">{{ __('Find coordinates on map:') }}</div>
                     <form id="nominatim-form" class="flex gap-1" onsubmit="event.preventDefault(); searchNominatim(document.getElementById('nominatim-input').value.trim());">
@@ -1699,11 +1701,6 @@ function updateHistoryNav() {
             imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
         }
         var cbHtml = showCheckbox ? '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">' : '';
-        // Only offered for occurrences that could still use a georeference — no point
-        // showing it on ones already validated/reviewed/etc.
-        var notGeorefBtn = (o.georef_status === 'ungeoreferenced' || o.georef_status === 'has_suggestion')
-            ? '<button type="button" class="not-georef-btn" data-occ-id="'+o.id+'" title="{{ __('Mark as not georeferenceable — no usable locality info (e.g. \'in the woods\', no country given)') }}" style="flex-shrink:0;font-size:9px;color:#9ca3af;background:none;border:1px solid #e5e7eb;border-radius:3px;padding:1px 4px;cursor:pointer;white-space:nowrap">🚫</button>'
-            : '';
         return '<div class="occ-row" data-institution="'+(o.institution_code||'')+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
             '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
             cbHtml+
@@ -1713,16 +1710,15 @@ function updateHistoryNav() {
             (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
             '</div>'+badge+
             '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
-            imgBtn+notGeorefBtn+'</div></div>';
+            imgBtn+'</div></div>';
     }
 
-    // Same-row two-click confirmation (not native confirm() — see the ORCID disconnect fix
-    // for why that was unreliable) via a delegated listener, since rows are re-rendered
-    // often; attaching once to the stable parent avoids re-binding on every render.
-    document.getElementById('occurrences-list').addEventListener('click', function(e) {
-        var btn = e.target.closest('.not-georef-btn');
-        if (!btn) return;
-        e.stopPropagation();
+    // Two-click confirmation (not native confirm() — see the ORCID disconnect fix for why
+    // that was unreliable). This marks the whole locality group as not georeferenceable
+    // ("in the woods", no usable place name) — not a single occurrence.
+    document.getElementById('not-georef-group-btn').addEventListener('click', function(e) {
+        var btn = e.target;
+        if (!currentGroup) return;
 
         if (btn.dataset.confirming !== '1') {
             btn.dataset.confirming = '1';
@@ -1741,13 +1737,13 @@ function updateHistoryNav() {
 
         clearTimeout(btn._resetTimer);
         btn.disabled = true;
-        fetch(APP_URL + '/georef/occurrence/' + btn.dataset.occId + '/not-georeferenceable', {
+        fetch(APP_URL + '/georef/group/' + currentGroup.id + '/not-georeferenceable', {
             method: 'POST',
             headers: {'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json', 'Accept': 'application/json'},
         })
             .then(function (r) { return r.json(); })
             .then(function (d) {
-                if (d.success && currentGroup) {
+                if (d.success) {
                     loadGroup(currentGroup.id);
                 } else {
                     btn.disabled = false;
@@ -2093,6 +2089,9 @@ function updateHistoryNav() {
         _correctSuggestionIds = new Set();
         _correctGbifOccurrenceIds = new Set();
         _isAllGeoref = (ungeorefTotal === 0 && georefOccurrences.length > 0);
+        // Only useful while the group still has occurrences that could receive a
+        // georeference — nothing to mark once everything is already resolved.
+        document.getElementById('not-georef-group-btn').style.display = ungeorefTotal > 0 ? '' : 'none';
         const fieldDefs = [
             {key:'verbatim_locality', label:{!! json_encode(__('Locality')) !!}},
             {key:'municipality',      label:{!! json_encode(__('Municipality')) !!}},
