@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\AwardBadges;
 use App\Console\Commands\SendWeeklySummary;
 use App\Console\Commands\GbifMonthlyRefresh;
 use App\Console\Commands\GbifRefreshHeartbeat;
@@ -74,6 +75,10 @@ return Application::configure(basePath: dirname(__DIR__))
             ->hourly()
             ->withoutOverlapping()
             ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
+
+        // Only scans users active in the last 24h (see AwardBadges), so this stays cheap
+        // even hourly.
+        $schedule->command(AwardBadges::class)->hourly()->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

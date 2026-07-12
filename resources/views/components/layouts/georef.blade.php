@@ -45,6 +45,22 @@
     <div id="georef-content">
         {{ $slot }}
     </div>
+    @auth
+    <script>
+        (function() {
+            if (localStorage.getItem('tz_sent')) return;
+            try {
+                var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (!tz) return;
+                fetch('{{ route("profile.timezone") }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json'},
+                    body: JSON.stringify({timezone: tz})
+                }).then(function() { localStorage.setItem('tz_sent', '1'); });
+            } catch (e) {}
+        })();
+    </script>
+    @endauth
     @stack('scripts')
 </body>
 </html>

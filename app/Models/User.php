@@ -28,6 +28,7 @@ class User extends Authenticatable
 'preferred_task',
 'public_name',
 'locale',
+'timezone',
     ];
 
     protected $hidden = [
@@ -63,6 +64,11 @@ class User extends Authenticatable
     public function workSessions(): HasMany
     {
         return $this->hasMany(WorkSession::class);
+    }
+
+    public function badges(): HasMany
+    {
+        return $this->hasMany(UserBadge::class);
     }
 
     public function isAdmin(): bool

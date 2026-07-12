@@ -10,7 +10,7 @@ class UserProfileController extends Controller
 {
     public function show(int $id, Request $request)
     {
-        $user = User::with('userLevel')->findOrFail($id);
+        $user = User::with(['userLevel', 'badges'])->findOrFail($id);
 
         if (!$user->public_name) {
             abort(404);

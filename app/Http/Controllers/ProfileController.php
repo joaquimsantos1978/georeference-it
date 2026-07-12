@@ -26,6 +26,22 @@ class ProfileController extends Controller
         return view('profile.edit', compact('user', 'reviewsCount'));
     }
 
+    // Silent, best-effort: called once from the layout's boot script via
+    // Intl.DateTimeFormat().resolvedOptions().timeZone so the "Coruja Noturna" badge can
+    // judge "late at night" in the user's own time instead of UTC. Only ever fills a
+    // null value — never overwrites a timezone the user already has recorded.
+    public function updateTimezone(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['timezone' => 'required|string|max:64']);
+
+        $user = $request->user();
+        if (!$user->timezone && in_array($request->timezone, \DateTimeZone::listIdentifiers(), true)) {
+            $user->update(['timezone' => $request->timezone]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
     /**
      * Update the user's profile information.
      */

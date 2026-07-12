@@ -45,6 +45,27 @@
             </div>
         </div>
 
+        {{-- Badges --}}
+        @if($user->badges->isNotEmpty())
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-5">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{{ __('Badges') }}</div>
+            <div class="flex flex-wrap gap-3">
+                @foreach($user->badges as $userBadge)
+                    @php $badge = \App\Support\Badges::get($userBadge->badge_key); @endphp
+                    @if($badge)
+                        <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2" title="{{ $badge['description'] }}">
+                            <span class="text-xl">{{ $badge['icon'] }}</span>
+                            <div>
+                                <div class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ $badge['name'] }}</div>
+                                <div class="text-xs text-gray-400">{{ $userBadge->earned_at->format('Y-m-d') }}</div>
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         {{-- Activity --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700">
