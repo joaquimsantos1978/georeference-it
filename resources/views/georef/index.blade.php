@@ -257,6 +257,10 @@
                 </div>
                 <div id="occurrences-list" class="space-y-0.5 overflow-y-auto" style="flex:1;min-height:0;"></div>
                 <button id="load-more-occ-btn" onclick="loadMoreUngeoref()" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:5px;border-radius:6px;border:1px solid #e5e7eb;color:#6b7280;background:white;cursor:pointer;flex-shrink:0;">{{ __('Load more') }}</button>
+                <div id="not-georef-section" style="display:none;flex-shrink:0;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:6px;">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Marked not georeferenceable') }}</span>
+                    <div id="not-georef-list" class="space-y-0.5" style="max-height:150px;overflow-y-auto;margin-top:4px;"></div>
+                </div>
             </div>
         </div>
 
@@ -1587,7 +1591,7 @@ function loadNextGroup() {
         if(data.group){
             addToHistory(data.group);
             currentGroup=data.group;
-            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[]);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[],data.not_georeferenceable_occurrences||[]);
             updateUrl(data.group.id);
         } else {
             document.getElementById('occurrence-info').classList.remove('hidden');
@@ -1613,7 +1617,7 @@ function loadGroup(groupId) {
         if(data.group){
             currentGroup=data.group;
             addToHistory(data.group);
-            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[]);
+            renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[],data.not_georeferenceable_occurrences||[]);
             updateUrl(data.group.id);
             updateHistoryNav();
         }
@@ -1751,6 +1755,43 @@ function updateHistoryNav() {
                     btn.textContent = btn.dataset.original;
                     btn.style.color = '#9ca3af';
                     btn.style.borderColor = '#e5e7eb';
+                }
+            });
+    });
+
+    function renderNotGeoreferenceableSection(list) {
+        var section = document.getElementById('not-georef-section');
+        var container = document.getElementById('not-georef-list');
+        if (!list.length) {
+            section.style.display = 'none';
+            container.innerHTML = '';
+            return;
+        }
+        section.style.display = '';
+        container.innerHTML = list.map(function(o) {
+            var label = [o.recorded_by, o.event_date].filter(Boolean).join(' · ') || o.gbif_occurrence_key;
+            var when = o.not_georeferenceable_at ? new Date(o.not_georeferenceable_at).toLocaleDateString() : '';
+            return '<div style="display:flex;align-items:center;gap:6px;padding:3px 6px;font-size:11px">' +
+                '<div style="flex:1;min-width:0;color:#9ca3af;word-break:break-word">' + label + (when ? ' <span style="opacity:.7">(' + when + ')</span>' : '') + '</div>' +
+                '<button type="button" class="undo-not-georef-btn" data-occ-id="' + o.id + '" style="flex-shrink:0;font-size:9px;color:#2563eb;background:none;border:1px solid #dbeafe;border-radius:3px;padding:1px 4px;cursor:pointer;white-space:nowrap">{{ __('Undo') }}</button>' +
+                '</div>';
+        }).join('');
+    }
+
+    document.getElementById('not-georef-list').addEventListener('click', function(e) {
+        var btn = e.target.closest('.undo-not-georef-btn');
+        if (!btn) return;
+        btn.disabled = true;
+        fetch(APP_URL + '/georef/occurrence/' + btn.dataset.occId + '/not-georeferenceable', {
+            method: 'DELETE',
+            headers: {'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json', 'Accept': 'application/json'},
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success && currentGroup) {
+                    loadGroup(currentGroup.id);
+                } else {
+                    btn.disabled = false;
                 }
             });
     });
@@ -2042,9 +2083,10 @@ function updateHistoryNav() {
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments, similarGroups) {
+    function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments, similarGroups, notGeoreferenceableOccurrences) {
         hideFocusDropdown();
         document.getElementById('occurrence-info').classList.remove('hidden');
+        renderNotGeoreferenceableSection(notGeoreferenceableOccurrences || []);
         _currentOccurrences = occurrences;
         _ungeorefTotal = ungeorefTotal;
         _ungeorefLoaded = occurrences.length;
