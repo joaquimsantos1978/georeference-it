@@ -86,22 +86,48 @@ class GbifImportDownload extends Command
 
         // Step 1: poll + download
         if (!$this->option('skip-staging')) {
-            if (!$zipPath) {
-                $zipPath = $this->waitAndDownload($key);
+            // If gbif_staging already matches the exact occurrence.txt we'd extract (by
+            // path+size+mtime fingerprint — see loadIntoStaging()), skip needing the ZIP
+            // entirely, including just to open it and read meta.xml for column mapping.
+            // The ZIP is deleted after a successful run to free disk (100GB+), so a retry
+            // that reaches this point on an already-loaded staging table would otherwise
+            // crash trying to open a ZIP that no longer exists — column mapping isn't
+            // needed at all when the LOAD DATA itself is about to be skipped anyway.
+            $conventionalCsv = "{$this->storageDir}/occurrence.txt";
+            $conventionalMultimedia = "{$this->storageDir}/multimedia.txt";
+            $fingerprint = file_exists($conventionalCsv) ? [
+                'path'  => realpath($conventionalCsv) ?: $conventionalCsv,
+                'size'  => filesize($conventionalCsv),
+                'mtime' => filemtime($conventionalCsv),
+            ] : null;
+            $previousFingerprint = Cache::get('gbif:staging-loaded-from');
+            $stagingAlreadyLoaded = $fingerprint && $previousFingerprint
+                && $previousFingerprint['path'] === $fingerprint['path']
+                && $previousFingerprint['size'] === $fingerprint['size']
+                && $previousFingerprint['mtime'] === $fingerprint['mtime'];
+
+            if ($stagingAlreadyLoaded) {
+                $this->info("gbif_staging already loaded from {$conventionalCsv} ({$previousFingerprint['rows']} rows) — skipping ZIP/column mapping entirely.");
+                $csvPath = $conventionalCsv;
+                $multimediaPath = file_exists($conventionalMultimedia) ? $conventionalMultimedia : null;
+            } else {
                 if (!$zipPath) {
+                    $zipPath = $this->waitAndDownload($key);
+                    if (!$zipPath) {
+                        return self::FAILURE;
+                    }
+                }
+
+                // Step 2: extract occurrence.txt and parse meta.xml
+                [$csvPath, $colList, $ignoreHeader, $multimediaPath, $fieldsEnclosedBy] = $this->extractAndMapColumns($zipPath);
+                if (!$csvPath) {
                     return self::FAILURE;
                 }
-            }
 
-            // Step 2: extract occurrence.txt and parse meta.xml
-            [$csvPath, $colList, $ignoreHeader, $multimediaPath, $fieldsEnclosedBy] = $this->extractAndMapColumns($zipPath);
-            if (!$csvPath) {
-                return self::FAILURE;
-            }
-
-            // Step 3: LOAD DATA LOCAL INFILE → gbif_staging
-            if (!$this->loadIntoStaging($csvPath, $colList, $fieldsEnclosedBy)) {
-                return self::FAILURE;
+                // Step 3: LOAD DATA LOCAL INFILE → gbif_staging
+                if (!$this->loadIntoStaging($csvPath, $colList, $fieldsEnclosedBy)) {
+                    return self::FAILURE;
+                }
             }
         } else {
             $multimediaPath = null;
