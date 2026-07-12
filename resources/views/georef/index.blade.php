@@ -219,6 +219,10 @@
             {{-- Locality + Nominatim --}}
             <div class="p-3 border-b border-gray-300 dark:border-gray-700 shrink-0">
                 <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
+                <div id="group-gone" class="hidden text-center py-4 px-1 text-xs text-gray-400">
+                    <p style="margin-bottom:8px;">{{ __('This locality no longer exists — it was likely merged into another one during a data refresh.') }}</p>
+                    <button onclick="loadNextGroup()" style="font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid #16a34a;color:#16a34a;background:white;cursor:pointer;">{{ __('Go to next locality') }}</button>
+                </div>
                 <div id="occurrence-info" class="hidden">
                     <div style="margin-bottom:5px;">
                         <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Location to georeference') }}</span>
@@ -1672,6 +1676,7 @@ function clearPanel() {
     document.getElementById('uncertainty-display').textContent=''; document.getElementById('remarks-input').value='';
     document.getElementById('occurrence-loading').classList.remove('hidden');
     document.getElementById('occurrence-info').classList.add('hidden');
+    document.getElementById('group-gone').classList.add('hidden');
     // Clear stale content so overlay renders over blank, not old data
     document.getElementById('locality-fields').innerHTML='';
     document.getElementById('occurrences-list').innerHTML='';
@@ -1720,8 +1725,12 @@ function loadNextGroup() {
 function loadGroup(groupId) {
     clearPanel();
     fetch(APP_URL+'/georef/group/'+groupId, {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
-    .then(r=>r.json())
+    .then(r=>{
+        if (r.status === 404) { showGroupGone(groupId); return null; }
+        return r.json();
+    })
     .then(data=>{
+        if (!data) return; // 404 already handled above
         hideOverlay();
         document.getElementById('occurrence-loading').classList.add('hidden');
         if(data.group){
@@ -1730,9 +1739,27 @@ function loadGroup(groupId) {
             renderGroup(data.group,data.occurrences,data.ungeoref_total||0,data.georef_occurrences||[],data.suggestions,data.comments,data.similar_groups||[],data.not_georeferenceable_count||0);
             updateUrl(data.group.id);
             updateHistoryNav();
+        } else {
+            showGroupGone(groupId);
         }
     })
     .catch(()=>{ hideOverlay(); document.getElementById('occurrence-loading').classList.add('hidden'); });
+}
+
+// Locality groups can be merged/renumbered by a GBIF data refresh, so an id from
+// browsing history, a bookmark, or a shared link can 404 later. Rather than leaving
+// the panel silently blank, show an explanation and drop the stale entry from
+// history so back/forward navigation doesn't keep landing on it.
+function showGroupGone(groupId) {
+    hideOverlay();
+    document.getElementById('occurrence-loading').classList.add('hidden');
+    document.getElementById('occurrence-info').classList.add('hidden');
+    document.getElementById('group-gone').classList.remove('hidden');
+    sessionHistory = sessionHistory.filter(function(g){ return g.id !== groupId; });
+    historyIndex = Math.min(historyIndex, sessionHistory.length - 1);
+    localStorage.setItem('georef_history', JSON.stringify(sessionHistory));
+    localStorage.setItem('georef_index', historyIndex);
+    updateHistoryNav();
 }
 
 function addToHistory(group) {
