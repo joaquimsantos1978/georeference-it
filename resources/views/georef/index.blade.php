@@ -298,7 +298,7 @@
                      mobile/tablet layout needed. --}}
                 <div id="nominatim-results" class="mt-1 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
                     style="display:none;max-height:340px;box-shadow:0 4px 12px rgba(0,0,0,0.15);width:max-content;max-width:min(760px, calc(100vw - 620px));">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px 0;">
+                    <div class="bg-white dark:bg-gray-900" style="position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px;border-bottom:1px solid #f3f4f6;">
                         <div id="locality-filter-toggle" style="display:flex;gap:2px;background:#f3f4f6;border-radius:6px;padding:2px;">
                             <button type="button" id="locality-filter-both"   onclick="setLocalityResultsFilter('both')"   style="font-size:10px;padding:2px 7px;border-radius:4px;border:none;cursor:pointer;background:#16a34a;color:white;font-weight:600;">{{ __('Both') }}</button>
                             <button type="button" id="locality-filter-osm"    onclick="setLocalityResultsFilter('osm')"    style="font-size:10px;padding:2px 7px;border-radius:4px;border:none;cursor:pointer;">{{ __('OpenStreetMap') }}</button>
@@ -1319,8 +1319,10 @@ function buildLocalityString(g) {
     // changed to Angers).
     let _localitySearchToken = 0;
 
-    // 'both' | 'georef' | 'osm' — which section(s) the user wants to see.
-    let _localityResultsFilter = 'both';
+    // 'both' | 'georef' | 'osm' — which section(s) the user wants to see. Remembered
+    // across sessions so the choice doesn't reset on every page load.
+    let _localityResultsFilter = ['both', 'georef', 'osm'].includes(localStorage.getItem('georef_locality_filter'))
+        ? localStorage.getItem('georef_locality_filter') : 'both';
     let _sysSuggSectionWanted = false;
     let _osmSectionWanted = false;
 
@@ -1339,6 +1341,7 @@ function buildLocalityString(g) {
 
     function setLocalityResultsFilter(mode) {
         _localityResultsFilter = mode;
+        localStorage.setItem('georef_locality_filter', mode);
         applyLocalityResultsVisibility();
         ['both', 'georef', 'osm'].forEach(m => {
             var btn = document.getElementById('locality-filter-' + m);
@@ -1348,6 +1351,9 @@ function buildLocalityString(g) {
             btn.style.fontWeight = active ? '600' : '400';
         });
     }
+    // Reflect the restored preference in the buttons — the markup defaults to "Both"
+    // active since Blade has no access to localStorage at render time.
+    setLocalityResultsFilter(_localityResultsFilter);
 
     function showLocalitySearchResults() {
         document.getElementById('nominatim-results').style.display = '';
