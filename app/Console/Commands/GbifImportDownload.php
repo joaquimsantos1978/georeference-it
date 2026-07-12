@@ -695,9 +695,6 @@ class GbifImportDownload extends Command
             }
         }
 
-        $groupCount = DB::table('locality_groups')->count();
-        $this->info("  Locality groups total: {$groupCount}");
-
         if (!$pruneDeleted) {
             $this->line('Step 1b/2: Skipped (pass --prune-deleted on a full, unfiltered import to enable).');
         } else {
@@ -747,8 +744,11 @@ class GbifImportDownload extends Command
             }
         }
 
-        $occCount = DB::table('occurrences')->count();
-        $this->info("  Occurrences total: {$occCount}");
+        // No unfiltered COUNT(*) here on purpose — occurrences has 225M+ rows and this point
+        // is reached on every resume after a crash (checkpointing can skip straight past the
+        // big batched loops above), so a purely informational full-table scan here was
+        // observed adding 8+ minutes to every single retry. locality_groups.occurrence_count
+        // (kept current by the counters-update step above) is the number that matters.
 
         $this->info('Step 2/2: Updating group counters in batches...');
 
