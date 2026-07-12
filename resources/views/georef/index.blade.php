@@ -2091,7 +2091,10 @@ function updateHistoryNav() {
         _isAllGeoref = (ungeorefTotal === 0 && georefOccurrences.length > 0);
         // Only useful while the group still has occurrences that could receive a
         // georeference — nothing to mark once everything is already resolved.
-        document.getElementById('not-georef-group-btn').style.display = ungeorefTotal > 0 ? '' : 'none';
+        // Guarded with optional chaining: if the page's cached view predates this
+        // button, a hard crash here must not take down the rest of renderGroup().
+        var notGeorefGroupBtnEl = document.getElementById('not-georef-group-btn');
+        if (notGeorefGroupBtnEl) notGeorefGroupBtnEl.style.display = ungeorefTotal > 0 ? '' : 'none';
         const fieldDefs = [
             {key:'verbatim_locality', label:{!! json_encode(__('Locality')) !!}},
             {key:'municipality',      label:{!! json_encode(__('Municipality')) !!}},
