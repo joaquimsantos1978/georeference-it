@@ -396,6 +396,30 @@ public function next(Request $request)
         return response()->json(['occurrences' => $occurrences]);
     }
 
+    // For records with no usable locality info at all ("in the woods", no place name or
+    // even country) — keeps them from being served up as work again to this or any other
+    // user, without requiring a real (impossible) coordinate to be entered.
+    public function markNotGeoreferenceable(Request $request, int $occurrenceId): \Illuminate\Http\JsonResponse
+    {
+        session()->save();
+
+        $occurrence = Occurrence::findOrFail($occurrenceId);
+
+        if (!in_array($occurrence->georef_status, ['ungeoreferenced', 'has_suggestion'], true)) {
+            return response()->json(['success' => false, 'message' => 'Only ungeoreferenced occurrences can be marked this way.'], 422);
+        }
+
+        $occurrence->georef_status = 'not_georeferenceable';
+        $occurrence->save();
+
+        if ($occurrence->locality_group_id) {
+            $group = LocalityGroup::find($occurrence->locality_group_id);
+            $group?->recalculateCounters();
+        }
+
+        return response()->json(['success' => true]);
+    }
+
     // Used by the "see list" link on already-georeferenced matches, which point to a
     // group that's typically fully georeferenced already — groupUngeorefOccurrences()
     // would return nothing there since there's nothing left ungeoreferenced to show.

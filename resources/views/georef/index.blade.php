@@ -1666,6 +1666,7 @@ function updateHistoryNav() {
         'has_suggestion':     ['#f59e0b','has suggestion'],
         'conflicted':         ['#ef4444','conflicted'],
         'ungeoreferenced':    ['#d1d5db','not georef'],
+        'not_georeferenceable': ['#9ca3af','not georeferenceable'],
     };
 
     function renderOccRowHtml(o, showCheckbox) {
@@ -1694,6 +1695,11 @@ function updateHistoryNav() {
             imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
         }
         var cbHtml = showCheckbox ? '<input type="checkbox" class="occurrence-checkbox" value="'+o.id+'" checked style="flex-shrink:0;margin-top:2px">' : '';
+        // Only offered for occurrences that could still use a georeference — no point
+        // showing it on ones already validated/reviewed/etc.
+        var notGeorefBtn = (o.georef_status === 'ungeoreferenced' || o.georef_status === 'has_suggestion')
+            ? '<button type="button" class="not-georef-btn" data-occ-id="'+o.id+'" title="{{ __('Mark as not georeferenceable — no usable locality info (e.g. \'in the woods\', no country given)') }}" style="flex-shrink:0;font-size:9px;color:#9ca3af;background:none;border:1px solid #e5e7eb;border-radius:3px;padding:1px 4px;cursor:pointer;white-space:nowrap">🚫</button>'
+            : '';
         return '<div class="occ-row" data-institution="'+(o.institution_code||'')+'" style="font-size:11px;border-radius:4px;border:1px solid transparent;padding:2px 0">'+
             '<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 6px">'+
             cbHtml+
@@ -1703,8 +1709,51 @@ function updateHistoryNav() {
             (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
             '</div>'+badge+
             '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
-            imgBtn+'</div></div>';
+            imgBtn+notGeorefBtn+'</div></div>';
     }
+
+    // Same-row two-click confirmation (not native confirm() — see the ORCID disconnect fix
+    // for why that was unreliable) via a delegated listener, since rows are re-rendered
+    // often; attaching once to the stable parent avoids re-binding on every render.
+    document.getElementById('occurrences-list').addEventListener('click', function(e) {
+        var btn = e.target.closest('.not-georef-btn');
+        if (!btn) return;
+        e.stopPropagation();
+
+        if (btn.dataset.confirming !== '1') {
+            btn.dataset.confirming = '1';
+            btn.dataset.original = btn.textContent;
+            btn.textContent = {!! json_encode(__('Confirm?')) !!};
+            btn.style.color = '#ef4444';
+            btn.style.borderColor = '#ef4444';
+            btn._resetTimer = setTimeout(function () {
+                btn.dataset.confirming = '0';
+                btn.textContent = btn.dataset.original;
+                btn.style.color = '#9ca3af';
+                btn.style.borderColor = '#e5e7eb';
+            }, 4000);
+            return;
+        }
+
+        clearTimeout(btn._resetTimer);
+        btn.disabled = true;
+        fetch(APP_URL + '/georef/occurrence/' + btn.dataset.occId + '/not-georeferenceable', {
+            method: 'POST',
+            headers: {'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json', 'Accept': 'application/json'},
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success && currentGroup) {
+                    loadGroup(currentGroup.id);
+                } else {
+                    btn.disabled = false;
+                    btn.dataset.confirming = '0';
+                    btn.textContent = btn.dataset.original;
+                    btn.style.color = '#9ca3af';
+                    btn.style.borderColor = '#e5e7eb';
+                }
+            });
+    });
 
     function renderOccurrenceRows(occurrences, append) {
         var html = occurrences.map(function(o){ return renderOccRowHtml(o, true); }).join('');

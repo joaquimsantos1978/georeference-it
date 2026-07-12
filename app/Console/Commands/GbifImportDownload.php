@@ -659,16 +659,17 @@ class GbifImportDownload extends Command
                         -- ON DUPLICATE KEY UPDATE assignments in order, so a bare column
                         -- reference here still sees the OLD (pre-update) locality_group_id.
                         --
-                        -- 'gbif_reviewed' is a judgment about the occurrence's OWN GBIF
-                        -- coordinates and stays valid regardless of which group it's in, so
-                        -- it's preserved unconditionally. 'validated'/'has_suggestion'/
+                        -- 'gbif_reviewed' and 'not_georeferenceable' are judgments about the
+                        -- occurrence's OWN data (its GBIF coordinates, or its locality text
+                        -- being unusable) and stay valid regardless of which group it's in, so
+                        -- both are preserved unconditionally. 'validated'/'has_suggestion'/
                         -- 'conflicted' all describe the state of a georef_suggestions row
                         -- scoped to a specific locality_group — if the group changes (GBIF's
                         -- locality text got renormalized, producing a different group_hash),
                         -- that suggestion still lives under the OLD group and no longer
                         -- applies here, so recompute fresh instead of carrying the status over.
                         georef_status = IF(
-                            georef_status = 'gbif_reviewed'
+                            georef_status IN ('gbif_reviewed', 'not_georeferenceable')
                                 OR (locality_group_id = VALUES(locality_group_id)
                                     AND georef_status IN ('validated', 'has_suggestion', 'conflicted')),
                             georef_status,
