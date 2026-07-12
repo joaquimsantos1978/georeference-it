@@ -11,6 +11,11 @@ use Illuminate\Http\Response;
 
 class OccurrenceController extends Controller
 {
+    // Same string used for both manually- and system-submitted georeferences (see
+    // GeorefController::submit()) — keeps georeferenceProtocol consistent regardless
+    // of who/what produced the suggestion.
+    private const GEOREFERENCE_PROTOCOL = 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020, https://doi.org/10.35035/e09p-h128)';
+
     private const VERIFICATION_STATUS = [
         'validated'          => 'verified by contributor',
         'has_suggestion'     => 'requires verification',
@@ -67,8 +72,11 @@ class OccurrenceController extends Controller
         if ($request->filled('dataset_key')) {
             $query->where('dataset_key', $request->dataset_key);
         }
+        if ($request->filled('institution_code')) {
+            $query->where('institution_code', $request->institution_code);
+        }
         if ($request->filled('status')) {
-            $query->where('georef_status', $request->status);
+            $query->whereIn('georef_status', explode('|', $request->status));
         }
         if ($request->filled('scientific_name')) {
             $query->where('scientific_name', 'like', '%' . $request->scientific_name . '%');
@@ -287,7 +295,7 @@ class OccurrenceController extends Controller
                                             : 'georeference.it contributor')
                                         : 'georeference.it system',
                     'date'        => $suggestion->georeferenced_date ?? $suggestion->created_at?->toDateString(),
-                    'protocol'    => $suggestion->georeference_protocol ?? 'https://doi.org/10.35035/e09p-h128',
+                    'protocol'    => $suggestion->georeference_protocol ?? self::GEOREFERENCE_PROTOCOL,
                     'sources'     => $suggestion->georeference_sources ?? 'georeference.it',
                     'remarks'     => $suggestion->georeference_remarks,
                 ];

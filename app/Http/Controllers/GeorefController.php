@@ -23,6 +23,10 @@ class GeorefController extends Controller
         return view('georef.index');
     }
 
+    // Kept identical to Api\OccurrenceController::GEOREFERENCE_PROTOCOL so the API's
+    // georeferenceProtocol field is consistent regardless of who/what submitted it.
+    private const GEOREFERENCE_PROTOCOL = 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020, https://doi.org/10.35035/e09p-h128)';
+
     private const OCC_COLUMNS = [
         'id', 'gbif_occurrence_key', 'catalog_number', 'institution_code',
         'collection_code', 'scientific_name', 'georef_status', 'media',
@@ -560,7 +564,7 @@ public function next(Request $request)
             'geodetic_datum'           => 'epsg:4326',
             'coordinate_uncertainty_m' => $validated['coordinate_uncertainty_m'] ?? null,
             'georeference_remarks'     => $validated['georeference_remarks'] ?? null,
-            'georeference_protocol'    => 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020)',
+            'georeference_protocol'    => self::GEOREFERENCE_PROTOCOL,
             'georeference_sources'     => 'georeference.it',
             'status'                   => 'pending',
             'total_points'             => 0,
@@ -664,7 +668,7 @@ public function next(Request $request)
                     'geodetic_datum'           => 'epsg:4326',
                     'coordinate_uncertainty_m' => $validated['coordinate_uncertainty_m'] ?? null,
                     'georeference_remarks'     => $validated['georeference_remarks'] ?? null,
-                    'georeference_protocol'    => 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020)',
+                    'georeference_protocol'    => self::GEOREFERENCE_PROTOCOL,
                     'georeference_sources'     => 'georeference.it',
                     'status'                   => 'pending',
                     'total_points'             => 0,
@@ -786,7 +790,7 @@ public function next(Request $request)
                 'geodetic_datum'           => 'epsg:4326',
                 'coordinate_uncertainty_m' => $validated['coordinate_uncertainty_m'] ?? null,
                 'georeference_remarks'     => $validated['georeference_remarks'] ?? null,
-                'georeference_protocol'    => 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020)',
+                'georeference_protocol'    => self::GEOREFERENCE_PROTOCOL,
                 'georeference_sources'     => 'georeference.it',
                 'status'                   => 'pending',
                 'total_points'             => 0,

@@ -14,6 +14,10 @@
            class="text-xs border border-gray-300 text-gray-600 hover:border-green-500 hover:text-green-600 px-3 py-2 rounded-lg transition">
             Try it → <span class="font-mono">/occurrences</span>
         </a>
+        <a href="{{ url('/openapi.yaml') }}" target="_blank"
+           class="text-xs border border-gray-300 text-gray-600 hover:border-green-500 hover:text-green-600 px-3 py-2 rounded-lg transition">
+            OpenAPI spec (YAML) ↓
+        </a>
     </div>
 </div>
 
@@ -58,9 +62,10 @@
                             <th class="text-left pb-2 font-medium">Description</th>
                         </tr></thead>
                         <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50 text-xs">
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">country</td><td class="py-2 text-gray-400">ISO 3166-1 α-2</td><td class="py-2 text-gray-500">Filter by country code — <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PT</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ES</code>, …</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">country</td><td class="py-2 text-gray-400">ISO 3166-1 alpha-2</td><td class="py-2 text-gray-500">Filter by country code — <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PT</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ES</code>, …</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">dataset_key</td><td class="py-2 text-gray-400">UUID</td><td class="py-2 text-gray-500">Filter by GBIF dataset key</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">status</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500"><code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">validated</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">has_suggestion</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ungeoreferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_georeferenced</code></td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">institution_code</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Filter by institution code, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">MHNC</code></td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">status</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">One or more of <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">validated</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">has_suggestion</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ungeoreferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_georeferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_reviewed</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">conflicted</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">not_georeferenceable</code>, pipe-separated, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">?status=validated|has_suggestion</code></td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">scientific_name</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Partial match on scientific name</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">per_page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Records per page — default 100, max 500</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Page number — default 1</td></tr>

@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: georeference.it API
+  version: "1.0"
+  description: >
+    Public, read-only REST API returning Darwin Core-compliant occurrence data
+    with community georeferences. No API key required.
+  contact:
+    url: https://georeference.it/api-docs
+  license:
+    name: See https://georeference.it/terms
+servers:
+  - url: https://georeference.it/api/v1
+paths:
+  /occurrences:
+    get:
+      summary: List occurrences
+      description: Paginated list of occurrences. All filters are optional and combinable.
+      parameters:
+        - name: country
+          in: query
+          description: ISO 3166-1 alpha-2 country code
+          schema: { type: string, example: PT }
+        - name: dataset_key
+          in: query
+          description: GBIF dataset UUID
+          schema: { type: string, format: uuid }
+        - name: institution_code
+          in: query
+          description: Institution code, as used in GBIF (institutionCode)
+          schema: { type: string, example: MHNC }
+        - name: status
+          in: query
+          description: >
+            One or more georef_status values, pipe-separated for OR matching
+            (e.g. `validated|has_suggestion`).
+          schema:
+            type: string
+            example: "validated|has_suggestion"
+          style: form
+          explode: false
+        - name: scientific_name
+          in: query
+          description: Partial (LIKE) match on scientific name
+          schema: { type: string }
+        - name: per_page
+          in: query
+          description: Records per page — default 100, max 500
+          schema: { type: integer, default: 100, maximum: 500 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: format
+          in: query
+          description: "`csv` streams all matching records as CSV (ignores pagination); `jsonld` returns JSON-LD."
+          schema: { type: string, enum: [csv, jsonld] }
+      responses:
+        "200":
+          description: Paginated occurrence list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      per_page: { type: integer }
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Occurrence' }
+            application/ld+json:
+              schema:
+                type: object
+            text/csv:
+              schema:
+                type: string
+  /occurrences/{gbif_key}:
+    get:
+      summary: Get a single occurrence
+      description: Returns a single occurrence by its GBIF numeric occurrence key.
+      parameters:
+        - name: gbif_key
+          in: path
+          required: true
+          schema: { type: string }
+        - name: format
+          in: query
+          schema: { type: string, enum: [jsonld] }
+      responses:
+        "200":
+          description: A single occurrence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Occurrence' }
+            application/ld+json:
+              schema:
+                type: object
+        "404":
+          description: Not found
+  /datasets:
+    get:
+      summary: List dataset statistics
+      description: Aggregated georeferencing statistics per GBIF dataset.
+      parameters:
+        - name: q
+          in: query
+          description: Free-text match on institution/collection/title/publisher
+          schema: { type: string }
+        - name: country
+          in: query
+          description: ISO 3166-1 alpha-2 country code
+          schema: { type: string, example: PT }
+        - name: institution_code
+          in: query
+          schema: { type: string }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 100, maximum: 500 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        "200":
+          description: Paginated dataset statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      per_page: { type: integer }
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/DatasetStats' }
+components:
+  schemas:
+    Occurrence:
+      type: object
+      properties:
+        occurrenceID: { type: string, description: GBIF numeric occurrence key }
+        datasetKey: { type: string, format: uuid }
+        institutionCode: { type: string, nullable: true }
+        collectionCode: { type: string, nullable: true }
+        catalogNumber: { type: string, nullable: true }
+        basisOfRecord: { type: string, nullable: true }
+        scientificName: { type: string, nullable: true }
+        taxonRank: { type: string, nullable: true }
+        kingdom: { type: string, nullable: true }
+        family: { type: string, nullable: true }
+        eventDate: { type: string, nullable: true }
+        recordedBy: { type: string, nullable: true }
+        country: { type: string, nullable: true }
+        countryCode: { type: string, nullable: true }
+        stateProvince: { type: string, nullable: true }
+        county: { type: string, nullable: true }
+        municipality: { type: string, nullable: true }
+        island: { type: string, nullable: true }
+        islandGroup: { type: string, nullable: true }
+        waterBody: { type: string, nullable: true }
+        verbatimLocality: { type: string, nullable: true }
+        decimalLatitude: { type: number, format: double, nullable: true }
+        decimalLongitude: { type: number, format: double, nullable: true }
+        geodeticDatum: { type: string, nullable: true }
+        coordinateUncertaintyInMeters: { type: number, nullable: true }
+        georeferencedBy: { type: string, nullable: true }
+        georeferencedDate: { type: string, nullable: true }
+        georeferenceProtocol: { type: string, nullable: true }
+        georeferenceSources: { type: string, nullable: true }
+        georeferenceRemarks: { type: string, nullable: true }
+        georeferenceVerificationStatus:
+          type: string
+          enum:
+            - verified by contributor
+            - requires verification
+            - requires georeference
+        georef_status:
+          type: string
+          description: Platform-internal status (omitted from JSON-LD output)
+          enum:
+            - ungeoreferenced
+            - has_suggestion
+            - validated
+            - gbif_georeferenced
+            - gbif_reviewed
+            - conflicted
+            - not_georeferenceable
+        localityGroupID:
+          type: integer
+          description: Locality group identifier (omitted from JSON-LD output)
+    DatasetStats:
+      type: object
+      properties:
+        dataset_key: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        publisher_name: { type: string, nullable: true }
+        institution_code: { type: string, nullable: true }
+        collection_code: { type: string, nullable: true }
+        total: { type: integer }
+        georeferenced: { type: integer }
+        validated: { type: integer }
+        ungeoreferenced: { type: integer }
