@@ -228,8 +228,6 @@
                         <button id="share-btn" title="{{ __('Copy link to this locality') }}"
                             style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#16a34a;font-size:11px;margin-top:1px;"
                             onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">🔗</button>
-                        <button id="not-georef-group-btn" type="button" title="{{ __('Mark this locality as not georeferenceable — no usable locality info (e.g. \'in the woods\', no country given)') }}"
-                            style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#9ca3af;font-size:11px;margin-top:1px;white-space:nowrap;">🚫</button>
                     </div>
                     <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">{{ __('Find coordinates on map:') }}</div>
                     <form id="nominatim-form" class="flex gap-1" onsubmit="event.preventDefault(); searchNominatim(document.getElementById('nominatim-input').value.trim());">
@@ -495,8 +493,10 @@
 
             {{-- Georef form (takes remaining space) --}}
             <div class="p-4 overflow-y-auto" style="flex:1;min-height:0;">
-                <div style="margin-bottom:10px;">
+                <div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:6px;">
                     <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Your georeference') }}</span>
+                    <button id="not-georef-group-btn" type="button" title="{{ __('Mark this locality as not georeferenceable — no usable locality info (e.g. \'in the woods\', no country given)') }}"
+                        style="flex-shrink:0;padding:3px 7px;border:1px solid #e5e7eb;border-radius:4px;background:white;cursor:pointer;color:#9ca3af;font-size:11px;white-space:nowrap;">🚫</button>
                 </div>
                 {{-- Mode toggle: only shown when there are suggestions --}}
                 <div id="mode-toggle-wrap" style="display:none;margin-bottom:10px;">
