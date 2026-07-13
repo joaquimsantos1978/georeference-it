@@ -543,7 +543,7 @@
                 /* Leaflet's default idle cursor is "grab" (as if the whole map were
                    always draggable-looking) — a plain pointer reads better at rest;
                    "grab"/"grabbing" only while an actual pan is in progress. */
-                #map.leaflet-container { cursor: default; }
+                #map.leaflet-container { cursor: pointer; }
                 #map.leaflet-container.leaflet-dragging { cursor: grabbing; }
                 /* Forces the resize cursor everywhere for the duration of a radius-handle
                    drag — without this, the cursor reverts to whatever's under the pointer
