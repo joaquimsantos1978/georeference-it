@@ -17,40 +17,48 @@ class RefreshImpactCounts extends Command
 
     public function handle(): int
     {
-        // Single scan of locality_groups serves both explore_countries (just the list of
-        // codes) and stats.georef's byCountry aggregates further below — these used to be
-        // two separate full scans with identical WHERE filters (deleted_at IS NULL,
-        // occurrence_count > 0, country_code NOT NULL) against a table that's grown to
-        // tens of millions of rows (EXPLAIN showed ~48M rows examined for a plain DISTINCT
-        // alone, since none of the available indexes cover occurrence_count/deleted_at
-        // together with country_code). Computing the GROUP BY once and deriving the
-        // country list from its keys halves that cost. No REGEXP validity filter on
-        // country_code here on purpose either: GbifImportDownload already nulls out
-        // anything that doesn't match ^[A-Z]{2}$ at staging time, before locality_groups/
-        // occurrences are ever populated from it, so whereNotNull() alone is sufficient —
-        // REGEXP can't use an index and was pure wasted scan cost for a condition already
-        // guaranteed.
-        $byCountry = DB::table('locality_groups')
-            ->selectRaw('
-                country_code,
-                SUM(occurrence_count)                                         AS total_occ,
-                SUM(ungeoreferenced_count)                                    AS ungeoref_occ,
-                SUM(pending_count)                                            AS pending_occ,
-                SUM(validated_count)                                          AS validated_occ,
-                SUM(GREATEST(0, CAST(occurrence_count AS SIGNED) - CAST(ungeoreferenced_count AS SIGNED) - CAST(pending_count AS SIGNED))) AS georef_occ,
-                COUNT(*)                                                      AS total_groups,
-                SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
-            ')
-            ->whereNull('deleted_at')
-            ->where('occurrence_count', '>', 0)
+        // A single GROUP BY across the whole table (EXPLAIN: ~48M rows examined — no
+        // index covers occurrence_count/deleted_at together with country_code, so
+        // MariaDB falls back to checking those per row) turned out much more expensive
+        // than doing it per country: a plain filter-free DISTINCT country_code uses a
+        // loose index scan on idx_lg_country_code (~46K rows, just jumping between the
+        // ~250 distinct key groups), and a single-country aggregate then uses
+        // index_merge(idx_lg_country_code, deleted_at index) — EXPLAIN showed ~242K rows
+        // for one mid-size country vs 48M for all of them combined in one scan. Looping
+        // ~250 cheap, targeted queries also means a killed/interrupted run keeps whatever
+        // it already wrote instead of losing everything (no per-row output here, just the
+        // final write below, but the point stands for the command as a whole).
+        $countryList = DB::table('locality_groups')
+            ->select('country_code')
             ->whereNotNull('country_code')
-            ->groupBy('country_code')
-            // No ORDER BY here on purpose: forced MariaDB to materialize the whole
-            // grouped result into a temp table before a filesort could run (EXPLAIN:
-            // "Using temporary; Using filesort") — pure overhead, since the stats page
-            // re-sorts this table entirely client-side anyway (stats.blade.php's
-            // sortTable(), driven by a dropdown), so the initial order is never used.
-            ->get();
+            ->distinct()
+            ->pluck('country_code');
+
+        $byCountry = collect();
+        foreach ($countryList as $code) {
+            $agg = DB::table('locality_groups')
+                ->selectRaw('
+                    SUM(occurrence_count)                                         AS total_occ,
+                    SUM(ungeoreferenced_count)                                    AS ungeoref_occ,
+                    SUM(pending_count)                                            AS pending_occ,
+                    SUM(validated_count)                                          AS validated_occ,
+                    SUM(GREATEST(0, CAST(occurrence_count AS SIGNED) - CAST(ungeoreferenced_count AS SIGNED) - CAST(pending_count AS SIGNED))) AS georef_occ,
+                    COUNT(*)                                                      AS total_groups,
+                    SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
+                ')
+                ->where('country_code', $code)
+                ->whereNull('deleted_at')
+                ->where('occurrence_count', '>', 0)
+                ->first();
+
+            // Countries with no group matching the filters (occurrence_count > 0,
+            // not deleted) contribute nothing — same as before, when they simply
+            // never appeared in the old query's GROUP BY output.
+            if ((int) $agg->total_groups > 0) {
+                $agg->country_code = $code;
+                $byCountry->push($agg);
+            }
+        }
 
         $countries = $byCountry->pluck('country_code')->sort()->values();
 
