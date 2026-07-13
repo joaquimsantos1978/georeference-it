@@ -38,6 +38,10 @@ Route::get('/api-docs', function () {
     return view('api-docs');
 })->name('api-docs');
 
+Route::get('/api-docs/swagger', function () {
+    return view('api-docs-swagger');
+})->name('api-docs.swagger');
+
 Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets');
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/user/{id}', [UserProfileController::class, 'show'])->name('user.profile')->where('id', '[0-9]+');

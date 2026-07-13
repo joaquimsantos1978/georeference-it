@@ -14,6 +14,10 @@
            class="text-xs border border-gray-300 text-gray-600 hover:border-green-500 hover:text-green-600 px-3 py-2 rounded-lg transition">
             Try it → <span class="font-mono">/occurrences</span>
         </a>
+        <a href="{{ route('api-docs.swagger') }}" target="_blank"
+           class="text-xs border border-green-500 text-green-600 hover:bg-green-50 px-3 py-2 rounded-lg transition">
+            Interactive docs (Swagger UI) ↗
+        </a>
         <a href="{{ url('/openapi.yaml') }}" target="_blank"
            class="text-xs border border-gray-300 text-gray-600 hover:border-green-500 hover:text-green-600 px-3 py-2 rounded-lg transition">
             OpenAPI spec (YAML) ↓
