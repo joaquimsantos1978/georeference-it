@@ -43,6 +43,18 @@ paths:
           in: query
           description: Partial (LIKE) match on scientific name
           schema: { type: string }
+        - name: georeferenced_after
+          in: query
+          description: >
+            Only occurrences last georeferenced/status-changed on or after this date
+            (inclusive). ISO 8601 date, e.g. `2026-01-01`.
+          schema: { type: string, format: date, example: "2026-01-01" }
+        - name: georeferenced_before
+          in: query
+          description: >
+            Only occurrences last georeferenced/status-changed on or before this date
+            (inclusive). ISO 8601 date, e.g. `2026-06-30`.
+          schema: { type: string, format: date, example: "2026-06-30" }
         - name: per_page
           in: query
           description: Records per page — default 100, max 500
@@ -101,46 +113,6 @@ paths:
                 type: object
         "404":
           description: Not found
-  /datasets:
-    get:
-      summary: List dataset statistics
-      description: Aggregated georeferencing statistics per GBIF dataset.
-      parameters:
-        - name: q
-          in: query
-          description: Free-text match on institution/collection/title/publisher
-          schema: { type: string }
-        - name: country
-          in: query
-          description: ISO 3166-1 alpha-2 country code
-          schema: { type: string, example: PT }
-        - name: institution_code
-          in: query
-          schema: { type: string }
-        - name: per_page
-          in: query
-          schema: { type: integer, default: 100, maximum: 500 }
-        - name: page
-          in: query
-          schema: { type: integer, default: 1 }
-      responses:
-        "200":
-          description: Paginated dataset statistics
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  meta:
-                    type: object
-                    properties:
-                      total: { type: integer }
-                      per_page: { type: integer }
-                      current_page: { type: integer }
-                      last_page: { type: integer }
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/DatasetStats' }
 components:
   schemas:
     Occurrence:
@@ -196,15 +168,3 @@ components:
         localityGroupID:
           type: integer
           description: Locality group identifier (omitted from JSON-LD output)
-    DatasetStats:
-      type: object
-      properties:
-        dataset_key: { type: string, format: uuid }
-        title: { type: string, nullable: true }
-        publisher_name: { type: string, nullable: true }
-        institution_code: { type: string, nullable: true }
-        collection_code: { type: string, nullable: true }
-        total: { type: integer }
-        georeferenced: { type: integer }
-        validated: { type: integer }
-        ungeoreferenced: { type: integer }

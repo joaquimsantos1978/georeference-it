@@ -81,6 +81,17 @@ class OccurrenceController extends Controller
         if ($request->filled('scientific_name')) {
             $query->where('scientific_name', 'like', '%' . $request->scientific_name . '%');
         }
+        // 'updated_at' doubles as "last georeferenced/status-changed" — there's no
+        // separate per-occurrence georeference timestamp column, but this is what the
+        // idx_georef_status_updated_id index (see migration 2026_06_29_185043) exists
+        // for, and ImpactController's recent-activity feed already relies on the same
+        // proxy. Dates are inclusive, interpreted at day granularity.
+        if ($request->filled('georeferenced_after')) {
+            $query->where('updated_at', '>=', $request->georeferenced_after);
+        }
+        if ($request->filled('georeferenced_before')) {
+            $query->where('updated_at', '<=', $request->georeferenced_before . ' 23:59:59');
+        }
 
         if ($request->get('format') === 'csv') {
             return $this->csvResponse($query, $request);

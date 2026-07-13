@@ -34,7 +34,6 @@
             <a href="#endpoints"   class="block text-gray-600 dark:text-gray-400 hover:text-green-600 py-0.5">Endpoints</a>
             <a href="#occurrences" class="block text-gray-500 dark:text-gray-500 hover:text-green-600 py-0.5 pl-3 text-xs">GET occurrences</a>
             <a href="#single"      class="block text-gray-500 dark:text-gray-500 hover:text-green-600 py-0.5 pl-3 text-xs">GET occurrence/:key</a>
-            <a href="#datasets-ep" class="block text-gray-500 dark:text-gray-500 hover:text-green-600 py-0.5 pl-3 text-xs">GET datasets</a>
             <a href="#response"    class="block text-gray-600 dark:text-gray-400 hover:text-green-600 py-0.5 mt-2">Response format</a>
             <a href="#fields"      class="block text-gray-600 dark:text-gray-400 hover:text-green-600 py-0.5">Fields</a>
             <a href="#status"      class="block text-gray-600 dark:text-gray-400 hover:text-green-600 py-0.5">Verification status</a>
@@ -71,6 +70,8 @@
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">institution_code</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Filter by institution code, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">MHNC</code></td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">status</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">One or more of <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">validated</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">has_suggestion</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ungeoreferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_georeferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_reviewed</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">conflicted</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">not_georeferenceable</code>, pipe-separated, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">?status=validated|has_suggestion</code></td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">scientific_name</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Partial match on scientific name</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">georeferenced_after</td><td class="py-2 text-gray-400">date</td><td class="py-2 text-gray-500">Only occurrences last georeferenced/status-changed on or after this date (inclusive), e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">2026-01-01</code></td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">georeferenced_before</td><td class="py-2 text-gray-400">date</td><td class="py-2 text-gray-500">Only occurrences last georeferenced/status-changed on or before this date (inclusive)</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">per_page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Records per page — default 100, max 500</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Page number — default 1</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">format</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Set to <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">csv</code> to download all matching records as a UTF-8 CSV file (ignores <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">per_page</code>/<code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">page</code>), or <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">jsonld</code> for JSON-LD output</td></tr>
@@ -95,19 +96,6 @@
                 </div>
             </div>
 
-            {{-- GET datasets --}}
-            <div id="datasets-ep" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="px-5 py-3.5 flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
-                    <span class="text-xs font-bold bg-green-100 text-green-700 rounded px-2 py-0.5 font-mono">GET</span>
-                    <code class="text-sm font-mono text-gray-800 dark:text-gray-100">/api/v1/datasets</code>
-                    <a href="{{ url('/api/v1/datasets') }}" target="_blank"
-                       class="ml-auto text-xs text-green-600 hover:underline">Try →</a>
-                </div>
-                <div class="px-5 py-4">
-                    <p class="text-sm text-gray-500 mb-3">Aggregated statistics per GBIF dataset. Optional filters: <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">country</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">institution_code</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">q</code> (free text on institution/collection). Returns <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">dataset_key</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">institution_code</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">collection_code</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">total</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">georeferenced</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">validated</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">ungeoreferenced</code>.</p>
-                    <p class="text-sm text-gray-500">See also: <a href="{{ route('datasets') }}" class="text-green-600 hover:underline">Datasets browser</a> with CSV download.</p>
-                </div>
-            </div>
         </section>
 
         {{-- Response format --}}
@@ -276,10 +264,7 @@ curl -H "Accept: application/ld+json" \
   "{{ url('/api/v1/occurrences') }}?country=PT&status=validated"
 
 <span class="text-gray-500"># Single occurrence</span>
-curl "{{ url('/api/v1/occurrences') }}/3014169604"
-
-<span class="text-gray-500"># Dataset list</span>
-curl "{{ url('/api/v1/datasets') }}?country=PT"</code></pre>
+curl "{{ url('/api/v1/occurrences') }}/3014169604"</code></pre>
                 </div>
                 <div>
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">JavaScript</p>

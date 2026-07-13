@@ -34,10 +34,6 @@
             @if($q) {{ __('matching') }} "<em>{{ $q }}</em>"@endif
         </p>
         <div class="flex items-center gap-2">
-            <a href="{{ route('api.datasets') }}" target="_blank"
-               class="text-xs border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-green-500 hover:text-green-600 px-3 py-1.5 rounded-lg transition">
-                API →
-            </a>
             <a href="{{ request()->fullUrlWithQuery(['csv' => 1]) }}"
                class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition">
                 ↓ CSV
