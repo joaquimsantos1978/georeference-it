@@ -75,7 +75,10 @@ public function redirect(string $provider)
                 $user->update([
         'provider' => $provider,
         'provider_id' => $socialUser->getId(),
-        'avatar' => $socialUser->getAvatar(),
+        // Providers like ORCID never return an avatar — falling back to the
+        // provider's null here was silently wiping out an avatar the user had
+        // already uploaded themselves the first time they linked such a provider.
+        'avatar' => $socialUser->getAvatar() ?: $user->avatar,
         'orcid' => $provider === 'orcid' ? $socialUser->getId() : null,
         'user_level_id' => $user->user_level_id ?? UserLevel::orderBy('min_validated', 'asc')->first()?->id,
                 ]);
