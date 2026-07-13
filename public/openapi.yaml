@@ -64,8 +64,10 @@ paths:
           schema: { type: integer, default: 1 }
         - name: format
           in: query
-          description: "`csv` streams all matching records as CSV (ignores pagination); `jsonld` returns JSON-LD."
-          schema: { type: string, enum: [csv, jsonld] }
+          description: >
+            `json` (default) returns standard JSON; `csv` streams all matching records
+            as CSV (ignores pagination); `jsonld` returns JSON-LD.
+          schema: { type: string, enum: [json, csv, jsonld], default: json }
       responses:
         "200":
           description: Paginated occurrence list
@@ -101,7 +103,8 @@ paths:
           schema: { type: string }
         - name: format
           in: query
-          schema: { type: string, enum: [jsonld] }
+          description: "`json` (default) returns standard JSON; `jsonld` returns JSON-LD. No CSV for a single record."
+          schema: { type: string, enum: [json, jsonld], default: json }
       responses:
         "200":
           description: A single occurrence
