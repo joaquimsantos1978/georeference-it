@@ -17,20 +17,38 @@ class RefreshImpactCounts extends Command
 
     public function handle(): int
     {
-        // No REGEXP validity filter here on purpose: GbifImportDownload nulls out any
-        // country_code that doesn't match ^[A-Z]{2}$ at staging time (before
-        // locality_groups/occurrences are ever populated from it), so anything that
-        // survives whereNotNull() below is already guaranteed well-formed. Checking it
-        // again here forced a REGEXP-can't-use-an-index full table scan for nothing —
-        // observed taking 1-3+ hours on the grown locality_groups table.
-        $countries = DB::table('locality_groups')
-            ->select('country_code')
+        // Single scan of locality_groups serves both explore_countries (just the list of
+        // codes) and stats.georef's byCountry aggregates further below — these used to be
+        // two separate full scans with identical WHERE filters (deleted_at IS NULL,
+        // occurrence_count > 0, country_code NOT NULL) against a table that's grown to
+        // tens of millions of rows (EXPLAIN showed ~48M rows examined for a plain DISTINCT
+        // alone, since none of the available indexes cover occurrence_count/deleted_at
+        // together with country_code). Computing the GROUP BY once and deriving the
+        // country list from its keys halves that cost. No REGEXP validity filter on
+        // country_code here on purpose either: GbifImportDownload already nulls out
+        // anything that doesn't match ^[A-Z]{2}$ at staging time, before locality_groups/
+        // occurrences are ever populated from it, so whereNotNull() alone is sufficient —
+        // REGEXP can't use an index and was pure wasted scan cost for a condition already
+        // guaranteed.
+        $byCountry = DB::table('locality_groups')
+            ->selectRaw('
+                country_code,
+                SUM(occurrence_count)                                         AS total_occ,
+                SUM(ungeoreferenced_count)                                    AS ungeoref_occ,
+                SUM(pending_count)                                            AS pending_occ,
+                SUM(validated_count)                                          AS validated_occ,
+                SUM(GREATEST(0, CAST(occurrence_count AS SIGNED) - CAST(ungeoreferenced_count AS SIGNED) - CAST(pending_count AS SIGNED))) AS georef_occ,
+                COUNT(*)                                                      AS total_groups,
+                SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
+            ')
             ->whereNull('deleted_at')
-            ->whereNotNull('country_code')
             ->where('occurrence_count', '>', 0)
-            ->distinct()
-            ->orderBy('country_code')
-            ->pluck('country_code');
+            ->whereNotNull('country_code')
+            ->groupBy('country_code')
+            ->orderByDesc('ungeoref_occ')
+            ->get();
+
+        $countries = $byCountry->pluck('country_code')->sort()->values();
 
         Cache::forever('explore_countries:data', $countries);
         Cache::forever('explore_countries:computed_at', now()->timestamp);
@@ -162,24 +180,8 @@ class RefreshImpactCounts extends Command
             ->whereRaw('ungeoreferenced_count > 0 OR pending_count > 0')
             ->count();
 
-        $byCountry = DB::table('locality_groups')
-            ->selectRaw('
-                country_code,
-                SUM(occurrence_count)                                         AS total_occ,
-                SUM(ungeoreferenced_count)                                    AS ungeoref_occ,
-                SUM(pending_count)                                            AS pending_occ,
-                SUM(validated_count)                                          AS validated_occ,
-                SUM(GREATEST(0, CAST(occurrence_count AS SIGNED) - CAST(ungeoreferenced_count AS SIGNED) - CAST(pending_count AS SIGNED))) AS georef_occ,
-                COUNT(*)                                                      AS total_groups,
-                SUM(ungeoreferenced_count > 0 OR pending_count > 0)          AS pending_groups
-            ')
-            ->whereNull('deleted_at')
-            ->where('occurrence_count', '>', 0)
-            ->whereNotNull('country_code')
-            ->groupBy('country_code')
-            ->orderByDesc('ungeoref_occ')
-            ->get();
-
+        // $byCountry was already computed once at the top of handle() (reused for
+        // explore_countries too) — no need to run the same GROUP BY a second time.
         Cache::forever('stats.georef.data', [$global, $byCountry]);
         Cache::forever('stats.georef.computed_at', now()->timestamp);
         $this->info('Refreshed stats.georef');
