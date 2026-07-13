@@ -21,13 +21,13 @@ paths:
           in: query
           description: ISO 3166-1 alpha-2 country code
           schema: { type: string, example: PT }
-        - name: dataset_key
+        - name: datasetKey
           in: query
           description: GBIF dataset UUID
           schema: { type: string, format: uuid }
-        - name: institution_code
+        - name: institutionCode
           in: query
-          description: Institution code, as used in GBIF (institutionCode)
+          description: Institution code, as used in GBIF
           schema: { type: string, example: MHNC }
         - name: status
           in: query
@@ -39,23 +39,23 @@ paths:
             example: "validated|has_suggestion"
           style: form
           explode: false
-        - name: scientific_name
+        - name: scientificName
           in: query
           description: Partial (LIKE) match on scientific name
           schema: { type: string }
-        - name: georeferenced_after
+        - name: georeferencedAfter
           in: query
           description: >
             Only occurrences last georeferenced/status-changed on or after this date
             (inclusive). ISO 8601 date, e.g. `2026-01-01`.
           schema: { type: string, format: date, example: "2026-01-01" }
-        - name: georeferenced_before
+        - name: georeferencedBefore
           in: query
           description: >
             Only occurrences last georeferenced/status-changed on or before this date
             (inclusive). ISO 8601 date, e.g. `2026-06-30`.
           schema: { type: string, format: date, example: "2026-06-30" }
-        - name: per_page
+        - name: perPage
           in: query
           description: Records per page — default 100, max 500
           schema: { type: integer, default: 100, maximum: 500 }
@@ -80,9 +80,9 @@ paths:
                     type: object
                     properties:
                       total: { type: integer }
-                      per_page: { type: integer }
-                      current_page: { type: integer }
-                      last_page: { type: integer }
+                      perPage: { type: integer }
+                      currentPage: { type: integer }
+                      lastPage: { type: integer }
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/Occurrence' }

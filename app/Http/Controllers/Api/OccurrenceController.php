@@ -69,35 +69,35 @@ class OccurrenceController extends Controller
         if ($request->filled('country')) {
             $query->where('country_code', strtoupper($request->country));
         }
-        if ($request->filled('dataset_key')) {
-            $query->where('dataset_key', $request->dataset_key);
+        if ($request->filled('datasetKey')) {
+            $query->where('dataset_key', $request->datasetKey);
         }
-        if ($request->filled('institution_code')) {
-            $query->where('institution_code', $request->institution_code);
+        if ($request->filled('institutionCode')) {
+            $query->where('institution_code', $request->institutionCode);
         }
         if ($request->filled('status')) {
             $query->whereIn('georef_status', explode('|', $request->status));
         }
-        if ($request->filled('scientific_name')) {
-            $query->where('scientific_name', 'like', '%' . $request->scientific_name . '%');
+        if ($request->filled('scientificName')) {
+            $query->where('scientific_name', 'like', '%' . $request->scientificName . '%');
         }
         // 'updated_at' doubles as "last georeferenced/status-changed" — there's no
         // separate per-occurrence georeference timestamp column, but this is what the
         // idx_georef_status_updated_id index (see migration 2026_06_29_185043) exists
         // for, and ImpactController's recent-activity feed already relies on the same
         // proxy. Dates are inclusive, interpreted at day granularity.
-        if ($request->filled('georeferenced_after')) {
-            $query->where('updated_at', '>=', $request->georeferenced_after);
+        if ($request->filled('georeferencedAfter')) {
+            $query->where('updated_at', '>=', $request->georeferencedAfter);
         }
-        if ($request->filled('georeferenced_before')) {
-            $query->where('updated_at', '<=', $request->georeferenced_before . ' 23:59:59');
+        if ($request->filled('georeferencedBefore')) {
+            $query->where('updated_at', '<=', $request->georeferencedBefore . ' 23:59:59');
         }
 
         if ($request->get('format') === 'csv') {
             return $this->csvResponse($query, $request);
         }
 
-        $perPage = min((int) $request->get('per_page', 100), 500);
+        $perPage = min((int) $request->get('perPage', 100), 500);
         $results = $query->paginate($perPage);
         $records = $results->getCollection()->map(fn($o) => $this->format($o))->all();
 
@@ -114,12 +114,12 @@ class OccurrenceController extends Controller
 
         return response()->json([
             'meta' => [
-                'total'        => $results->total(),
-                'per_page'     => $results->perPage(),
-                'current_page' => $results->currentPage(),
-                'last_page'    => $results->lastPage(),
-                'next_page_url' => $results->nextPageUrl(),
-                'prev_page_url' => $results->previousPageUrl(),
+                'total'       => $results->total(),
+                'perPage'     => $results->perPage(),
+                'currentPage' => $results->currentPage(),
+                'lastPage'    => $results->lastPage(),
+                'nextPageUrl' => $results->nextPageUrl(),
+                'prevPageUrl' => $results->previousPageUrl(),
             ],
             'data' => $records,
         ]);

@@ -53,7 +53,7 @@
                 <div class="px-5 py-3.5 flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                     <span class="text-xs font-bold bg-green-100 text-green-700 rounded px-2 py-0.5 font-mono">GET</span>
                     <code class="text-sm font-mono text-gray-800 dark:text-gray-100">/api/v1/occurrences</code>
-                    <a href="{{ url('/api/v1/occurrences') }}?per_page=5" target="_blank"
+                    <a href="{{ url('/api/v1/occurrences') }}?perPage=5" target="_blank"
                        class="ml-auto text-xs text-green-600 hover:underline">Try →</a>
                 </div>
                 <div class="px-5 py-4">
@@ -66,19 +66,19 @@
                         </tr></thead>
                         <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50 text-xs">
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">country</td><td class="py-2 text-gray-400">ISO 3166-1 alpha-2</td><td class="py-2 text-gray-500">Filter by country code — <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PT</code>, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ES</code>, …</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">dataset_key</td><td class="py-2 text-gray-400">UUID</td><td class="py-2 text-gray-500">Filter by GBIF dataset key</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">institution_code</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Filter by institution code, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">MHNC</code></td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">datasetKey</td><td class="py-2 text-gray-400">UUID</td><td class="py-2 text-gray-500">Filter by GBIF dataset key</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">institutionCode</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Filter by institution code, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">MHNC</code></td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">status</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">One or more of <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">validated</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">has_suggestion</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">ungeoreferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_georeferenced</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">gbif_reviewed</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">conflicted</code> · <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">not_georeferenceable</code>, pipe-separated, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">?status=validated|has_suggestion</code></td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">scientific_name</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Partial match on scientific name</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">georeferenced_after</td><td class="py-2 text-gray-400">date</td><td class="py-2 text-gray-500">Only occurrences last georeferenced/status-changed on or after this date (inclusive), e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">2026-01-01</code></td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">georeferenced_before</td><td class="py-2 text-gray-400">date</td><td class="py-2 text-gray-500">Only occurrences last georeferenced/status-changed on or before this date (inclusive)</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">per_page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Records per page — default 100, max 500</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">scientificName</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Partial match on scientific name</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">georeferencedAfter</td><td class="py-2 text-gray-400">date</td><td class="py-2 text-gray-500">Only occurrences last georeferenced/status-changed on or after this date (inclusive), e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">2026-01-01</code></td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">georeferencedBefore</td><td class="py-2 text-gray-400">date</td><td class="py-2 text-gray-500">Only occurrences last georeferenced/status-changed on or before this date (inclusive)</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">perPage</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Records per page — default 100, max 500</td></tr>
                             <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">page</td><td class="py-2 text-gray-400">integer</td><td class="py-2 text-gray-500">Page number — default 1</td></tr>
-                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">format</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Set to <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">csv</code> to download all matching records as a UTF-8 CSV file (ignores <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">per_page</code>/<code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">page</code>), or <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">jsonld</code> for JSON-LD output</td></tr>
+                            <tr><td class="py-2 font-mono text-gray-700 dark:text-gray-300">format</td><td class="py-2 text-gray-400">string</td><td class="py-2 text-gray-500">Set to <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">csv</code> to download all matching records as a UTF-8 CSV file (ignores <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">perPage</code>/<code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">page</code>), or <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">jsonld</code> for JSON-LD output</td></tr>
                         </tbody>
                     </table>
                     <div class="bg-gray-50 dark:bg-gray-900 rounded-lg px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-300">
-                        {{ url('/api/v1/occurrences') }}?country=PT&amp;status=validated&amp;per_page=50
+                        {{ url('/api/v1/occurrences') }}?country=PT&amp;status=validated&amp;perPage=50
                     </div>
                 </div>
             </div>
@@ -109,9 +109,9 @@
                     <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">{
   "meta": {
     "total": 48213,
-    "per_page": 100,
-    "current_page": 1,
-    "last_page": 483
+    "perPage": 100,
+    "currentPage": 1,
+    "lastPage": 483
   },
   "data": [
     {
@@ -269,7 +269,7 @@ curl "{{ url('/api/v1/occurrences') }}/3014169604"</code></pre>
                 <div>
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">JavaScript</p>
                     <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">const res = await fetch(
-  '{{ url('/api/v1/occurrences') }}?country=PT&status=validated&per_page=500'
+  '{{ url('/api/v1/occurrences') }}?country=PT&status=validated&perPage=500'
 );
 const { meta, data } = await res.json();
 data.forEach(o =>
@@ -281,13 +281,13 @@ data.forEach(o =>
                     <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">import requests
 
 url = "{{ url('/api/v1/occurrences') }}"
-params = {"country": "PT", "status": "validated", "per_page": 500}
+params = {"country": "PT", "status": "validated", "perPage": 500}
 
 records, page = [], 1
 while True:
     r = requests.get(url, params={**params, "page": page}).json()
     records.extend(r["data"])
-    if page >= r["meta"]["last_page"]:
+    if page >= r["meta"]["lastPage"]:
         break
     page += 1
 
