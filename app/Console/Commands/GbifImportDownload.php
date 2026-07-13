@@ -58,7 +58,7 @@ class GbifImportDownload extends Command
 
     private function clearCheckpoints(): void
     {
-        foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted'] as $stage) {
+        foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted', 'multimedia_staging', 'associated_media_fallback'] as $stage) {
             Cache::forget("gbif:progress:{$stage}");
         }
     }
@@ -80,7 +80,10 @@ class GbifImportDownload extends Command
                 $this->error("File not found: {$multimediaOnly}");
                 return self::FAILURE;
             }
-            $this->importMultimedia($multimediaOnly);
+            if ($this->loadMultimediaIntoStaging($multimediaOnly)) {
+                $this->processMultimediaStaging();
+                $this->applyAssociatedMediaFallback();
+            }
             return self::SUCCESS;
         }
 
@@ -138,8 +141,11 @@ class GbifImportDownload extends Command
 
         // Step 4b: import multimedia if extracted
         if (!empty($multimediaPath) && file_exists($multimediaPath)) {
-            $this->importMultimedia($multimediaPath);
+            if ($this->loadMultimediaIntoStaging($multimediaPath)) {
+                $this->processMultimediaStaging();
+            }
         }
+        $this->applyAssociatedMediaFallback();
 
         // Step 5: cleanup — once the data is safely in occurrences/locality_groups, the
         // raw download artifacts (zip, extracted occurrence.txt, multimedia.txt) are no
@@ -151,7 +157,9 @@ class GbifImportDownload extends Command
             $this->info('Truncating gbif_staging...');
             $this->markProgress('Cleaning up: truncating gbif_staging and removing downloaded files');
             DB::statement('TRUNCATE TABLE gbif_staging');
+            DB::statement('TRUNCATE TABLE gbif_multimedia_staging');
             Cache::forget('gbif:staging-loaded-from');
+            Cache::forget('gbif:multimedia-staging-loaded-from');
             $this->clearCheckpoints();
 
             foreach (array_filter([$zipPath, $csvPath ?? null, $multimediaPath ?? null]) as $file) {
@@ -847,99 +855,216 @@ class GbifImportDownload extends Command
 
     // -------------------------------------------------------------------------
     // Import multimedia extension (multimedia.txt) → occurrences.media
+    //
+    // LOAD DATA + staging table + batched JOIN UPDATE — mirrors the same pattern used
+    // for occurrence.txt (loadIntoStaging/processStaging above) instead of the previous
+    // PHP-side stream+group+500-branch-CASE approach, which did in PHP what SQL already
+    // does natively (GROUP BY) and produced giant CASE-UPDATE statements that competed
+    // for I/O with live site traffic without any checkpoint/resume support.
     // -------------------------------------------------------------------------
 
-    private function importMultimedia(string $path): void
+    private function loadMultimediaIntoStaging(string $path): bool
     {
-        $this->info('Importing multimedia...');
-        $this->markProgress('Importing multimedia');
+        $fingerprint = [
+            'path'  => realpath($path) ?: $path,
+            'size'  => filesize($path),
+            'mtime' => filemtime($path),
+        ];
+        $previous = Cache::get('gbif:multimedia-staging-loaded-from');
+        if ($previous && $previous['path'] === $fingerprint['path']
+            && $previous['size'] === $fingerprint['size']
+            && $previous['mtime'] === $fingerprint['mtime']) {
+            $this->info("gbif_multimedia_staging already loaded from this exact file ({$previous['rows']} rows), skipping LOAD DATA");
+            return true;
+        }
 
         $fh = fopen($path, 'r');
         if (!$fh) {
             $this->warn("Cannot open multimedia file: {$path}");
-            return;
+            return false;
         }
-
-        // Read header to find column indices
         $header = fgetcsv($fh, 0, "\t");
-        if (!$header) { fclose($fh); return; }
+        fclose($fh);
+        if (!$header) {
+            $this->warn('multimedia.txt is empty or unreadable');
+            return false;
+        }
         $header = array_map('trim', $header);
 
-        $idxGbifId    = array_search('gbifID', $header);
-        $idxType      = array_search('type', $header);
-        $idxFormat    = array_search('format', $header);
-        $idxIdentifier = array_search('identifier', $header);
-        $idxTitle     = array_search('title', $header);
-        $idxLicense   = array_search('license', $header);
-
-        if ($idxGbifId === false || $idxIdentifier === false) {
+        // Only these columns are kept — everything else the file may carry (created,
+        // rightsHolder, source, audience, description, ...) is discarded into a
+        // throwaway @skip variable rather than given a staging column.
+        $known = [
+            'gbifID' => 'gbif_id', 'type' => 'type', 'format' => 'format',
+            'identifier' => 'identifier', 'title' => 'title', 'license' => 'license',
+        ];
+        $colList = [];
+        foreach ($header as $i => $col) {
+            $colList[] = $known[$col] ?? "@skip{$i}";
+        }
+        if (!in_array('gbif_id', $colList, true) || !in_array('identifier', $colList, true)) {
             $this->warn('multimedia.txt missing gbifID or identifier columns');
-            fclose($fh);
+            return false;
+        }
+
+        $this->info('Loading into gbif_multimedia_staging...');
+        $this->markProgress('LOAD DATA INFILE → gbif_multimedia_staging');
+
+        DB::statement('TRUNCATE TABLE gbif_multimedia_staging');
+        Cache::forget('gbif:multimedia-staging-loaded-from');
+
+        $colString   = implode(', ', $colList);
+        $escapedPath = str_replace('\\', '/', $path);
+
+        try {
+            DB::statement("
+                LOAD DATA LOCAL INFILE '{$escapedPath}'
+                INTO TABLE gbif_multimedia_staging
+                CHARACTER SET utf8mb4
+                FIELDS TERMINATED BY '\\t'
+                LINES TERMINATED BY '\\n'
+                IGNORE 1 LINES
+                ({$colString})
+            ");
+        } catch (\Exception $e) {
+            $this->error('LOAD DATA LOCAL INFILE failed for multimedia: ' . $e->getMessage());
+            return false;
+        }
+
+        $count = DB::table('gbif_multimedia_staging')->count();
+        $this->info("Staged {$count} multimedia rows");
+        Cache::forever('gbif:multimedia-staging-loaded-from', $fingerprint + ['rows' => $count]);
+        return true;
+    }
+
+    private function processMultimediaStaging(): void
+    {
+        $bounds = DB::table('gbif_multimedia_staging')->selectRaw('MIN(gbif_id) as min_id, MAX(gbif_id) as max_id')->first();
+        if (!$bounds || $bounds->min_id === null) {
+            $this->line('  No multimedia staged, skipping.');
             return;
         }
 
-        // Stream multimedia.txt line by line — file can be 20GB+, never load into memory
-        $chunk       = [];
-        $processed   = 0;
-        $currentId   = null;
-        $currentItems = [];
+        // JSON_ARRAYAGG truncates silently past group_concat_max_len (1MB default) — a
+        // handful of occurrences carry dozens of images, so raise it well above anything
+        // realistic here rather than risk a silently-clipped media array.
+        DB::statement('SET SESSION group_concat_max_len = 16777216');
 
-        $flushCurrent = function () use (&$chunk, &$currentId, &$currentItems, &$processed) {
-            if ($currentId && $currentItems) {
-                $chunk[$currentId] = $currentItems;
-                $processed++;
-                if (count($chunk) >= 500) {
-                    $this->updateMediaChunk($chunk);
-                    $chunk = [];
-                }
-            }
-            $currentId    = null;
-            $currentItems = [];
-        };
-
-        while (($row = fgetcsv($fh, 0, "\t")) !== false) {
-            $gbifId = trim($row[$idxGbifId] ?? '');
-            $type   = trim($row[$idxType] ?? '');
-            if (!$gbifId || ($type && !str_contains(strtolower($type), 'image'))) {
-                continue;
-            }
-            $identifier = trim($row[$idxIdentifier] ?? '');
-            if (!$identifier) continue;
-
-            if ($gbifId !== $currentId) {
-                $flushCurrent();
-                $currentId = $gbifId;
-            }
-            $currentItems[] = array_filter([
-                'type'       => $type ?: 'StillImage',
-                'format'     => trim($row[$idxFormat] ?? ''),
-                'identifier' => $identifier,
-                'title'      => trim($row[$idxTitle] ?? ''),
-                'license'    => trim($row[$idxLicense] ?? ''),
-            ]);
-
-            if ($processed % 10000 === 0 && $processed > 0) {
-                $this->line("  {$processed} processed...");
-            }
+        $batchSize    = 200000;
+        $minId        = (int) $bounds->min_id;
+        $maxId        = (int) $bounds->max_id;
+        $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
+        $resumeFrom   = $this->getCheckpoint('multimedia_staging');
+        $startId      = $resumeFrom !== null ? $resumeFrom + 1 : $minId;
+        $batchNum     = $resumeFrom !== null ? (int) floor(($resumeFrom - $minId + 1) / $batchSize) : 0;
+        if ($resumeFrom !== null) {
+            $this->info("  Resuming multimedia update from gbif_id {$startId} (batch " . ($batchNum + 1) . "/{$totalBatches})");
         }
-        $flushCurrent();
-        if ($chunk) $this->updateMediaChunk($chunk);
-        fclose($fh);
 
-        $this->info("  Multimedia import done. {$processed} occurrences updated.");
+        $this->info('Applying multimedia to occurrences (batched, JOIN-based)...');
+        $this->markProgress('Applying multimedia extension to occurrences');
+
+        for ($from = $startId; $from <= $maxId; $from += $batchSize) {
+            $to = min($from + $batchSize - 1, $maxId);
+            $batchNum++;
+
+            DB::statement("
+                UPDATE occurrences o
+                JOIN (
+                    SELECT gbif_id,
+                        JSON_ARRAYAGG(JSON_OBJECT(
+                            'type', IF(type = '' OR type IS NULL, 'StillImage', type),
+                            'format', format, 'identifier', identifier,
+                            'title', title, 'license', license
+                        )) AS media
+                    FROM gbif_multimedia_staging
+                    WHERE gbif_id BETWEEN {$from} AND {$to}
+                      AND identifier IS NOT NULL AND identifier != ''
+                      AND (type = '' OR type IS NULL OR type LIKE '%image%')
+                    GROUP BY gbif_id
+                ) s ON CAST(o.gbif_occurrence_key AS UNSIGNED) = s.gbif_id
+                SET o.media = s.media
+            ");
+
+            $this->setCheckpoint('multimedia_staging', $to);
+
+            if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
+                $this->line("  Multimedia batch {$batchNum}/{$totalBatches}");
+                $this->markProgress("Applying multimedia to occurrences: batch {$batchNum}/{$totalBatches}");
+            }
+
+            // Brief pause between batches so queued user requests get a chance to run.
+            usleep(200000);
+        }
+
+        $this->info('  Multimedia applied.');
     }
 
-    private function updateMediaChunk(array $chunk): void
+    // Fallback for publishers who put image URLs directly on the occurrence record via
+    // the associatedMedia DwC term instead of (or as well as) the multimedia.txt
+    // extension. Only fills gaps — never overwrites media already set from the richer
+    // multimedia.txt data above, which carries type/format/license this bare URL list
+    // can't reconstruct. Low volume by nature (most publishers use the extension), so a
+    // small PHP-side CASE-UPDATE batch (like the old multimedia approach) is fine here —
+    // it's the exception path, not the bulk one.
+    private function applyAssociatedMediaFallback(): void
     {
-        $cases = '';
-        $keys  = [];
-        foreach ($chunk as $gbifId => $items) {
-            $json   = addslashes(json_encode(array_values($items)));
-            $cases .= "WHEN gbif_occurrence_key = '{$gbifId}' THEN '{$json}'\n";
-            $keys[] = $gbifId;
+        $bounds = DB::table('gbif_staging')
+            ->whereNotNull('associated_media')
+            ->where('associated_media', '!=', '')
+            ->selectRaw('MIN(gbif_id) as min_id, MAX(gbif_id) as max_id')
+            ->first();
+
+        if (!$bounds || $bounds->min_id === null) {
+            $this->line('  No associatedMedia to backfill, skipping.');
+            return;
         }
-        $inList = implode(',', array_map(fn($k) => "'{$k}'", $keys));
-        DB::statement("UPDATE occurrences SET media = CASE {$cases} END WHERE gbif_occurrence_key IN ({$inList})");
+
+        $this->info('Backfilling media from associatedMedia (occurrence.txt) for gaps...');
+        $this->markProgress('Backfilling associatedMedia fallback');
+
+        $batchSize  = 5000; // small — only touches rows with associated_media set, not the whole table
+        $maxId      = (int) $bounds->max_id;
+        $resumeFrom = $this->getCheckpoint('associated_media_fallback');
+        $startId    = $resumeFrom !== null ? $resumeFrom + 1 : (int) $bounds->min_id;
+        $filled     = 0;
+
+        for ($from = $startId; $from <= $maxId; $from += $batchSize) {
+            $to = min($from + $batchSize - 1, $maxId);
+
+            $rows = DB::table('gbif_staging as s')
+                ->join('occurrences as o', DB::raw('CAST(o.gbif_occurrence_key AS UNSIGNED)'), '=', 's.gbif_id')
+                ->whereBetween('s.gbif_id', [$from, $to])
+                ->whereNotNull('s.associated_media')
+                ->where('s.associated_media', '!=', '')
+                ->whereNull('o.media')
+                ->select('o.gbif_occurrence_key', 's.associated_media')
+                ->get();
+
+            if ($rows->isNotEmpty()) {
+                $cases = '';
+                $keys  = [];
+                foreach ($rows as $row) {
+                    $urls = array_filter(array_map('trim', explode('|', $row->associated_media)));
+                    if (!$urls) continue;
+                    $media  = array_map(fn($url) => ['type' => 'StillImage', 'identifier' => $url], array_values($urls));
+                    $json   = addslashes(json_encode($media));
+                    $cases .= "WHEN gbif_occurrence_key = '{$row->gbif_occurrence_key}' THEN '{$json}'\n";
+                    $keys[] = $row->gbif_occurrence_key;
+                }
+                if ($keys) {
+                    $inList = implode(',', array_map(fn($k) => "'{$k}'", $keys));
+                    DB::statement("UPDATE occurrences SET media = CASE {$cases} END WHERE gbif_occurrence_key IN ({$inList})");
+                    $filled += count($keys);
+                }
+            }
+
+            $this->setCheckpoint('associated_media_fallback', $to);
+            usleep(200000);
+        }
+
+        $this->info("  associatedMedia fallback done. {$filled} occurrences filled.");
+        $this->markProgress('associatedMedia fallback done', ['occurrences_filled' => $filled]);
     }
 
     // -------------------------------------------------------------------------
@@ -980,6 +1105,10 @@ class GbifImportDownload extends Command
             'decimalLongitude'              => 'decimal_longitude',
             'coordinateUncertaintyInMeters' => 'coordinate_uncertainty_m',
             'geodeticDatum'                 => 'geodetic_datum',
+            // Some publishers put image URLs directly on the occurrence core record
+            // instead of (or as well as) the multimedia.txt extension — see
+            // applyAssociatedMediaFallback().
+            'associatedMedia'               => 'associated_media',
         ];
     }
 
