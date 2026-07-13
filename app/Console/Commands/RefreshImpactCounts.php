@@ -59,6 +59,15 @@ class RefreshImpactCounts extends Command
             WHERE deleted_at IS NULL AND georef_status IN ({$statusList}) AND country_code IS NOT NULL
             GROUP BY country_code, georef_status WITH ROLLUP
         ");
+
+        // Built up here and written to impact_counts in one TRUNCATE + bulk INSERT below,
+        // rather than one Cache::forever() call per (status, country) combination — that
+        // used to mean ~2000 individual cache writes per refresh, and left permanently
+        // stale entries behind for any country/status combo that stops matching (nothing
+        // ever deleted an individual key). A full-table replace can't accumulate garbage.
+        $rows = [];
+        $now  = now();
+
         foreach ($byCountryAndStatus as $row) {
             // The single remaining NULL-country row is ROLLUP's own grand-total-of-known-
             // countries marker (real NULLs were excluded above) — not the true grand total,
@@ -67,9 +76,12 @@ class RefreshImpactCounts extends Command
             if ($row->country_code === null) {
                 continue;
             }
-            $key = 'impact_count_' . ($row->georef_status ?: 'all') . '_' . $row->country_code;
-            Cache::forever($key . ':data', (int) $row->cnt);
-            Cache::forever($key . ':computed_at', now()->timestamp);
+            $rows[] = [
+                'status'       => $row->georef_status ?: 'all',
+                'country_code' => $row->country_code,
+                'count'        => (int) $row->cnt,
+                'computed_at'  => $now,
+            ];
         }
 
         // Grouped by status only — naturally includes occurrences with a NULL country_code
@@ -82,25 +94,39 @@ class RefreshImpactCounts extends Command
             GROUP BY georef_status WITH ROLLUP
         ");
         foreach ($byStatusOnly as $row) {
-            $key = 'impact_count_' . ($row->georef_status ?: 'all') . '_all';
-            Cache::forever($key . ':data', (int) $row->cnt);
-            Cache::forever($key . ':computed_at', now()->timestamp);
+            $rows[] = [
+                'status'       => $row->georef_status ?: 'all',
+                'country_code' => 'all',
+                'count'        => (int) $row->cnt,
+                'computed_at'  => $now,
+            ];
         }
 
         // Any country with zero matching occurrences never appears in the GROUP BY
-        // results above — fill those combinations in as 0 rather than leaving a stale
-        // (or missing) cache entry from a previous refresh.
+        // results above — fill those combinations in as 0 rather than leaving them
+        // absent (a missing row reads the same as 0 via COALESCE at read time, but
+        // being explicit here keeps every (status, country) combination present).
         $seenCountries = collect($byCountryAndStatus)->pluck('country_code')->filter()->unique();
         $statusOptionsForZeroFill = collect(self::VALID_STATUSES)->prepend(null);
         foreach ($countries->diff($seenCountries) as $missingCountry) {
             foreach ($statusOptionsForZeroFill as $status) {
-                $key = 'impact_count_' . ($status ?: 'all') . '_' . $missingCountry;
-                Cache::forever($key . ':data', 0);
-                Cache::forever($key . ':computed_at', now()->timestamp);
+                $rows[] = [
+                    'status'       => $status ?: 'all',
+                    'country_code' => $missingCountry,
+                    'count'        => 0,
+                    'computed_at'  => $now,
+                ];
             }
         }
 
-        $this->info('Refreshed impact_count_* for ' . (count(self::VALID_STATUSES) + 1) . ' statuses x ' . ($countries->count() + 1) . ' countries (2 queries instead of ~' . ((count(self::VALID_STATUSES) + 1) * ($countries->count() + 1)) . ')');
+        DB::transaction(function () use ($rows) {
+            DB::table('impact_counts')->truncate();
+            foreach (array_chunk($rows, 500) as $chunk) {
+                DB::table('impact_counts')->insert($chunk);
+            }
+        });
+
+        $this->info('Refreshed impact_counts: ' . count($rows) . ' rows');
 
         // Pre-computes the Explore page's default (no filters applied) total count — by far
         // the most common case, hit by anyone just landing on the page — so that view never

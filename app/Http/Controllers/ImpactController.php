@@ -18,13 +18,16 @@ class ImpactController extends Controller
         $perPage = 50;
         $page    = $request->integer('page', 1) ?: 1;
 
-        // Pure cache read — never computes here. RefreshImpactCounts (scheduled hourly)
-        // is the only thing that ever runs this count query, so a page request can never
-        // be the one that gets stuck behind it. A previous version ran the count inline
-        // whenever the cache was stale, which still caused occasional 504s: whichever
-        // request happened to hit the stale window paid for the live query itself.
-        $cacheKey   = 'impact_count_' . ($status ?: 'all') . '_' . ($country ?: 'all');
-        $totalCount = Cache::get($cacheKey . ':data', 0);
+        // Pure lookup on a pre-computed table — never counted here. RefreshImpactCounts
+        // (scheduled hourly) is the only thing that ever runs this count query, so a page
+        // request can never be the one that gets stuck behind it. A previous version ran
+        // the count inline whenever the cache was stale, which still caused occasional
+        // 504s: whichever request happened to hit the stale window paid for the live
+        // query itself.
+        $totalCount = DB::table('impact_counts')
+            ->where('status', $status ?: 'all')
+            ->where('country_code', $country ?: 'all')
+            ->value('count') ?? 0;
 
         $offset       = ($page - 1) * $perPage;
         $statusFilter = $status && in_array($status, $validStatuses) ? [$status] : $validStatuses;
