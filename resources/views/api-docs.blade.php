@@ -87,7 +87,7 @@
             <div id="single" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-4">
                 <div class="px-5 py-3.5 flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                     <span class="text-xs font-bold bg-green-100 text-green-700 rounded px-2 py-0.5 font-mono">GET</span>
-                    <code class="text-sm font-mono text-gray-800 dark:text-gray-100">/api/v1/occurrences/{gbif_key}</code>
+                    <code class="text-sm font-mono text-gray-800 dark:text-gray-100">/api/v1/occurrences/{occurrenceID}</code>
                     <a href="{{ url('/api/v1/occurrences') }}/3014169604" target="_blank"
                        class="ml-auto text-xs text-green-600 hover:underline">Try →</a>
                 </div>

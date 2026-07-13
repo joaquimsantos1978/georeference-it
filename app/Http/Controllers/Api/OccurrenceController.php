@@ -163,10 +163,10 @@ class OccurrenceController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $gbifKey): Response|JsonResponse
+    public function show(Request $request, string $occurrenceID): Response|JsonResponse
     {
         $occurrence = Occurrence::with(['localityGroup'])
-            ->where('gbif_occurrence_key', $gbifKey)
+            ->where('gbif_occurrence_key', $occurrenceID)
             ->firstOrFail();
 
         $record = $this->format($occurrence);

@@ -92,12 +92,12 @@ paths:
             text/csv:
               schema:
                 type: string
-  /occurrences/{gbif_key}:
+  /occurrences/{occurrenceID}:
     get:
       summary: Get a single occurrence
-      description: Returns a single occurrence by its GBIF numeric occurrence key.
+      description: Returns a single occurrence by its GBIF numeric occurrence key (the same value as the `occurrenceID` field in list responses).
       parameters:
-        - name: gbif_key
+        - name: occurrenceID
           in: path
           required: true
           schema: { type: string }
