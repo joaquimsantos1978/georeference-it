@@ -45,7 +45,11 @@ class RefreshImpactCounts extends Command
             ->where('occurrence_count', '>', 0)
             ->whereNotNull('country_code')
             ->groupBy('country_code')
-            ->orderByDesc('ungeoref_occ')
+            // No ORDER BY here on purpose: forced MariaDB to materialize the whole
+            // grouped result into a temp table before a filesort could run (EXPLAIN:
+            // "Using temporary; Using filesort") — pure overhead, since the stats page
+            // re-sorts this table entirely client-side anyway (stats.blade.php's
+            // sortTable(), driven by a dropdown), so the initial order is never used.
             ->get();
 
         $countries = $byCountry->pluck('country_code')->sort()->values();
