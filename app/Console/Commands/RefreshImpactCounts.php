@@ -17,12 +17,17 @@ class RefreshImpactCounts extends Command
 
     public function handle(): int
     {
+        // No REGEXP validity filter here on purpose: GbifImportDownload nulls out any
+        // country_code that doesn't match ^[A-Z]{2}$ at staging time (before
+        // locality_groups/occurrences are ever populated from it), so anything that
+        // survives whereNotNull() below is already guaranteed well-formed. Checking it
+        // again here forced a REGEXP-can't-use-an-index full table scan for nothing —
+        // observed taking 1-3+ hours on the grown locality_groups table.
         $countries = DB::table('locality_groups')
             ->select('country_code')
             ->whereNull('deleted_at')
             ->whereNotNull('country_code')
             ->where('occurrence_count', '>', 0)
-            ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
             ->distinct()
             ->orderBy('country_code')
             ->pluck('country_code');
@@ -144,7 +149,7 @@ class RefreshImpactCounts extends Command
             ')
             ->whereNull('deleted_at')
             ->where('occurrence_count', '>', 0)
-            ->whereRaw("country_code REGEXP '^[A-Z]{2}$'")
+            ->whereNotNull('country_code')
             ->groupBy('country_code')
             ->orderByDesc('ungeoref_occ')
             ->get();
