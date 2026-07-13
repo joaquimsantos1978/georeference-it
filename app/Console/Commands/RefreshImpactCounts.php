@@ -68,6 +68,18 @@ class RefreshImpactCounts extends Command
                 $agg->country_code = $code;
                 $byCountry->push($agg);
             }
+
+            // Updated every 20 countries rather than only once at the very end — this
+            // loop alone can run for hours on a bad night (see git history), and the
+            // explore/country-filter dropdown reading this cache shouldn't have to sit
+            // on whatever was last computed successfully (once stuck at a week old) for
+            // the entire duration of a slow run. A partial-but-fresher list beats a
+            // complete-but-week-old one at every point except the very last write.
+            if ($i % 20 === 0) {
+                $partial = $byCountry->pluck('country_code')->sort()->values();
+                Cache::forever('explore_countries:data', $partial);
+                Cache::forever('explore_countries:computed_at', now()->timestamp);
+            }
         }
         $this->info(sprintf('Per-country loop: %d countries in %.1fs', $countryList->count(), microtime(true) - $countryStart));
 
