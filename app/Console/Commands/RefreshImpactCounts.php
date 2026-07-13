@@ -35,7 +35,9 @@ class RefreshImpactCounts extends Command
             ->pluck('country_code');
 
         $byCountry = collect();
-        foreach ($countryList as $code) {
+        $countryStart = microtime(true);
+        foreach ($countryList as $i => $code) {
+            $t0  = microtime(true);
             $agg = DB::table('locality_groups')
                 ->selectRaw('
                     SUM(occurrence_count)                                         AS total_occ,
@@ -50,6 +52,14 @@ class RefreshImpactCounts extends Command
                 ->whereNull('deleted_at')
                 ->where('occurrence_count', '>', 0)
                 ->first();
+            $elapsed = microtime(true) - $t0;
+
+            // Visibility for next time this is slow: which country, and how long each
+            // one actually took — without this, a stuck run just looks like silence
+            // until it either finishes or someone starts poking at SHOW PROCESSLIST.
+            if ($elapsed > 2.0) {
+                $this->info(sprintf('  %s took %.1fs (%d/%d)', $code, $elapsed, $i + 1, $countryList->count()));
+            }
 
             // Countries with no group matching the filters (occurrence_count > 0,
             // not deleted) contribute nothing — same as before, when they simply
@@ -59,6 +69,7 @@ class RefreshImpactCounts extends Command
                 $byCountry->push($agg);
             }
         }
+        $this->info(sprintf('Per-country loop: %d countries in %.1fs', $countryList->count(), microtime(true) - $countryStart));
 
         $countries = $byCountry->pluck('country_code')->sort()->values();
 
