@@ -15,17 +15,10 @@
     <path fill="{{ $color }}"
         d="M280-880h400v314q0 23-10 41t-28 29l-142 84 28 92h152l-124 88 48 152-124-94-124 94 48-152-124-88h152l28-92-142-84q-18-11-28-29t-10-41v-314Z"/>
     <circle cx="480" cy="-700" r="140" fill="#fff"/>
-    @if ($badgeKey === 'coruja_noturna')
-        {{-- Crop to just the owl's face (the source art is a full-body illustration,
-             too tall to fit a round disc) — head/eyes region only. --}}
-        <g clip-path="url(#{{ $uid }})">
-            <g transform="translate(480,-700) scale(1.1) translate(-270,-70)">
-                <x-owl-badge-art :color="$color"/>
-            </g>
-        </g>
-    @else
-        <text x="480" y="-700" text-anchor="middle" dominant-baseline="central"
-            font-size="130" font-weight="700" font-family="ui-sans-serif, system-ui, sans-serif"
-            fill="{{ $color }}">{{ $initials }}</text>
-    @endif
+    {{-- Owl artwork temporarily disabled — showing generic initials for every badge
+         until final reference icons are ready (see owl-badge-art.blade.php, unused
+         for now but kept for when this is revisited). --}}
+    <text x="480" y="-700" text-anchor="middle" dominant-baseline="central"
+        font-size="130" font-weight="700" font-family="ui-sans-serif, system-ui, sans-serif"
+        fill="{{ $color }}">{{ $initials }}</text>
 </svg>

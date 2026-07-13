@@ -5,9 +5,9 @@
         {{-- Header --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center gap-5">
             @if($user->avatar)
-                <img src="{{ $user->avatar }}" class="w-14 h-14 rounded-full flex-shrink-0" alt="">
+                <img src="{{ $user->avatar }}" class="w-16 h-16 rounded-full flex-shrink-0 object-cover" alt="">
             @else
-                <div class="w-14 h-14 rounded-full bg-green-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                <div class="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
                     {{ strtoupper(substr($user->name, 0, 1)) }}
                 </div>
             @endif
@@ -47,7 +47,7 @@
 
         {{-- Badges --}}
         @if($user->badges->isNotEmpty())
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-5">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 pt-5 pb-6">
             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{{ __('Badges') }}</div>
             <div class="flex flex-wrap gap-3">
                 @foreach($user->badges as $userBadge)

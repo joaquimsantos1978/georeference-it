@@ -43,7 +43,7 @@ class Badges
         ],
         'coruja_noturna' => [
             'name'        => 'Night Owl',
-            'initials'    => null,
+            'initials'    => 'NO',
             'color'       => '#4338ca',
             'description' => 'Contributed 10 or more times outside the 8am–8pm window (local time).',
         ],
