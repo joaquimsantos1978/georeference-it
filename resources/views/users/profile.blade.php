@@ -47,7 +47,7 @@
 
         {{-- Badges --}}
         @if($user->badges->isNotEmpty())
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 pt-5 pb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 pt-5 pb-8">
             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{{ __('Badges') }}</div>
             <div class="flex flex-wrap gap-3">
                 @foreach($user->badges as $userBadge)
