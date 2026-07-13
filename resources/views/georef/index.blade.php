@@ -540,6 +540,17 @@
                 .delete-sug-btn    { color:#ef4444;border:1px solid #ef4444;background:#fff1f2; }
                 .use-similar-btn   { color:#4C9C2E;border:1.5px solid #4C9C2E;background:#fff; }
                 .panel-input { color: #111827; background: #ffffff; }
+                /* Leaflet's default idle cursor is "grab" (as if the whole map were
+                   always draggable-looking) — a plain pointer reads better at rest;
+                   "grab"/"grabbing" only while an actual pan is in progress. */
+                #map.leaflet-container { cursor: default; }
+                #map.leaflet-container.leaflet-dragging { cursor: grabbing; }
+                /* Forces the resize cursor everywhere for the duration of a radius-handle
+                   drag — without this, the cursor reverts to whatever's under the pointer
+                   (e.g. back to the map's own cursor) the instant a fast drag slips past
+                   the handle's small 14px hit area, even though the resize itself
+                   continues to track correctly. */
+                body.resizing-radius, body.resizing-radius * { cursor: ew-resize !important; }
                 @media (prefers-color-scheme: dark) {
                     .dark-text  { color: #f9fafb; }
                     .sugg-card  { border-color: #374151; background: #1f2937; }
@@ -955,7 +966,10 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             zIndexOffset: 1000,
         }).addTo(map);
 
-        radiusHandle.on('dragstart', () => { _radiusHandleDragging = true; });
+        radiusHandle.on('dragstart', () => {
+            _radiusHandleDragging = true;
+            document.body.classList.add('resizing-radius');
+        });
         radiusHandle.on('drag', e => {
             const center = circle.getLatLng();
             const handle = e.target.getLatLng();
@@ -964,6 +978,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         });
         radiusHandle.on('dragend', () => {
             updateRadiusHandle(); // snap handle to East
+            document.body.classList.remove('resizing-radius');
             // Deferred so the map's own 'click' (which fires after 'dragend' for the
             // same mouseup when the cursor ends up off the handle) still sees the guard.
             setTimeout(() => { _radiusHandleDragging = false; }, 0);
