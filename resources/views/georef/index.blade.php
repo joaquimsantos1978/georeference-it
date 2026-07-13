@@ -2295,9 +2295,10 @@ function updateHistoryNav() {
             ).join('');
         document.getElementById('nominatim-input').value=buildLocalityString(group);
         closeLocalitySearchResults();
-
-        const sysSuggQuery = buildLocalityString(group);
-        if (sysSuggQuery) loadSystemSuggestions(sysSuggQuery, true);
+        // Neither locality search auto-runs on group load anymore — the "already
+        // georeferenced" side used to preload silently, but Nominatim can't (its usage
+        // policy forbids firing on every page load, ~1 req/s max), so for consistency
+        // both now only run when the user explicitly searches.
 
         var allGeoref = ungeorefTotal === 0 && georefOccurrences.length > 0;
         document.getElementById('occ-panel-label').textContent = allGeoref
