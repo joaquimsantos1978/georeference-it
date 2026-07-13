@@ -168,6 +168,14 @@ class GeorefController extends Controller
             }
         }
 
+        // Similar locations with an existing coordinate (validated or pending) go first —
+        // those are what a user checks against; scrolling past a long tail of fully
+        // ungeoreferenced siblings to find them was the actual complaint.
+        usort($similarGroups, fn($a, $b) =>
+            (($b['validated_count'] > 0 || $b['pending_count'] > 0) ? 1 : 0)
+            <=> (($a['validated_count'] > 0 || $a['pending_count'] > 0) ? 1 : 0)
+        );
+
         return [
             'group'               => $group,
             'occurrences'         => $ungeorefOccurrences,
