@@ -858,6 +858,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
 
     // ── Map ───────────────────────────────────────────────────────────────────
     let map, marker, circle, radiusHandle, currentGroup = null;
+    let _radiusHandleDragging = false;
     var pendingVotes = {};
     var georefMode = 'new'; // 'vote' | 'new'
     var _currentSuggestions = [];
@@ -891,6 +892,11 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     map.on('click', e => {
         if (measureMode) return;
         if (georefMode === 'vote') { showVoteModeToast(); return; }
+        // The radius handle is a tiny (14px) marker — a fast drag can slip the cursor
+        // outside its hit area mid-drag, and the mouseup that follows can still land on
+        // the map underneath. Without this guard that mouseup re-places the whole marker
+        // (moving the circle's centre) instead of just ending the resize.
+        if (_radiusHandleDragging) return;
         placeMarker(e.latlng.lat, e.latlng.lng);
     });
 
@@ -949,13 +955,19 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
             zIndexOffset: 1000,
         }).addTo(map);
 
+        radiusHandle.on('dragstart', () => { _radiusHandleDragging = true; });
         radiusHandle.on('drag', e => {
             const center = circle.getLatLng();
             const handle = e.target.getLatLng();
             const newRadius = Math.round(center.distanceTo(handle));
             setUncertainty(newRadius);
         });
-        radiusHandle.on('dragend', () => updateRadiusHandle()); // snap handle to East
+        radiusHandle.on('dragend', () => {
+            updateRadiusHandle(); // snap handle to East
+            // Deferred so the map's own 'click' (which fires after 'dragend' for the
+            // same mouseup when the cursor ends up off the handle) still sees the guard.
+            setTimeout(() => { _radiusHandleDragging = false; }, 0);
+        });
 
         document.getElementById('lat-input').value = lat.toFixed(7);
         document.getElementById('lng-input').value = lng.toFixed(7);
