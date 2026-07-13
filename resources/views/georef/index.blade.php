@@ -544,7 +544,7 @@
                    always draggable-looking) — a plain pointer reads better at rest;
                    "grab"/"grabbing" only while an actual pan is in progress. */
                 #map.leaflet-container { cursor: pointer; }
-                #map.leaflet-container.leaflet-dragging { cursor: grabbing; }
+                #map.leaflet-container.map-panning { cursor: grabbing; }
                 /* Forces the resize cursor everywhere for the duration of a radius-handle
                    drag — without this, the cursor reverts to whatever's under the pointer
                    (e.g. back to the map's own cursor) the instant a fast drag slips past
@@ -900,6 +900,14 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         }
     });
     new MeasureControl().addTo(map);
+    // Leaflet's built-in .leaflet-dragging class isn't applied to the #map container
+    // itself in this Leaflet version (it lands elsewhere in the DOM), so the CSS rule
+    // `#map.leaflet-container.leaflet-dragging` never matched and the cursor stayed
+    // "pointer" throughout a pan instead of switching to "grabbing". Driving our own
+    // class off the map's own dragstart/dragend events is reliable regardless of
+    // Leaflet's internal DOM structure.
+    map.on('dragstart', () => map.getContainer().classList.add('map-panning'));
+    map.on('dragend',   () => map.getContainer().classList.remove('map-panning'));
     map.on('click', e => {
         if (measureMode) return;
         if (georefMode === 'vote') { showVoteModeToast(); return; }
