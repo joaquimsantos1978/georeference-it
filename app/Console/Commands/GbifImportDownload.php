@@ -58,7 +58,7 @@ class GbifImportDownload extends Command
 
     private function clearCheckpoints(): void
     {
-        foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted', 'multimedia_staging', 'associated_media_fallback'] as $stage) {
+        foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted', 'multimedia_staging'] as $stage) {
             Cache::forget("gbif:progress:{$stage}");
         }
     }
@@ -82,7 +82,6 @@ class GbifImportDownload extends Command
             }
             if ($this->loadMultimediaIntoStaging($multimediaOnly)) {
                 $this->processMultimediaStaging();
-                $this->applyAssociatedMediaFallback();
             }
             return self::SUCCESS;
         }
@@ -145,7 +144,6 @@ class GbifImportDownload extends Command
                 $this->processMultimediaStaging();
             }
         }
-        $this->applyAssociatedMediaFallback();
 
         // Step 5: cleanup — once the data is safely in occurrences/locality_groups, the
         // raw download artifacts (zip, extracted occurrence.txt, multimedia.txt) are no
@@ -1000,72 +998,6 @@ class GbifImportDownload extends Command
         $this->info('  Multimedia applied.');
     }
 
-    // Fallback for publishers who put image URLs directly on the occurrence record via
-    // the associatedMedia DwC term instead of (or as well as) the multimedia.txt
-    // extension. Only fills gaps — never overwrites media already set from the richer
-    // multimedia.txt data above, which carries type/format/license this bare URL list
-    // can't reconstruct. Low volume by nature (most publishers use the extension), so a
-    // small PHP-side CASE-UPDATE batch (like the old multimedia approach) is fine here —
-    // it's the exception path, not the bulk one.
-    private function applyAssociatedMediaFallback(): void
-    {
-        $bounds = DB::table('gbif_staging')
-            ->whereNotNull('associated_media')
-            ->where('associated_media', '!=', '')
-            ->selectRaw('MIN(gbif_id) as min_id, MAX(gbif_id) as max_id')
-            ->first();
-
-        if (!$bounds || $bounds->min_id === null) {
-            $this->line('  No associatedMedia to backfill, skipping.');
-            return;
-        }
-
-        $this->info('Backfilling media from associatedMedia (occurrence.txt) for gaps...');
-        $this->markProgress('Backfilling associatedMedia fallback');
-
-        $batchSize  = 5000; // small — only touches rows with associated_media set, not the whole table
-        $maxId      = (int) $bounds->max_id;
-        $resumeFrom = $this->getCheckpoint('associated_media_fallback');
-        $startId    = $resumeFrom !== null ? $resumeFrom + 1 : (int) $bounds->min_id;
-        $filled     = 0;
-
-        for ($from = $startId; $from <= $maxId; $from += $batchSize) {
-            $to = min($from + $batchSize - 1, $maxId);
-
-            $rows = DB::table('gbif_staging as s')
-                ->join('occurrences as o', DB::raw('CAST(o.gbif_occurrence_key AS UNSIGNED)'), '=', 's.gbif_id')
-                ->whereBetween('s.gbif_id', [$from, $to])
-                ->whereNotNull('s.associated_media')
-                ->where('s.associated_media', '!=', '')
-                ->whereNull('o.media')
-                ->select('o.gbif_occurrence_key', 's.associated_media')
-                ->get();
-
-            if ($rows->isNotEmpty()) {
-                $cases = '';
-                $keys  = [];
-                foreach ($rows as $row) {
-                    $urls = array_filter(array_map('trim', explode('|', $row->associated_media)));
-                    if (!$urls) continue;
-                    $media  = array_map(fn($url) => ['type' => 'StillImage', 'identifier' => $url], array_values($urls));
-                    $json   = addslashes(json_encode($media));
-                    $cases .= "WHEN gbif_occurrence_key = '{$row->gbif_occurrence_key}' THEN '{$json}'\n";
-                    $keys[] = $row->gbif_occurrence_key;
-                }
-                if ($keys) {
-                    $inList = implode(',', array_map(fn($k) => "'{$k}'", $keys));
-                    DB::statement("UPDATE occurrences SET media = CASE {$cases} END WHERE gbif_occurrence_key IN ({$inList})");
-                    $filled += count($keys);
-                }
-            }
-
-            $this->setCheckpoint('associated_media_fallback', $to);
-            usleep(200000);
-        }
-
-        $this->info("  associatedMedia fallback done. {$filled} occurrences filled.");
-        $this->markProgress('associatedMedia fallback done', ['occurrences_filled' => $filled]);
-    }
 
     // -------------------------------------------------------------------------
     // DwC term → staging column name
@@ -1105,10 +1037,6 @@ class GbifImportDownload extends Command
             'decimalLongitude'              => 'decimal_longitude',
             'coordinateUncertaintyInMeters' => 'coordinate_uncertainty_m',
             'geodeticDatum'                 => 'geodetic_datum',
-            // Some publishers put image URLs directly on the occurrence core record
-            // instead of (or as well as) the multimedia.txt extension — see
-            // applyAssociatedMediaFallback().
-            'associatedMedia'               => 'associated_media',
         ];
     }
 
