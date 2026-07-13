@@ -1104,6 +1104,14 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         }
         return url;
     }
+    // GBIF caches/resizes images from publisher servers (some of which are slow or
+    // unreliable to hotlink directly) at api.gbif.org/v1/image/unsafe/{size}/{url} — used
+    // for the small row thumbnails only, where speed matters more than full resolution.
+    // Falls back to the original URL (see the onerror handler on the <img> itself) so a
+    // GBIF-side cache miss/outage never means a broken thumbnail.
+    function gbifThumbUrl(originalUrl, size) {
+        return 'https://api.gbif.org/v1/image/unsafe/' + (size || '50x50') + '/' + encodeURI(originalUrl);
+    }
     async function openImgViewer(rawUrl, title, link) {
         document.getElementById('img-viewer-title').textContent = title||'';
         document.getElementById('img-viewer-link').href = link||rawUrl;
@@ -1870,7 +1878,7 @@ function updateHistoryNav() {
                 (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(media.identifier)||(media.format&&media.format.startsWith('image/')));
             var btnStyle='flex-shrink:0;width:28px;height:28px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#f9fafb;';
             var btnContent = isDirectImg
-                ? '<img src="'+media.identifier+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'📷\';this.parentElement.style.fontSize=\'14px\'">'
+                ? '<img src="'+gbifThumbUrl(media.identifier)+'" style="width:28px;height:28px;object-fit:cover" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb=\'1\';this.src=this.closest(\'.img-btn\').dataset.src;}else{this.style.display=\'none\';this.parentElement.innerHTML=\'📷\';this.parentElement.style.fontSize=\'14px\';}">'
                 : '<span style="font-size:14px" title="{{ __("View specimen image") }}">📷</span>';
             imgBtn='<button class="img-btn" style="'+btnStyle+'" data-src="'+media.identifier+'" data-title="'+(media.title||'').replace(/"/g,'&quot;')+'" data-link="'+media.identifier+'">'+btnContent+'</button>';
         }
