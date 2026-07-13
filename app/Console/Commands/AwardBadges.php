@@ -19,12 +19,12 @@ class AwardBadges extends Command
     protected $description = 'Check recently-active users against the badge criteria and award any newly earned ones';
 
     private const NIGHT_OWL_THRESHOLD = 10;
-    private const LIVINGSTONE_THRESHOLD = 20;
-    private const LIVINGSTONE_MIN_GROUP_SIZE = 20;
-    private const LIVINGSTONE_MAX_UNCERTAINTY_M = 500;
+    private const HUMBOLDT_THRESHOLD = 20;
+    private const HUMBOLDT_MIN_GROUP_SIZE = 20;
+    private const HUMBOLDT_MAX_UNCERTAINTY_M = 500;
     private const LINNAEUS_THRESHOLD = 25;
-    private const MAGALHAES_CONTINENTS = 5;
-    private const SHACKLETON_STREAK_DAYS = 7;
+    private const DARWIN_CONTINENTS = 5;
+    private const WALLACE_STREAK_DAYS = 7;
 
     public function handle(): int
     {
@@ -50,16 +50,16 @@ class AwardBadges extends Command
                 $this->award($user, 'linnaeus');
                 $awarded++;
             }
-            if (!in_array('magalhaes', $already) && $this->qualifiesMagalhaes($userId)) {
-                $this->award($user, 'magalhaes');
+            if (!in_array('darwin', $already) && $this->qualifiesDarwin($userId)) {
+                $this->award($user, 'darwin');
                 $awarded++;
             }
-            if (!in_array('livingstone', $already) && $this->qualifiesLivingstone($userId)) {
-                $this->award($user, 'livingstone');
+            if (!in_array('humboldt', $already) && $this->qualifiesHumboldt($userId)) {
+                $this->award($user, 'humboldt');
                 $awarded++;
             }
-            if (!in_array('shackleton', $already) && $this->qualifiesShackleton($userId)) {
-                $this->award($user, 'shackleton');
+            if (!in_array('wallace', $already) && $this->qualifiesWallace($userId)) {
+                $this->award($user, 'wallace');
                 $awarded++;
             }
             if (!in_array('coruja_noturna', $already) && $this->qualifiesCorujaNoturna($user)) {
@@ -78,7 +78,7 @@ class AwardBadges extends Command
         return GeorefValidation::where('user_id', $userId)->count() >= self::LINNAEUS_THRESHOLD;
     }
 
-    private function qualifiesMagalhaes(int $userId): bool
+    private function qualifiesDarwin(int $userId): bool
     {
         $continents = DB::table('georef_suggestions')
             ->join('locality_groups', 'locality_groups.id', '=', 'georef_suggestions.locality_group_id')
@@ -89,24 +89,24 @@ class AwardBadges extends Command
             ->distinct()
             ->count();
 
-        return $continents >= self::MAGALHAES_CONTINENTS;
+        return $continents >= self::DARWIN_CONTINENTS;
     }
 
-    private function qualifiesLivingstone(int $userId): bool
+    private function qualifiesHumboldt(int $userId): bool
     {
         $count = DB::table('georef_suggestions')
             ->join('locality_groups', 'locality_groups.id', '=', 'georef_suggestions.locality_group_id')
             ->where('georef_suggestions.user_id', $userId)
             ->where('georef_suggestions.status', 'validated')
-            ->where('locality_groups.occurrence_count', '>=', self::LIVINGSTONE_MIN_GROUP_SIZE)
+            ->where('locality_groups.occurrence_count', '>=', self::HUMBOLDT_MIN_GROUP_SIZE)
             ->whereNotNull('georef_suggestions.coordinate_uncertainty_m')
-            ->where('georef_suggestions.coordinate_uncertainty_m', '<=', self::LIVINGSTONE_MAX_UNCERTAINTY_M)
+            ->where('georef_suggestions.coordinate_uncertainty_m', '<=', self::HUMBOLDT_MAX_UNCERTAINTY_M)
             ->count();
 
-        return $count >= self::LIVINGSTONE_THRESHOLD;
+        return $count >= self::HUMBOLDT_THRESHOLD;
     }
 
-    private function qualifiesShackleton(int $userId): bool
+    private function qualifiesWallace(int $userId): bool
     {
         $days = DB::table('activity_log')
             ->where('user_id', $userId)
@@ -121,7 +121,7 @@ class AwardBadges extends Command
         for ($i = 1; $i < $days->count(); $i++) {
             if ($days[$i]->diffInDays($days[$i - 1]) === 1) {
                 $streak++;
-                if ($streak >= self::SHACKLETON_STREAK_DAYS) {
+                if ($streak >= self::WALLACE_STREAK_DAYS) {
                     return true;
                 }
             } else {
@@ -167,12 +167,15 @@ class AwardBadges extends Command
             'earned_at' => now(),
         ]);
 
-        $badge = Badges::get($key);
+        // No pre-rendered 'message' here on purpose — this command runs without any
+        // particular user's language preference, and baking translated text in at
+        // award time would freeze the notification in whatever locale happened to be
+        // active then. The navbar renders the message from 'badge_key' at view time,
+        // in the viewer's current language.
         $user->notifications()->create([
             'type' => 'badge_earned',
             'data' => [
-                'message'    => "Novo badge: {$badge['icon']} {$badge['name']} — {$badge['description']}",
-                'badge_key'  => $key,
+                'badge_key' => $key,
             ],
         ]);
 

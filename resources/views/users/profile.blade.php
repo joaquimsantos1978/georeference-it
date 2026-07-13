@@ -3,18 +3,18 @@
     <div class="space-y-6">
 
         {{-- Header --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-5 flex items-center gap-5">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center gap-5">
             @if($user->avatar)
-                <img src="{{ $user->avatar }}" class="w-16 h-16 rounded-full flex-shrink-0" alt="">
+                <img src="{{ $user->avatar }}" class="w-14 h-14 rounded-full flex-shrink-0" alt="">
             @else
-                <div class="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+                <div class="w-14 h-14 rounded-full bg-green-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
                     {{ strtoupper(substr($user->name, 0, 1)) }}
                 </div>
             @endif
             <div class="flex-1 min-w-0">
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ $user->name }}</h1>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-white leading-tight">{{ $user->name }}</h1>
                 @if($user->userLevel)
-                    <div class="text-sm text-gray-500 mt-0.5">{{ $user->userLevel->name }}</div>
+                    <div class="text-sm text-gray-500 mt-0.5 leading-tight">{{ $user->userLevel->name }}</div>
                 @endif
                 @if($user->orcid)
                     <a href="https://orcid.org/{{ $user->orcid }}" target="_blank"
@@ -28,19 +28,19 @@
             <div class="flex gap-6 text-center flex-shrink-0">
                 <div>
                     <div class="text-xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['validated']) }}</div>
-                    <div class="text-xs text-gray-500">Validated</div>
+                    <div class="text-xs text-gray-500">{{ __('Validated') }}</div>
                 </div>
                 <div>
                     <div class="text-xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['georefs']) }}</div>
-                    <div class="text-xs text-gray-500">Georefs</div>
+                    <div class="text-xs text-gray-500">{{ __('Georefs') }}</div>
                 </div>
                 <div>
                     <div class="text-xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['specimens']) }}</div>
-                    <div class="text-xs text-gray-500">Specimens</div>
+                    <div class="text-xs text-gray-500">{{ __('Specimens') }}</div>
                 </div>
                 <div>
                     <div class="text-xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['reviews']) }}</div>
-                    <div class="text-xs text-gray-500">Reviews</div>
+                    <div class="text-xs text-gray-500">{{ __('Reviews') }}</div>
                 </div>
             </div>
         </div>
@@ -54,7 +54,7 @@
                     @php $badge = \App\Support\Badges::get($userBadge->badge_key); @endphp
                     @if($badge)
                         <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2" title="{{ $badge['description'] }}">
-                            <span class="text-xl">{{ $badge['icon'] }}</span>
+                            <x-badge-icon :badge-key="$userBadge->badge_key" :size="36" />
                             <div>
                                 <div class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ $badge['name'] }}</div>
                                 <div class="text-xs text-gray-400">{{ $userBadge->earned_at->format('Y-m-d') }}</div>

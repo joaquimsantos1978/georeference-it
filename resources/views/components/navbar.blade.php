@@ -59,8 +59,18 @@
                         </div>
                         <div class="max-h-64 overflow-y-auto">
                             @forelse(auth()->user()->unreadNotifications()->latest()->take(10)->get() as $notification)
+                                @php
+                                    // badge_key present → render in the current locale; older rows
+                                    // (or other notification types) fall back to their stored message.
+                                    $badge = isset($notification->data['badge_key'])
+                                        ? \App\Support\Badges::get($notification->data['badge_key'])
+                                        : null;
+                                    $text = $badge
+                                        ? __('New badge: :name — :description', ['name' => $badge['name'], 'description' => $badge['description']])
+                                        : ($notification->data['message'] ?? '');
+                                @endphp
                                 <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
-                                    <p class="text-sm">{{ $notification->data['message'] ?? '' }}</p>
+                                    <p class="text-sm">{{ $text }}</p>
                                     <p class="text-xs text-gray-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
                                 </div>
                             @empty
