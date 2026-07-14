@@ -289,9 +289,20 @@ public function next(Request $request)
     // an embedded ISO timestamp (a real locality description never contains one). Reprocessing
     // by the corrected import will eventually clear these; until then, don't hand them to
     // georeferencers as if they were legitimate work.
+    //
+    // Second, separate signature: a trailing backslash in some other free-text field
+    // (habitat, fieldNotes, etc.) made LOAD DATA's default ESCAPED BY '\' eat the
+    // following tab, shifting every column after it by one — country_code ends up as a
+    // truncated, wrong-case fragment of stateProvince (e.g. "Da" from "Davao del Sur").
+    // A real country_code is always exactly two uppercase letters (or NULL) — anything
+    // with a lowercase letter is this same corruption. Now fixed at the LOAD DATA level
+    // (ESCAPED BY '') for future imports; existing rows need a full reprocessing pass.
     $excludeCorrupted = fn($q) => $q->where(function ($q2) {
         $q2->whereNull('verbatim_locality')
            ->orWhereRaw("verbatim_locality NOT REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
+    })->where(function ($q2) {
+        $q2->whereNull('country_code')
+           ->orWhereRaw("country_code NOT REGEXP BINARY '[a-z]'");
     });
 
     $group  = null;
