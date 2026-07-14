@@ -107,11 +107,15 @@ class RefreshImpactCounts extends Command
             GROUP BY country_code, georef_status WITH ROLLUP
         ");
 
-        // Built up here and written to impact_counts in one TRUNCATE + bulk INSERT below,
-        // rather than one Cache::forever() call per (status, country) combination — that
-        // used to mean ~2000 individual cache writes per refresh, and left permanently
-        // stale entries behind for any country/status combo that stops matching (nothing
-        // ever deleted an individual key). A full-table replace can't accumulate garbage.
+        // Keyed by "{status}|{country_code}" rather than a flat list — impact_counts'
+        // primary key is exactly that pair, and this data has repeatedly turned out to
+        // have edge cases a diff()-based "have we seen this one" check missed (blank
+        // strings, mixed-case fragments from a since-fixed LOAD DATA bug, and at least
+        // one case of two supposedly-identical country codes that still weren't ===
+        // equal — trailing whitespace or an encoding quirk, never fully diagnosed).
+        // An associative array can't contain a duplicate key by construction, so this
+        // is immune to that whole class of bug regardless of what the source data does:
+        // last write for a given (status, country_code) simply wins.
         $rows = [];
         $now  = now();
 
@@ -123,8 +127,9 @@ class RefreshImpactCounts extends Command
             if ($row->country_code === null) {
                 continue;
             }
-            $rows[] = [
-                'status'       => $row->georef_status ?: 'all',
+            $status = $row->georef_status ?: 'all';
+            $rows["{$status}|{$row->country_code}"] = [
+                'status'       => $status,
                 'country_code' => $row->country_code,
                 'count'        => (int) $row->cnt,
                 'computed_at'  => $now,
@@ -141,8 +146,9 @@ class RefreshImpactCounts extends Command
             GROUP BY georef_status WITH ROLLUP
         ");
         foreach ($byStatusOnly as $row) {
-            $rows[] = [
-                'status'       => $row->georef_status ?: 'all',
+            $status = $row->georef_status ?: 'all';
+            $rows["{$status}|all"] = [
+                'status'       => $status,
                 'country_code' => 'all',
                 'count'        => (int) $row->cnt,
                 'computed_at'  => $now,
@@ -153,24 +159,25 @@ class RefreshImpactCounts extends Command
         // results above — fill those combinations in as 0 rather than leaving them
         // absent (a missing row reads the same as 0 via COALESCE at read time, but
         // being explicit here keeps every (status, country) combination present).
-        // filter(fn($c) => $c !== null) rather than bare filter(): a blank-but-not-null
-        // country_code is falsy in PHP, so plain filter() used to drop it here too — the
-        // zero-fill loop below would then think '' was never "seen" and re-add it,
-        // colliding with the row already inserted above (impact_counts' primary key is
-        // (status, country_code)). Shouldn't occur any more given the query-level
-        // exclusion above, but this keeps the diff() correct regardless.
-        $seenCountries = collect($byCountryAndStatus)->pluck('country_code')->filter(fn($c) => $c !== null)->unique();
+        // Writing straight into $rows keyed by (status, country) means a country that
+        // *does* have real data simply gets overwritten back to its real count on the
+        // next iteration below rather than colliding — no diff()/seen-tracking needed.
         $statusOptionsForZeroFill = collect(self::VALID_STATUSES)->prepend(null);
-        foreach ($countries->diff($seenCountries) as $missingCountry) {
+        foreach ($countries as $code) {
             foreach ($statusOptionsForZeroFill as $status) {
-                $rows[] = [
-                    'status'       => $status ?: 'all',
-                    'country_code' => $missingCountry,
-                    'count'        => 0,
-                    'computed_at'  => $now,
-                ];
+                $status = $status ?: 'all';
+                $key    = "{$status}|{$code}";
+                if (!isset($rows[$key])) {
+                    $rows[$key] = [
+                        'status'       => $status,
+                        'country_code' => $code,
+                        'count'        => 0,
+                        'computed_at'  => $now,
+                    ];
+                }
             }
         }
+        $rows = array_values($rows);
 
         DB::transaction(function () use ($rows) {
             DB::table('impact_counts')->truncate();
