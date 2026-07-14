@@ -17,6 +17,29 @@ class RefreshImpactCounts extends Command
 
     public function handle(): int
     {
+        // withoutOverlapping() in bootstrap/app.php's schedule only guards
+        // scheduler-launched instances against each other — it has no visibility into
+        // a manually-started `php artisan impact:refresh-counts`, and the pause flag
+        // used to sidestep that is easy to let expire on an hours-long run (this loop
+        // alone can run 2-3+ hours). A real lock here protects every invocation path
+        // the same way. Ceiling is generous (4h) since it's just a safety net against a
+        // truly stuck/crashed process holding it forever, not an expected duration —
+        // the lock is released in the finally block on every normal exit.
+        $lock = Cache::lock('impact:refresh-counts:running', 14400);
+        if (!$lock->get()) {
+            $this->warn('Another impact:refresh-counts is already running — skipping this invocation.');
+            return self::SUCCESS;
+        }
+
+        try {
+            return $this->compute();
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function compute(): int
+    {
         // This per-country loop exists only for stats.georef's per-country SUMs
         // (total_occ, ungeoref_occ, etc. below) — the Explore/Impact/Activity country
         // *dropdowns* are a plain live DISTINCT query now (see ExploreController),
