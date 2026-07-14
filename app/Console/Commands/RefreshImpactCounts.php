@@ -96,6 +96,18 @@ class RefreshImpactCounts extends Command
             if ((int) $agg->total_groups > 0) {
                 $agg->country_code = $code;
                 $byCountry->push($agg);
+
+                // total_groups here is exactly ExploreController's "country=X, no other
+                // filters" count (occurrence_count > 0, deleted_at IS NULL, country_code
+                // = X) — precomputing it means that filter combination never has to hit
+                // countWithStaleWhileRevalidate()'s live COUNT(*) fallback, observed
+                // taking minutes on this table when it does. Only country-only is
+                // covered; every other filter combination (status, search, dataset_key)
+                // still computes lazily on first hit — too many combinations to
+                // precompute them all, but "just a country" is the single most common one.
+                $exploreCountryKey = 'explore_count_' . md5(json_encode(['country' => $code]));
+                Cache::forever($exploreCountryKey . ':data', (int) $agg->total_groups);
+                Cache::forever($exploreCountryKey . ':computed_at', now()->timestamp);
             }
         }
         $this->info(sprintf('Per-country loop: %d countries in %.1fs', $countryList->count(), microtime(true) - $countryStart));
