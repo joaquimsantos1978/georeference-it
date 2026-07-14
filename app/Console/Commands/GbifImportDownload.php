@@ -424,13 +424,19 @@ class GbifImportDownload extends Command
         $enclosedByClause = $fieldsEnclosedBy !== ''
             ? "OPTIONALLY ENCLOSED BY '" . addslashes($fieldsEnclosedBy) . "'"
             : '';
+        // Same class of bug as the stray-quote issue above, different character: MySQL's
+        // LOAD DATA defaults to backslash as its own ESCAPED BY character, but GBIF's
+        // plain TSV export has no escaping convention at all — a literal trailing
+        // backslash in any free-text field (habitat, fieldNotes, etc., observed in the
+        // wild) silently ate the following tab, shifting every column after it by one
+        // for that row. ESCAPED BY '' disables escape-character interpretation entirely.
 
         try {
             DB::statement("
                 LOAD DATA LOCAL INFILE '{$escapedPath}'
                 INTO TABLE gbif_staging
                 CHARACTER SET utf8mb4
-                FIELDS TERMINATED BY '\\t' {$enclosedByClause}
+                FIELDS TERMINATED BY '\\t' {$enclosedByClause} ESCAPED BY ''
                 LINES TERMINATED BY '\\n'
                 IGNORE 1 LINES
                 ({$colString})
@@ -919,7 +925,7 @@ class GbifImportDownload extends Command
                 LOAD DATA LOCAL INFILE '{$escapedPath}'
                 INTO TABLE gbif_multimedia_staging
                 CHARACTER SET utf8mb4
-                FIELDS TERMINATED BY '\\t'
+                FIELDS TERMINATED BY '\\t' ESCAPED BY ''
                 LINES TERMINATED BY '\\n'
                 IGNORE 1 LINES
                 ({$colString})
