@@ -86,13 +86,20 @@ class ExploreController extends Controller
         // Live query, not cached/precomputed — a plain filter-free DISTINCT on
         // country_code uses a loose index scan (EXPLAIN: "Using index for group-by",
         // ~46K rows) regardless of how large locality_groups gets, so there's nothing
-        // here worth precomputing in the background.
+        // here worth precomputing in the background. The validity filter (exactly two
+        // uppercase letters) runs in PHP against the small distinct-values result, not
+        // as a SQL REGEXP — pre-validation-era data left plenty of garbage values
+        // (tabs, digits, whole province names in Chinese) still sitting in the column,
+        // and REGEXP-in-SQL against millions of rows is exactly the full-scan cost this
+        // query exists to avoid.
         $countries = \Illuminate\Support\Facades\DB::table('locality_groups')
             ->whereNotNull('country_code')
             ->where('country_code', '!=', '')
             ->distinct()
-            ->orderBy('country_code')
-            ->pluck('country_code');
+            ->pluck('country_code')
+            ->filter(fn($code) => preg_match('/^[A-Z]{2}$/', $code))
+            ->sort()
+            ->values();
 
         $currentDataset = null;
         if ($request->filled('dataset_key')) {

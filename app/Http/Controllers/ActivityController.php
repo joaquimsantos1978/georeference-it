@@ -108,13 +108,16 @@ class ActivityController extends Controller
             ->get();
 
         // Live query, not cached/precomputed — see ExploreController for why this is
-        // cheap regardless of table size (loose index scan on country_code).
+        // cheap regardless of table size (loose index scan on country_code), and why
+        // the validity filter runs in PHP rather than as a SQL REGEXP.
         $countries = \Illuminate\Support\Facades\DB::table('locality_groups')
             ->whereNotNull('country_code')
             ->where('country_code', '!=', '')
             ->distinct()
-            ->orderBy('country_code')
-            ->pluck('country_code');
+            ->pluck('country_code')
+            ->filter(fn($code) => preg_match('/^[A-Z]{2}$/', $code))
+            ->sort()
+            ->values();
 
         return view('activity', compact('activities', 'filterUser', 'filterCountry', 'dropdownUsers', 'countries', 'isSystem'));
     }
