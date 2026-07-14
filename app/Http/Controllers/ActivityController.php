@@ -107,10 +107,12 @@ class ActivityController extends Controller
             ->limit(50)
             ->get();
 
-        // Pure table read, upserted incrementally in the background by
-        // RefreshImpactCounts — see ImpactController for why this must never compute
-        // inline on a page request.
-        $countries = \Illuminate\Support\Facades\DB::table('explore_countries')
+        // Live query, not cached/precomputed — see ExploreController for why this is
+        // cheap regardless of table size (loose index scan on country_code).
+        $countries = \Illuminate\Support\Facades\DB::table('locality_groups')
+            ->whereNotNull('country_code')
+            ->where('country_code', '!=', '')
+            ->distinct()
             ->orderBy('country_code')
             ->pluck('country_code');
 

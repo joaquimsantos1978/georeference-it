@@ -17,17 +17,15 @@ class RefreshImpactCounts extends Command
 
     public function handle(): int
     {
-        // A single GROUP BY across the whole table (EXPLAIN: ~48M rows examined — no
-        // index covers occurrence_count/deleted_at together with country_code, so
-        // MariaDB falls back to checking those per row) turned out much more expensive
-        // than doing it per country: a plain filter-free DISTINCT country_code uses a
-        // loose index scan on idx_lg_country_code (~46K rows, just jumping between the
-        // ~250 distinct key groups), and a single-country aggregate then uses
-        // index_merge(idx_lg_country_code, deleted_at index) — EXPLAIN showed ~242K rows
-        // for one mid-size country vs 48M for all of them combined in one scan. Looping
-        // ~250 cheap, targeted queries also means a killed/interrupted run keeps whatever
-        // it already wrote instead of losing everything (no per-row output here, just the
-        // final write below, but the point stands for the command as a whole).
+        // This per-country loop exists only for stats.georef's per-country SUMs
+        // (total_occ, ungeoref_occ, etc. below) — the Explore/Impact/Activity country
+        // *dropdowns* are a plain live DISTINCT query now (see ExploreController),
+        // since that alone stays a cheap loose index scan regardless of table size.
+        // A single combined GROUP BY across all countries here was tried and dropped:
+        // EXPLAIN showed ~48M rows examined (no index covers occurrence_count/
+        // deleted_at together with country_code), vs. ~242K rows for one mid-size
+        // country via index_merge(idx_lg_country_code, deleted_at index) when scoped
+        // to a single country_code with an equality filter.
         // country_code != '' matters as much as whereNotNull() here: a blank string
         // isn't NULL, so it silently slipped through as a "country" before, then broke
         // the impact_counts insert below (a blank-country row appears both from the
@@ -44,7 +42,6 @@ class RefreshImpactCounts extends Command
 
         $byCountry = collect();
         $countryStart = microtime(true);
-        $runStart     = now();
         foreach ($countryList as $i => $code) {
             $t0  = microtime(true);
             $agg = DB::table('locality_groups')
@@ -76,30 +73,11 @@ class RefreshImpactCounts extends Command
             if ((int) $agg->total_groups > 0) {
                 $agg->country_code = $code;
                 $byCountry->push($agg);
-
-                // One row per country, upserted as each one is reached — not a single
-                // cache blob replaced wholesale on every write. The old approach made
-                // the visible country list shrink back to "whatever this run has
-                // processed so far" every time a slow run restarted (and this loop can
-                // run for hours — see git history); upserting means a country already
-                // known from a previous run keeps showing up right up until this run
-                // actually reaches and re-confirms it, never disappearing mid-run.
-                DB::table('explore_countries')->updateOrInsert(
-                    ['country_code' => $code],
-                    ['computed_at' => now()]
-                );
             }
         }
         $this->info(sprintf('Per-country loop: %d countries in %.1fs', $countryList->count(), microtime(true) - $countryStart));
 
         $countries = $byCountry->pluck('country_code')->sort()->values();
-
-        // Anything not touched by this run's upserts above no longer qualifies (e.g.
-        // its occurrence_count dropped to 0) — remove it now that a full pass has
-        // actually confirmed the current set, rather than truncating up front and
-        // risking exactly the shrink-then-refill problem this table exists to avoid.
-        DB::table('explore_countries')->where('computed_at', '<', $runStart)->delete();
-        $this->info('Refreshed explore_countries (' . $countries->count() . ' countries)');
 
         // Previously one COUNT(*) per (status, country) combination — ~980 separate
         // full aggregate queries against a 225M+ row table, observed taking 10-15+
@@ -237,8 +215,8 @@ class RefreshImpactCounts extends Command
             ->whereRaw('ungeoreferenced_count > 0 OR pending_count > 0')
             ->count();
 
-        // $byCountry was already computed once at the top of handle() (reused for
-        // explore_countries too) — no need to run the same GROUP BY a second time.
+        // $byCountry was already computed once at the top of handle() via the
+        // per-country loop — no need to run the same aggregation a second time.
         Cache::forever('stats.georef.data', [$global, $byCountry]);
         Cache::forever('stats.georef.computed_at', now()->timestamp);
         $this->info('Refreshed stats.georef');

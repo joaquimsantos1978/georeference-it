@@ -92,7 +92,14 @@ class ImpactController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $countries = DB::table('explore_countries')->orderBy('country_code')->pluck('country_code');
+        // Live query, not cached/precomputed — see ExploreController for why this is
+        // cheap regardless of table size (loose index scan on country_code).
+        $countries = DB::table('locality_groups')
+            ->whereNotNull('country_code')
+            ->where('country_code', '!=', '')
+            ->distinct()
+            ->orderBy('country_code')
+            ->pluck('country_code');
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
     }

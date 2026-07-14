@@ -83,10 +83,14 @@ class ExploreController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // Pure table read, upserted incrementally in the background by
-        // RefreshImpactCounts — see ImpactController for why this must never compute
-        // inline on a page request.
-        $countries = \Illuminate\Support\Facades\DB::table('explore_countries')
+        // Live query, not cached/precomputed — a plain filter-free DISTINCT on
+        // country_code uses a loose index scan (EXPLAIN: "Using index for group-by",
+        // ~46K rows) regardless of how large locality_groups gets, so there's nothing
+        // here worth precomputing in the background.
+        $countries = \Illuminate\Support\Facades\DB::table('locality_groups')
+            ->whereNotNull('country_code')
+            ->where('country_code', '!=', '')
+            ->distinct()
             ->orderBy('country_code')
             ->pluck('country_code');
 
