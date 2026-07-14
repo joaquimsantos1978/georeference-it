@@ -28,9 +28,17 @@ class RefreshImpactCounts extends Command
         // ~250 cheap, targeted queries also means a killed/interrupted run keeps whatever
         // it already wrote instead of losing everything (no per-row output here, just the
         // final write below, but the point stands for the command as a whole).
+        // country_code != '' matters as much as whereNotNull() here: a blank string
+        // isn't NULL, so it silently slipped through as a "country" before, then broke
+        // the impact_counts insert below (a blank-country row appears both from the
+        // occurrences ROLLUP directly AND from the zero-fill pass, since collect()
+        // ->filter() with no callback treats '' as falsy and drops it — making the
+        // zero-fill logic think it was never "seen" and re-add it, violating the
+        // (status, country_code) primary key on the second, duplicate row).
         $countryList = DB::table('locality_groups')
             ->select('country_code')
             ->whereNotNull('country_code')
+            ->where('country_code', '!=', '')
             ->distinct()
             ->pluck('country_code');
 
@@ -106,10 +114,14 @@ class RefreshImpactCounts extends Command
         // included in the second query's country-agnostic totals below.
         $statusList = "'" . implode("','", self::VALID_STATUSES) . "'";
 
+        // country_code != '' alongside IS NOT NULL: a blank string isn't NULL, so it
+        // used to slip through as its own fake "country" bucket — still correctly
+        // counted in the true grand total via the country-agnostic query below, just
+        // not broken out as if '' were a real country code.
         $byCountryAndStatus = DB::select("
             SELECT country_code, georef_status, COUNT(*) as cnt
             FROM occurrences
-            WHERE deleted_at IS NULL AND georef_status IN ({$statusList}) AND country_code IS NOT NULL
+            WHERE deleted_at IS NULL AND georef_status IN ({$statusList}) AND country_code IS NOT NULL AND country_code != ''
             GROUP BY country_code, georef_status WITH ROLLUP
         ");
 
@@ -159,7 +171,13 @@ class RefreshImpactCounts extends Command
         // results above — fill those combinations in as 0 rather than leaving them
         // absent (a missing row reads the same as 0 via COALESCE at read time, but
         // being explicit here keeps every (status, country) combination present).
-        $seenCountries = collect($byCountryAndStatus)->pluck('country_code')->filter()->unique();
+        // filter(fn($c) => $c !== null) rather than bare filter(): a blank-but-not-null
+        // country_code is falsy in PHP, so plain filter() used to drop it here too — the
+        // zero-fill loop below would then think '' was never "seen" and re-add it,
+        // colliding with the row already inserted above (impact_counts' primary key is
+        // (status, country_code)). Shouldn't occur any more given the query-level
+        // exclusion above, but this keeps the diff() correct regardless.
+        $seenCountries = collect($byCountryAndStatus)->pluck('country_code')->filter(fn($c) => $c !== null)->unique();
         $statusOptionsForZeroFill = collect(self::VALID_STATUSES)->prepend(null);
         foreach ($countries->diff($seenCountries) as $missingCountry) {
             foreach ($statusOptionsForZeroFill as $status) {
