@@ -107,9 +107,12 @@ class ActivityController extends Controller
             ->limit(50)
             ->get();
 
-        // Pure cache read, refreshed hourly in the background by RefreshImpactCounts —
-        // see ImpactController for why this must never compute inline on a page request.
-        $countries = \Illuminate\Support\Facades\Cache::get('explore_countries:data', collect());
+        // Pure table read, upserted incrementally in the background by
+        // RefreshImpactCounts — see ImpactController for why this must never compute
+        // inline on a page request.
+        $countries = \Illuminate\Support\Facades\DB::table('explore_countries')
+            ->orderBy('country_code')
+            ->pluck('country_code');
 
         return view('activity', compact('activities', 'filterUser', 'filterCountry', 'dropdownUsers', 'countries', 'isSystem'));
     }

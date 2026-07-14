@@ -83,9 +83,12 @@ class ExploreController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // Pure cache read, refreshed hourly in the background by RefreshImpactCounts —
-        // see ImpactController for why this must never compute inline on a page request.
-        $countries = \Illuminate\Support\Facades\Cache::get('explore_countries:data', collect());
+        // Pure table read, upserted incrementally in the background by
+        // RefreshImpactCounts — see ImpactController for why this must never compute
+        // inline on a page request.
+        $countries = \Illuminate\Support\Facades\DB::table('explore_countries')
+            ->orderBy('country_code')
+            ->pluck('country_code');
 
         $currentDataset = null;
         if ($request->filled('dataset_key')) {

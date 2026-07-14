@@ -92,7 +92,7 @@ class ImpactController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $countries = Cache::get('explore_countries:data', collect());
+        $countries = DB::table('explore_countries')->orderBy('country_code')->pluck('country_code');
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
     }

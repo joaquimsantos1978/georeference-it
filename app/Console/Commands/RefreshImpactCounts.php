@@ -44,6 +44,7 @@ class RefreshImpactCounts extends Command
 
         $byCountry = collect();
         $countryStart = microtime(true);
+        $runStart     = now();
         foreach ($countryList as $i => $code) {
             $t0  = microtime(true);
             $agg = DB::table('locality_groups')
@@ -75,26 +76,29 @@ class RefreshImpactCounts extends Command
             if ((int) $agg->total_groups > 0) {
                 $agg->country_code = $code;
                 $byCountry->push($agg);
-            }
 
-            // Updated every 20 countries rather than only once at the very end — this
-            // loop alone can run for hours on a bad night (see git history), and the
-            // explore/country-filter dropdown reading this cache shouldn't have to sit
-            // on whatever was last computed successfully (once stuck at a week old) for
-            // the entire duration of a slow run. A partial-but-fresher list beats a
-            // complete-but-week-old one at every point except the very last write.
-            if ($i % 20 === 0) {
-                $partial = $byCountry->pluck('country_code')->sort()->values();
-                Cache::forever('explore_countries:data', $partial);
-                Cache::forever('explore_countries:computed_at', now()->timestamp);
+                // One row per country, upserted as each one is reached — not a single
+                // cache blob replaced wholesale on every write. The old approach made
+                // the visible country list shrink back to "whatever this run has
+                // processed so far" every time a slow run restarted (and this loop can
+                // run for hours — see git history); upserting means a country already
+                // known from a previous run keeps showing up right up until this run
+                // actually reaches and re-confirms it, never disappearing mid-run.
+                DB::table('explore_countries')->updateOrInsert(
+                    ['country_code' => $code],
+                    ['computed_at' => now()]
+                );
             }
         }
         $this->info(sprintf('Per-country loop: %d countries in %.1fs', $countryList->count(), microtime(true) - $countryStart));
 
         $countries = $byCountry->pluck('country_code')->sort()->values();
 
-        Cache::forever('explore_countries:data', $countries);
-        Cache::forever('explore_countries:computed_at', now()->timestamp);
+        // Anything not touched by this run's upserts above no longer qualifies (e.g.
+        // its occurrence_count dropped to 0) — remove it now that a full pass has
+        // actually confirmed the current set, rather than truncating up front and
+        // risking exactly the shrink-then-refill problem this table exists to avoid.
+        DB::table('explore_countries')->where('computed_at', '<', $runStart)->delete();
         $this->info('Refreshed explore_countries (' . $countries->count() . ' countries)');
 
         // Previously one COUNT(*) per (status, country) combination — ~980 separate
