@@ -74,7 +74,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command(RefreshImpactCounts::class)
             ->hourly()
             ->withoutOverlapping()
-            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
+            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false))
+            // Manual escape hatch for a run started outside the scheduler (withoutOverlapping()
+            // only guards scheduler-launched instances against each other, not a manual `php
+            // artisan impact:refresh-counts`) — set via `Cache::put('impact:refresh-counts:paused',
+            // true, now()->addHours(N))`. TTL'd on purpose so a forgotten flag can't silently
+            // disable this forever; clear early with `Cache::forget(...)` once done.
+            ->skip(fn () => \Illuminate\Support\Facades\Cache::get('impact:refresh-counts:paused', false));
 
         // Only scans users active in the last 24h (see AwardBadges), so this stays cheap
         // even hourly.
