@@ -56,8 +56,16 @@ class RefreshImpactCounts extends Command
         // ->filter() with no callback treats '' as falsy and drops it — making the
         // zero-fill logic think it was never "seen" and re-add it, violating the
         // (status, country_code) primary key on the second, duplicate row).
+        // TRIM() matters, not just the != '' check above: MySQL's default (PAD SPACE)
+        // collations treat trailing-whitespace-only differences as equal for uniqueness
+        // purposes — "Ca" and "Ca " collide on impact_counts' primary key at INSERT time
+        // — but PHP's exact string comparison treats them as different values, so they'd
+        // sail through as two distinct entries right up until the DB rejects the second
+        // one as a duplicate. Two crashes tonight traced back to exactly this before it
+        // was diagnosed. Trimming in SQL, before DISTINCT ever runs, collapses any such
+        // pair into one value from the start.
         $countryList = DB::table('locality_groups')
-            ->select('country_code')
+            ->selectRaw('TRIM(country_code) AS country_code')
             ->whereNotNull('country_code')
             ->where('country_code', '!=', '')
             ->distinct()
@@ -134,12 +142,15 @@ class RefreshImpactCounts extends Command
         // country_code != '' alongside IS NOT NULL: a blank string isn't NULL, so it
         // used to slip through as its own fake "country" bucket — still correctly
         // counted in the true grand total via the country-agnostic query below, just
-        // not broken out as if '' were a real country code.
+        // not broken out as if '' were a real country code. TRIM() for the same reason
+        // as $countryList above — collapses any trailing-whitespace-only variant into
+        // the same group before it can reach the impact_counts primary key as a
+        // duplicate that only MySQL's (not PHP's) string comparison would catch.
         $byCountryAndStatus = DB::select("
-            SELECT country_code, georef_status, COUNT(*) as cnt
+            SELECT TRIM(country_code) as country_code, georef_status, COUNT(*) as cnt
             FROM occurrences
             WHERE deleted_at IS NULL AND georef_status IN ({$statusList}) AND country_code IS NOT NULL AND country_code != ''
-            GROUP BY country_code, georef_status WITH ROLLUP
+            GROUP BY TRIM(country_code), georef_status WITH ROLLUP
         ");
 
         // Keyed by "{status}|{country_code}" rather than a flat list — impact_counts'
