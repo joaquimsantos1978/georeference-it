@@ -54,13 +54,16 @@ class GbifResetConsistency extends Command
             UPDATE locality_groups lg
             JOIN (
                 SELECT locality_group_id,
-                    SUM(georef_status IN ('has_suggestion','conflicted')) AS p
+                    SUM(georef_status = 'has_suggestion') AS has_suggestion,
+                    SUM(georef_status = 'conflicted') AS conflicted
                 FROM occurrences
                 WHERE locality_group_id IS NOT NULL
                   AND deleted_at IS NULL
                 GROUP BY locality_group_id
             ) c ON c.locality_group_id = lg.id
-            SET lg.pending_count = c.p
+            SET lg.pending_count        = c.has_suggestion + c.conflicted,
+                lg.has_suggestion_count = c.has_suggestion,
+                lg.conflicted_count     = c.conflicted
         ");
 
         $this->info('Done.');

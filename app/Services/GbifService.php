@@ -306,10 +306,13 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
 
         }
 
-        $group->update([
-            'consistency_status' => 'inconsistent',
-            'pending_count'      => $group->pending_count + count($clusters),
-        ]);
+        $group->update(['consistency_status' => 'inconsistent']);
+        // The new suggestions above are the only thing that changed — none of the group's
+        // occurrences flipped status yet — but pending_count must reflect them, so recompute
+        // from occurrences rather than hand-incrementing by count($clusters): that used to
+        // add the number of new suggestion *clusters* to a counter that's meant to track
+        // occurrences, inflating it by the wrong unit every time this ran.
+        $group->recalculateCounters();
 
         return 'inconsistent';
     }

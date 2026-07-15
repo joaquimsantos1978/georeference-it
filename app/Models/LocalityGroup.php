@@ -119,30 +119,42 @@ class LocalityGroup extends Model
         });
     }
 
+    // Single source of truth for a group's per-status occurrence breakdown — derived fresh
+    // from occurrences.georef_status every time, not accumulated via +1/-1 bookkeeping, so
+    // it self-heals regardless of which of the many code paths changed an occurrence's
+    // status. Scoped to one locality_group_id (indexed, at most a few hundred rows), so
+    // this stays cheap even though it's called synchronously after every user action.
+    // deleted_at IS NULL matters: a soft-deleted occurrence (--prune-deleted) must not keep
+    // counting toward its group's totals — the previous version of this query omitted that
+    // filter entirely, unlike every other counter-maintenance query in the codebase.
     public function recalculateCounters(): void
     {
         \Illuminate\Support\Facades\DB::statement("
             UPDATE locality_groups lg
             JOIN (
                 SELECT
-                    COUNT(*)                             AS total,
-                    COALESCE(SUM(georef_status = 'validated'), 0)     AS validated,
-                    COALESCE(SUM(georef_status = 'ungeoreferenced'), 0) AS ungeoreferenced
+                    COUNT(*)                                             AS total,
+                    COALESCE(SUM(georef_status = 'validated'), 0)        AS validated,
+                    COALESCE(SUM(georef_status = 'ungeoreferenced'), 0)  AS ungeoreferenced,
+                    COALESCE(SUM(georef_status = 'has_suggestion'), 0)   AS has_suggestion,
+                    COALESCE(SUM(georef_status = 'conflicted'), 0)       AS conflicted,
+                    COALESCE(SUM(georef_status = 'gbif_georeferenced'), 0) AS gbif_georeferenced,
+                    COALESCE(SUM(georef_status = 'gbif_reviewed'), 0)    AS gbif_reviewed
                 FROM occurrences
                 WHERE locality_group_id = ?
+                  AND deleted_at IS NULL
             ) occ ON lg.id = ?
-            JOIN (
-                SELECT COUNT(*) AS pending
-                FROM georef_suggestions
-                WHERE locality_group_id = ? AND status = 'pending'
-            ) sug ON 1=1
             SET
-                lg.occurrence_count      = occ.total,
-                lg.pending_count         = sug.pending,
-                lg.validated_count       = occ.validated,
-                lg.ungeoreferenced_count = occ.ungeoreferenced,
-                lg.updated_at            = NOW()
-        ", [$this->id, $this->id, $this->id]);
+                lg.occurrence_count         = occ.total,
+                lg.pending_count            = occ.has_suggestion + occ.conflicted,
+                lg.has_suggestion_count     = occ.has_suggestion,
+                lg.conflicted_count         = occ.conflicted,
+                lg.validated_count          = occ.validated,
+                lg.ungeoreferenced_count    = occ.ungeoreferenced,
+                lg.gbif_georeferenced_count = occ.gbif_georeferenced,
+                lg.gbif_reviewed_count      = occ.gbif_reviewed,
+                lg.updated_at               = NOW()
+        ", [$this->id, $this->id]);
 
         $this->refresh();
     }

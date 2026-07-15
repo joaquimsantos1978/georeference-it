@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\CountsWithStaleWhileRevalidate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ActivityController extends Controller
 {
+    use CountsWithStaleWhileRevalidate;
+
     public function index(Request $request)
     {
         $rawUser       = $request->get('user');
@@ -43,7 +46,7 @@ class ActivityController extends Controller
                 ->when($filterCountry, fn($q) => $q->where('lg.country_code', $filterCountry));
 
             $cacheKey = 'activity_count_system_' . ($filterCountry ?: 'all');
-            $total = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, fn() => (clone $query)->count());
+            $total = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $query)->count());
 
             $rows = $query
                 ->select(
@@ -72,7 +75,7 @@ class ActivityController extends Controller
                 ->when($filterCountry, fn($q) => $q->where('al.country_code', $filterCountry));
 
             $cacheKey = 'activity_count_' . ($filterUserId ?: 'all') . '_' . ($filterCountry ?: 'all');
-            $total = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, fn() => (clone $query)->count());
+            $total = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $query)->count());
 
             $rows = $query
                 ->select(

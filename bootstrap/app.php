@@ -5,6 +5,7 @@ use App\Console\Commands\SendWeeklySummary;
 use App\Console\Commands\GbifMonthlyRefresh;
 use App\Console\Commands\GbifRefreshHeartbeat;
 use App\Console\Commands\GbifWatchdog;
+use App\Console\Commands\GbifSyncDatasets;
 use App\Console\Commands\RefreshImpactCounts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -63,16 +64,19 @@ return Application::configure(basePath: dirname(__DIR__))
         // detected, so safe to leave scheduled year-round like the heartbeat above.
         $schedule->command(GbifWatchdog::class)->everyFiveMinutes();
 
-        // Keeps Impact/Explore/Activity's counts fresh without ever computing them
+        // Keeps Stats/Impact/Explore/Activity's counts fresh without ever computing them
         // inline on a page request (see ImpactController for why that caused 504s).
-        // Skipped while a GBIF import is running: its distinct-country_code query was
-        // observed taking 10-15 minutes on the grown locality_groups table (a full scan,
-        // no index covers the combination of filters well) and competing for I/O with the
-        // import's own batches every single hour — a bad trade during a days-long import
-        // for numbers that are only cosmetic (Impact/Explore/Activity pages, not correctness-
+        // Now derives everything from locality_groups' per-status counters instead of
+        // scanning `occurrences` directly (see RefreshImpactCounts) — that took the
+        // typical run from 2-3+ hours down to low minutes, so it can run far more often
+        // than the old hourly cadence and still finish well before the next tick.
+        // Skipped while a GBIF import is running: locality_groups is being written to
+        // in batches by the import at the same time, and competing for I/O with those
+        // batches every few minutes would be a bad trade during a days-long import for
+        // numbers that are only cosmetic (Stats/Impact/Explore/Activity, not correctness-
         // critical). Self-resuming: no manual re-enable needed once the import finishes.
         $schedule->command(RefreshImpactCounts::class)
-            ->hourly()
+            ->everyTenMinutes()
             ->withoutOverlapping()
             ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false))
             // Manual escape hatch for a run started outside the scheduler (withoutOverlapping()
@@ -81,6 +85,20 @@ return Application::configure(basePath: dirname(__DIR__))
             // true, now()->addHours(N))`. TTL'd on purpose so a forgotten flag can't silently
             // disable this forever; clear early with `Cache::forget(...)` once done.
             ->skip(fn () => \Illuminate\Support\Facades\Cache::get('impact:refresh-counts:paused', false));
+
+        // Datasets page stats — a separate pipeline from the one above on purpose:
+        // dataset_key isn't a property of a locality_group (one group can hold
+        // occurrences from several datasets sharing the same locality text), so this
+        // still has to aggregate `occurrences` directly rather than locality_groups.
+        // That makes it inherently slower than RefreshImpactCounts, so it stays daily
+        // rather than every-10-minutes — previously this only ran when someone
+        // remembered to invoke `gbif:sync-datasets --stats-only` by hand, so the
+        // Datasets page could silently go stale for weeks. Same GBIF-import guard as
+        // above, same reasoning (competes for I/O with the import's own batches).
+        $schedule->command(GbifSyncDatasets::class, ['--stats-only' => true])
+            ->dailyAt('03:00')
+            ->withoutOverlapping(240)
+            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
 
         // Only scans users active in the last 24h (see AwardBadges), so this stays cheap
         // even hourly.
