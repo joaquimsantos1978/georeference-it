@@ -92,17 +92,7 @@ class ImpactController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // Live query, not cached/precomputed — see ExploreController for why this is
-        // cheap regardless of table size (loose index scan on country_code), and why
-        // the validity filter runs in PHP rather than as a SQL REGEXP.
-        $countries = DB::table('locality_groups')
-            ->whereNotNull('country_code')
-            ->where('country_code', '!=', '')
-            ->distinct()
-            ->pluck('country_code')
-            ->filter(fn($code) => preg_match('/^[A-Z]{2}$/', $code))
-            ->sort()
-            ->values();
+        $countries = \App\Models\LocalityGroup::activeCountryCodes();
 
         return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
     }

@@ -79,6 +79,46 @@ class LocalityGroup extends Model
         return $this->hasMany(LocalityGroupComment::class);
     }
 
+    // Country-filter dropdown source for Explore/Impact/Activity. Two steps, both
+    // deliberately shaped around what stays fast on a table this size:
+    //
+    // 1. A plain filter-free DISTINCT on country_code uses a loose index scan
+    //    (EXPLAIN: "Using index for group-by", ~46K rows) regardless of table size —
+    //    adding *any* other WHERE condition here (occurrence_count > 0, deleted_at IS
+    //    NULL) breaks that optimization and forces a ~48M-row full scan instead, since
+    //    no index covers those columns together with country_code. Format validity
+    //    (exactly two uppercase letters) is filtered in PHP against this small
+    //    distinct-values result instead of as a SQL REGEXP for the same reason —
+    //    pre-validation-era data left plenty of garbage still sitting in the column
+    //    (tabs, digits, whole province names in Chinese).
+    // 2. Even after that, a code whose *only* groups are all soft-deleted (e.g. "AA", a
+    //    reserved-but-unassigned ISO code) would still show up and always return zero
+    //    results when picked, since Explore's actual listing query is soft-delete-aware
+    //    and this DISTINCT isn't. Re-checking every remaining candidate with `WHERE
+    //    country_code = ? AND deleted_at IS NULL LIMIT 1` is fast per code (index_merge,
+    //    ~30ms even for a huge country like the US — LIMIT 1 stops at the first match
+    //    regardless of how many rows that country actually has) but adds up over ~300
+    //    candidates, so the whole result is cached rather than re-checked every request.
+    public static function activeCountryCodes(): \Illuminate\Support\Collection
+    {
+        return \Illuminate\Support\Facades\Cache::remember('locality_groups:active_country_codes', 900, function () {
+            $candidates = \Illuminate\Support\Facades\DB::table('locality_groups')
+                ->whereNotNull('country_code')
+                ->where('country_code', '!=', '')
+                ->distinct()
+                ->pluck('country_code')
+                ->filter(fn($code) => preg_match('/^[A-Z]{2}$/', $code));
+
+            return $candidates
+                ->filter(fn($code) => \Illuminate\Support\Facades\DB::table('locality_groups')
+                    ->where('country_code', $code)
+                    ->whereNull('deleted_at')
+                    ->exists())
+                ->sort()
+                ->values();
+        });
+    }
+
     public function recalculateCounters(): void
     {
         \Illuminate\Support\Facades\DB::statement("
