@@ -105,7 +105,7 @@
                             <div class="flex items-center gap-2 justify-end">
                                 <a href="{{ route('explore') }}?dataset_key={{ $ds->dataset_key }}"
                                    class="text-xs text-green-600 hover:underline whitespace-nowrap">{{ __('Browse') }}</a>
-                                <a href="{{ url('/api/v1/occurrences') }}?dataset_key={{ $ds->dataset_key }}&status=validated"
+                                <a href="{{ url('/api/v1/occurrences') }}?datasetKey={{ $ds->dataset_key }}&status=validated"
                                    target="_blank"
                                    class="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap">API</a>
                             </div>
