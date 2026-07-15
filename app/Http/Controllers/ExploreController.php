@@ -112,21 +112,23 @@ class ExploreController extends Controller
     }
 
     // COUNT(*) with a locality_groups filter was observed taking minutes on this table
-    // (tens of millions of rows, no index covers the combination of filters well) —
-    // a plain Cache::remember() with a 1h TTL meant the request that landed right after
-    // expiry paid that cost inline and 504'd, same failure mode as Stats/Impact before
-    // (see StatsController::getWithStaleWhileRevalidate). Data never actually goes stale
-    // here: only one request (the lock winner) recomputes; everyone else gets the last
-    // known count immediately, or a safe 0 if nothing has ever been cached yet.
+    // (tens of millions of rows, no index covers the combination of filters well). A
+    // plain Cache::remember() with a 1h TTL meant the request that landed right after
+    // expiry paid that cost inline and 504'd — this used to still have that failure
+    // mode for the *first* request after staleness (the lock winner computed inline).
+    // Now that request only ever recomputes live if NO value has ever been cached for
+    // this exact filter combination (a one-time cost per combination, ever). Once
+    // something is cached, every later request — including the one that notices it's
+    // stale — returns it immediately and kicks the recompute off via afterResponse(),
+    // which runs after the response is already on its way to the browser (uses
+    // fastcgi_finish_request() under PHP-FPM) — no queue worker needed, and no request
+    // is ever the one left waiting on a multi-minute COUNT(*).
     private function countWithStaleWhileRevalidate(string $cacheKey, \Closure $compute): int
     {
         $dataKey = $cacheKey . ':data';
         $cached  = \Illuminate\Support\Facades\Cache::get($dataKey);
 
-        $isStale = $cached === null
-            || \Illuminate\Support\Facades\Cache::get($cacheKey . ':computed_at', 0) < now()->subHour()->timestamp;
-
-        if ($isStale) {
+        if ($cached === null) {
             $lock = \Illuminate\Support\Facades\Cache::lock($cacheKey . ':lock', 300);
             if ($lock->get()) {
                 try {
@@ -136,7 +138,7 @@ class ExploreController extends Controller
                 } finally {
                     $lock->release();
                 }
-            } elseif ($cached === null) {
+            } else {
                 try {
                     $lock->block(10);
                     $lock->release();
@@ -145,8 +147,28 @@ class ExploreController extends Controller
                 }
                 $cached = \Illuminate\Support\Facades\Cache::get($dataKey);
             }
+
+            return $cached ?? 0;
         }
 
-        return $cached ?? 0;
+        $isStale = \Illuminate\Support\Facades\Cache::get($cacheKey . ':computed_at', 0) < now()->subHour()->timestamp;
+        if ($isStale) {
+            $lock = \Illuminate\Support\Facades\Cache::lock($cacheKey . ':lock', 300);
+            if ($lock->get()) {
+                dispatch(function () use ($compute, $dataKey, $cacheKey, $lock) {
+                    try {
+                        \Illuminate\Support\Facades\Cache::forever($dataKey, $compute());
+                        \Illuminate\Support\Facades\Cache::forever($cacheKey . ':computed_at', now()->timestamp);
+                    } finally {
+                        $lock->release();
+                    }
+                })->afterResponse();
+            }
+            // Lock already held (another request's afterResponse() job is mid-flight,
+            // or hasn't run yet) — nothing to do here either way, this request still
+            // just returns the stale value below like normal.
+        }
+
+        return $cached;
     }
 }
