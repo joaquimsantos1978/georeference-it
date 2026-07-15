@@ -40,6 +40,26 @@ class RefreshImpactCounts extends Command
 
     private function compute(): int
     {
+        // Corrupted-locality exclusion list for GeorefController::next(), computed here
+        // rather than live — REGEXP against verbatim_locality/country_code has no index
+        // to use (functional, not sargable), so evaluating it per-request forced every
+        // candidate row to be fetched in full instead of served from an index: a single
+        // country-scoped /georef/next request was observed taking 10-35s purely from
+        // this (confirmed via EXPLAIN/timing — down to ~0.4-0.6s once replaced with a
+        // plain whereNotIn against this cached ID list).
+        $corruptedGroupIds = DB::table('locality_groups')
+            ->where(function ($q) {
+                $q->whereNotNull('verbatim_locality')
+                  ->whereRaw("verbatim_locality REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
+            })
+            ->orWhere(function ($q) {
+                $q->whereNotNull('country_code')
+                  ->whereRaw("country_code REGEXP BINARY '[a-z]'");
+            })
+            ->pluck('id');
+        Cache::forever('georef:corrupted_group_ids', $corruptedGroupIds->all());
+        $this->info('Refreshed corrupted-group exclusion list: ' . $corruptedGroupIds->count() . ' groups');
+
         // This per-country loop exists only for stats.georef's per-country SUMs
         // (total_occ, ungeoref_occ, etc. below) — the Explore/Impact/Activity country
         // *dropdowns* are a plain live DISTINCT query now (see ExploreController),

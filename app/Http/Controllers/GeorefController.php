@@ -285,30 +285,42 @@ public function next(Request $request)
     // Hides groups whose verbatim_locality is obviously corrupted by the original import's
     // parsing bug (a stray quote desynced column boundaries, so several unrelated DWC
     // fields — collector name, event date, catalog number, scientific name — got
-    // concatenated into one locality string). The signature that reliably identifies this:
-    // an embedded ISO timestamp (a real locality description never contains one). Reprocessing
-    // by the corrected import will eventually clear these; until then, don't hand them to
-    // georeferencers as if they were legitimate work.
-    //
-    // Second, separate signature: a trailing backslash in some other free-text field
-    // (habitat, fieldNotes, etc.) made LOAD DATA's default ESCAPED BY '\' eat the
-    // following tab, shifting every column after it by one — country_code ends up as a
-    // truncated, wrong-case fragment of stateProvince (e.g. "Da" from "Davao del Sur").
-    // A real country_code is always exactly two uppercase letters (or NULL) — anything
-    // with a lowercase letter is this same corruption. Now fixed at the LOAD DATA level
-    // (ESCAPED BY '') for future imports; existing rows need a full reprocessing pass.
-    $excludeCorrupted = fn($q) => $q->where(function ($q2) {
-        $q2->whereNull('verbatim_locality')
-           ->orWhereRaw("verbatim_locality NOT REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
-    })->where(function ($q2) {
-        $q2->whereNull('country_code')
-           ->orWhereRaw("country_code NOT REGEXP BINARY '[a-z]'");
-    });
+    // concatenated into one locality string), or whose country_code got truncated by a
+    // separate LOAD DATA escaping bug (both fixed at import time; existing rows need a
+    // full reprocessing pass — see RefreshImpactCounts::compute() for the exact
+    // detection signatures). That detection needs a REGEXP with no index to use, which
+    // made every candidate-selection query below pay for a full row fetch per candidate
+    // instead of an index-only scan — a single country-scoped request was observed
+    // taking 10-35s from this alone. RefreshImpactCounts recomputes the id list hourly
+    // and caches it forever; excluding by id here is a plain indexed lookup instead.
+    $corruptedIds = Cache::get('georef:corrupted_group_ids', []);
+    $excludeCorrupted = fn($q) => $q->whereNotIn('id', $corruptedIds);
 
     $group  = null;
     $userId = auth()->check() ? auth()->id() : null;
 
-    foreach ($scopes as $scopeIdx => $scope) {
+    // A group with pending_count > 0 already has someone else's suggestion sitting on
+    // it — resolving that requires voting, which an anonymous visitor can't do, so it
+    // reads as "why is there already an answer here?" on what's supposed to be their
+    // first plain georef task. A group with a "similar locality" sibling (same
+    // normalized_locality + county + country_code) invites a comparison an unregistered
+    // first-timer has no context for yet. Neither disqualifies a group outright — try
+    // every scope (country → wider fallbacks) with both restrictions first, and only
+    // relax them (second pass, identical scopes) if that comes up completely empty,
+    // rather than dropping a restriction while there's still unexplored geography.
+    $strictPasses = $userId === null ? [true, false] : [false];
+
+    // Same signature as groupData()'s "similar groups" query, but existence-only and
+    // capped to the (at most 50) candidates already fetched — the composite index on
+    // (normalized_locality, county, country_code) makes each check a fast index lookup.
+    $hasSimilarSibling = fn(LocalityGroup $g) => $g->normalized_locality && LocalityGroup::where('id', '!=', $g->id)
+        ->where('normalized_locality', $g->normalized_locality)
+        ->where('county', $g->county)
+        ->where('country_code', $g->country_code)
+        ->exists();
+
+    foreach ($strictPasses as $strict) {
+      foreach ($scopes as $scopeIdx => $scope) {
         $isFocusScope = ($focus !== '' && $scopeIdx === 0);
 
         // Within the focus scope, always try both task types regardless of preference
@@ -360,9 +372,13 @@ public function next(Request $request)
                     ->tap($scope)
                     ->tap($excludeCorrupted)
                     ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
+                    ->when($strict, fn($q) => $q->where('pending_count', 0))
                     ->orderByDesc('occurrence_count')
                     ->limit(50)
                     ->get();
+                if ($strict) {
+                    $georefCandidates = $georefCandidates->reject($hasSimilarSibling);
+                }
                 $group = $georefCandidates->isNotEmpty() ? $georefCandidates->random() : null;
             }
 
@@ -383,6 +399,8 @@ public function next(Request $request)
         }
 
         if ($group) break;
+      }
+      if ($group) break;
     }
 
     if (!$group) {
