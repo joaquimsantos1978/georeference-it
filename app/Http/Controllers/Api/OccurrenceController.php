@@ -5,12 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\GeorefSuggestion;
 use App\Models\Occurrence;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OccurrenceController extends Controller
 {
+    // Populated per-page by preloadSuggestions(), keyed by locality_group_id — lets
+    // resolveGeoref() do a plain array lookup instead of a query per occurrence.
+    private array $suggestionCache = [];
+
     // Same string used for both manually- and system-submitted georeferences (see
     // GeorefController::submit()) — keeps georeferenceProtocol consistent regardless
     // of who/what produced the suggestion.
@@ -62,7 +69,7 @@ class OccurrenceController extends Controller
         'georeferenceVerificationStatus'  => 'dwc:georeferenceVerificationStatus',
     ];
 
-    public function index(Request $request): Response|JsonResponse
+    public function index(Request $request): Response|JsonResponse|StreamedResponse
     {
         $query = Occurrence::query()->with(['localityGroup']);
 
@@ -99,6 +106,7 @@ class OccurrenceController extends Controller
 
         $perPage = min((int) $request->get('perPage', 100), 500);
         $results = $query->paginate($perPage);
+        $this->preloadSuggestions($results->getCollection());
         $records = $results->getCollection()->map(fn($o) => $this->format($o))->all();
 
         if ($this->wantsJsonLd($request)) {
@@ -125,7 +133,7 @@ class OccurrenceController extends Controller
         ]);
     }
 
-    private function csvResponse($query, Request $request): Response
+    private function csvResponse($query, Request $request): StreamedResponse
     {
         $columns = [
             'occurrenceID', 'datasetKey', 'institutionCode', 'collectionCode', 'catalogNumber',
@@ -147,6 +155,7 @@ class OccurrenceController extends Controller
             fputcsv($out, $columns);
 
             $query->with(['localityGroup'])->chunk(500, function ($occurrences) use ($out, $columns) {
+                $this->preloadSuggestions($occurrences);
                 foreach ($occurrences as $o) {
                     $record = $this->format($o);
                     fputcsv($out, array_map(fn($col) => $record[$col] ?? '', $columns));
@@ -268,31 +277,71 @@ class OccurrenceController extends Controller
         ];
     }
 
+    // Batch-resolves the "winning" suggestion (same ranking resolveGeoref() used to compute
+    // per-occurrence: accepted before pending, then highest net weighted vote) for every
+    // locality_group_id present in $occurrences, in a single query — replaces what used to
+    // be one query per occurrence (with two correlated subqueries each in its ORDER BY),
+    // observed taking ~3 minutes for a 99-row page. ROW_NUMBER() OVER (PARTITION BY ...)
+    // picks exactly one winner per group in the same pass; MariaDB 10.2+ (this app targets
+    // 10.11) supports window functions.
+    private function preloadSuggestions(iterable $occurrences): void
+    {
+        $this->suggestionCache = [];
+
+        $groupIds = collect($occurrences)
+            ->filter(fn($o) => in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted', 'gbif_georeferenced']))
+            ->pluck('locality_group_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($groupIds->isEmpty()) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, $groupIds->count(), '?'));
+        $rows = DB::select("
+            SELECT * FROM (
+                SELECT gs.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY gs.locality_group_id
+                        ORDER BY FIELD(gs.status, 'accepted', 'pending'),
+                            (SELECT COALESCE(SUM(CASE WHEN gv.vote='agree' THEN ul.vote_weight ELSE 0 END), 0)
+                             FROM georef_validations gv
+                             JOIN users u ON u.id = gv.user_id
+                             LEFT JOIN user_levels ul ON ul.id = u.user_level_id
+                             WHERE gv.suggestion_id = gs.id)
+                            -
+                            (SELECT COALESCE(SUM(CASE WHEN gv.vote='disagree' THEN ul.vote_weight ELSE 0 END), 0)
+                             FROM georef_validations gv
+                             JOIN users u ON u.id = gv.user_id
+                             LEFT JOIN user_levels ul ON ul.id = u.user_level_id
+                             WHERE gv.suggestion_id = gs.id)
+                            DESC
+                    ) AS rn
+                FROM georef_suggestions gs
+                WHERE gs.locality_group_id IN ({$placeholders})
+                  AND gs.decimal_latitude IS NOT NULL
+                  AND gs.status IN ('accepted', 'pending')
+            ) ranked
+            WHERE rn = 1
+        ", $groupIds->all());
+
+        $prototype = new GeorefSuggestion();
+        $suggestions = EloquentCollection::make(
+            collect($rows)->map(fn($row) => $prototype->newFromBuilder((array) $row))
+        );
+        $suggestions->load('user:id,name,public_name,orcid');
+
+        foreach ($suggestions as $suggestion) {
+            $this->suggestionCache[$suggestion->locality_group_id] = $suggestion;
+        }
+    }
+
     private function resolveGeoref(Occurrence $o): array
     {
         if (in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted', 'gbif_georeferenced'])) {
-            $suggestion = GeorefSuggestion::with('user:id,name,public_name,orcid')
-                ->where('locality_group_id', $o->locality_group_id)
-                ->whereNotNull('decimal_latitude')
-                ->where(function ($q) {
-                    $q->where('status', 'accepted')->orWhere('status', 'pending');
-                })
-                ->orderByRaw("FIELD(status, 'accepted', 'pending')")
-                ->orderByRaw("
-                    (SELECT COALESCE(SUM(CASE WHEN gv.vote='agree' THEN ul.vote_weight ELSE 0 END), 0)
-                     FROM georef_validations gv
-                     JOIN users u ON u.id = gv.user_id
-                     LEFT JOIN user_levels ul ON ul.id = u.user_level_id
-                     WHERE gv.suggestion_id = georef_suggestions.id)
-                    -
-                    (SELECT COALESCE(SUM(CASE WHEN gv.vote='disagree' THEN ul.vote_weight ELSE 0 END), 0)
-                     FROM georef_validations gv
-                     JOIN users u ON u.id = gv.user_id
-                     LEFT JOIN user_levels ul ON ul.id = u.user_level_id
-                     WHERE gv.suggestion_id = georef_suggestions.id)
-                    DESC
-                ")
-                ->first();
+            $suggestion = $this->suggestionCache[$o->locality_group_id] ?? null;
 
             if ($suggestion) {
                 return [
