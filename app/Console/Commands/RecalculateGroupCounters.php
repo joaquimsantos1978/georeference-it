@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class RecalculateGroupCounters extends Command
 {
-    protected $signature   = 'georef:recalculate-counters {--chunk=5000} {--fast : Aggregate into temp tables first (much faster on large datasets)}';
+    protected $signature   = 'georef:recalculate-counters {--chunk=5000} {--fast : Aggregate occurrences in one pass via a temp table instead of re-scanning per chunk — less total DB work, but that one aggregation pass is a single long-running query with no progress/resume; on a very large occurrences table plain --chunk may finish sooner in practice and can be killed/resumed safely}';
     protected $description = 'Bulk-recalculate the full per-status occurrence breakdown on all locality_groups';
 
     public function handle(): int
@@ -44,21 +44,56 @@ class RecalculateGroupCounters extends Command
             GROUP BY locality_group_id
         ');
 
-        $this->info('Step 2/2: Updating locality_groups...');
-        DB::statement('
-            UPDATE locality_groups lg
-            JOIN tmp_occ_counts occ ON occ.locality_group_id = lg.id
-            SET
-                lg.occurrence_count         = occ.total,
-                lg.ungeoreferenced_count    = occ.ungeoreferenced,
-                lg.validated_count          = occ.validated,
-                lg.pending_count            = occ.has_suggestion + occ.conflicted,
-                lg.has_suggestion_count     = occ.has_suggestion,
-                lg.conflicted_count         = occ.conflicted,
-                lg.gbif_georeferenced_count = occ.gbif_georeferenced,
-                lg.gbif_reviewed_count      = occ.gbif_reviewed,
-                lg.updated_at               = NOW()
-        ');
+        // Indexed so the batched JOIN below can seek by locality_group_id instead of
+        // scanning the whole temp table on every batch.
+        DB::statement('ALTER TABLE tmp_occ_counts ADD PRIMARY KEY (locality_group_id)');
+
+        // Batched by id range against the (already-computed, local, fast) temp table —
+        // NOT a single UPDATE over all of locality_groups. A single UPDATE touching every
+        // row of a 90M+ row hot table holds one long-running write lock for its entire
+        // duration, blocking every live recalculateCounters() call (submit/validate/etc)
+        // until it finishes — observed as exactly this class of problem elsewhere in this
+        // codebase (see GbifImportDownload's own batched counter-update step) before this
+        // command made the same mistake. The expensive part — the full scan of `occurrences`
+        // — still only happens once, in Step 1 above; this just batches the write side.
+        $this->info('Step 2/2: Updating locality_groups in batches...');
+        $bounds = DB::selectOne('SELECT MIN(locality_group_id) AS min_id, MAX(locality_group_id) AS max_id FROM tmp_occ_counts');
+
+        if ($bounds && $bounds->min_id !== null) {
+            $batchSize    = 200000;
+            $minId        = (int) $bounds->min_id;
+            $maxId        = (int) $bounds->max_id;
+            $totalBatches = (int) ceil((($maxId - $minId) + 1) / $batchSize);
+            $batchNum     = 0;
+
+            for ($from = $minId; $from <= $maxId; $from += $batchSize) {
+                $to = min($from + $batchSize - 1, $maxId);
+                $batchNum++;
+
+                DB::statement("
+                    UPDATE locality_groups lg
+                    JOIN tmp_occ_counts occ ON occ.locality_group_id = lg.id
+                    SET
+                        lg.occurrence_count         = occ.total,
+                        lg.ungeoreferenced_count    = occ.ungeoreferenced,
+                        lg.validated_count          = occ.validated,
+                        lg.pending_count            = occ.has_suggestion + occ.conflicted,
+                        lg.has_suggestion_count     = occ.has_suggestion,
+                        lg.conflicted_count         = occ.conflicted,
+                        lg.gbif_georeferenced_count = occ.gbif_georeferenced,
+                        lg.gbif_reviewed_count      = occ.gbif_reviewed,
+                        lg.updated_at               = NOW()
+                    WHERE occ.locality_group_id BETWEEN {$from} AND {$to}
+                ");
+
+                if ($batchNum % 10 === 0 || $batchNum === $totalBatches) {
+                    $this->line("  Batch {$batchNum}/{$totalBatches} done (locality_group id {$from}–{$to})");
+                }
+
+                // Brief pause between batches so queued live writes get a chance to run.
+                usleep(200000);
+            }
+        }
 
         DB::statement('DROP TEMPORARY TABLE IF EXISTS tmp_occ_counts');
 
