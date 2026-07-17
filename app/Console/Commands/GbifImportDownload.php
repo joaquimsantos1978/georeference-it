@@ -984,6 +984,15 @@ class GbifImportDownload extends Command
             $to = min($from + $batchSize - 1, $maxId);
             $batchNum++;
 
+            // Join condition must leave o.gbif_occurrence_key bare — it's a unique-indexed
+            // VARCHAR, and this UPDATE's outer/driving side is the derived table `s`, not
+            // occurrences. Casting o.gbif_occurrence_key (as the original version of this
+            // query did) wraps the side being probed in a function, which makes that index
+            // unusable and forces MySQL to hash/scan across occurrences (283M+ rows) for
+            // every batch — observed stuck at 100/32089 batches after 12 hours before this
+            // fix. Casting s.gbif_id (a handful of rows per batch) to CHAR instead keeps
+            // o.gbif_occurrence_key indexable, matching the convention already used by the
+            // main upsert above (CAST(s.gbif_id AS CHAR) as the stored key format).
             DB::statement("
                 UPDATE occurrences o
                 JOIN (
@@ -998,7 +1007,7 @@ class GbifImportDownload extends Command
                       AND identifier IS NOT NULL AND identifier != ''
                       AND (type = '' OR type IS NULL OR type LIKE '%image%')
                     GROUP BY gbif_id
-                ) s ON CAST(o.gbif_occurrence_key AS UNSIGNED) = s.gbif_id
+                ) s ON o.gbif_occurrence_key = CAST(s.gbif_id AS CHAR)
                 SET o.media = s.media
             ");
 
