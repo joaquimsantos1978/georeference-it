@@ -319,85 +319,96 @@ public function next(Request $request)
         ->where('country_code', $g->country_code)
         ->exists();
 
-    foreach ($strictPasses as $strict) {
-      foreach ($scopes as $scopeIdx => $scope) {
-        $isFocusScope = ($focus !== '' && $scopeIdx === 0);
+    // A small country/focus bucket (e.g. a country with only 1-2 eligible groups) can
+    // exhaust every scope purely because its only candidate(s) are already in $seenIds —
+    // that's "everything here was already shown this session", not "there's no work",
+    // but without this second attempt it returns group:null and the UI reads as if the
+    // country had nothing at all. Only spend the extra queries when seenIds could
+    // plausibly be the reason (non-empty) and only after a real exhaustion.
+    $seenIdsAttempts = $seenIds ? [$seenIds, []] : [$seenIds];
 
-        // Within the focus scope, always try both task types regardless of preference
-        // (the user explicitly said where they want to work — show any available work there)
-        $wantsValidate = $userId && ($isFocusScope || in_array($preferredTask, ['validate', 'both']));
-        $wantsGeoref   = $isFocusScope || in_array($preferredTask, ['georef', 'both']);
+    foreach ($seenIdsAttempts as $attempt => $seenIdsForAttempt) {
+      foreach ($strictPasses as $strict) {
+        foreach ($scopes as $scopeIdx => $scope) {
+          $isFocusScope = ($focus !== '' && $scopeIdx === 0);
 
-        // Try georef first (preferred outcome for most users), then validate
-        if ($isFocusScope) {
-            // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
-            $focusMatch = fn($q) => $q->whereRaw(
-                'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
-                [$focus]
-            )->when($country, fn($q2) => $q2->where('country_code', $country));
+          // Within the focus scope, always try both task types regardless of preference
+          // (the user explicitly said where they want to work — show any available work there)
+          $wantsValidate = $userId && ($isFocusScope || in_array($preferredTask, ['validate', 'both']));
+          $wantsGeoref   = $isFocusScope || in_array($preferredTask, ['georef', 'both']);
 
-            // No ORDER BY — fulltext index is used directly; we random() the results anyway
-            $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
-                ->where('occurrence_count', '>', 0)
-                ->where('occurrence_count', '<', 10000)
-                ->tap($focusMatch)
-                ->tap($excludeCorrupted)
-                ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                ->limit(50)
-                ->get();
+          // Try georef first (preferred outcome for most users), then validate
+          if ($isFocusScope) {
+              // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
+              $focusMatch = fn($q) => $q->whereRaw(
+                  'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
+                  [$focus]
+              )->when($country, fn($q2) => $q2->where('country_code', $country));
 
-            if ($candidates->isEmpty()) {
-                $candidates = LocalityGroup::where('pending_count', '>', 0)
-                    ->where('occurrence_count', '>', 0)
-                    ->where('occurrence_count', '<', 10000)
-                    ->tap($focusMatch)
-                    ->tap($excludeCorrupted)
-                    ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                    ->limit(50)
-                    ->get();
-            }
+              // No ORDER BY — fulltext index is used directly; we random() the results anyway
+              $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                  ->where('occurrence_count', '>', 0)
+                  ->where('occurrence_count', '<', 10000)
+                  ->tap($focusMatch)
+                  ->tap($excludeCorrupted)
+                  ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                  ->limit(50)
+                  ->get();
 
-            $group = $candidates->isNotEmpty() ? $candidates->random() : null;
+              if ($candidates->isEmpty()) {
+                  $candidates = LocalityGroup::where('pending_count', '>', 0)
+                      ->where('occurrence_count', '>', 0)
+                      ->where('occurrence_count', '<', 10000)
+                      ->tap($focusMatch)
+                      ->tap($excludeCorrupted)
+                      ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                      ->limit(50)
+                      ->get();
+              }
 
-            if (!$group) {
-                // Focus exhausted — fall through to country/province scopes with a flag
-                session()->forget($focusKey); // reset so user can revisit later
-                continue; // keep iterating remaining scopes
-            }
-        } else {
-            if ($wantsGeoref) {
-                $georefCandidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
-                    ->where('occurrence_count', '>', 0)
-                    ->where('occurrence_count', '<', 10000)
-                    ->tap($scope)
-                    ->tap($excludeCorrupted)
-                    ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                    ->when($strict, fn($q) => $q->where('pending_count', 0))
-                    ->orderByDesc('occurrence_count')
-                    ->limit(50)
-                    ->get();
-                if ($strict) {
-                    $georefCandidates = $georefCandidates->reject($hasSimilarSibling);
-                }
-                $group = $georefCandidates->isNotEmpty() ? $georefCandidates->random() : null;
-            }
+              $group = $candidates->isNotEmpty() ? $candidates->random() : null;
 
-            if (!$group && $wantsValidate) {
-                $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
-                    ->where('occurrence_count', '>', 0)
-                    ->tap($scope)
-                    ->tap($excludeCorrupted)
-                    ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
-                    ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
-                        $s->where('user_id', auth()->id())->where('status', 'pending')
-                    ))
-                    ->orderByDesc('pending_count')
-                    ->limit(50)
-                    ->get();
-                $group = $validateCandidates->isNotEmpty() ? $validateCandidates->random() : null;
-            }
+              if (!$group) {
+                  // Focus exhausted — fall through to country/province scopes with a flag
+                  session()->forget($focusKey); // reset so user can revisit later
+                  continue; // keep iterating remaining scopes
+              }
+          } else {
+              if ($wantsGeoref) {
+                  $georefCandidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                      ->where('occurrence_count', '>', 0)
+                      ->where('occurrence_count', '<', 10000)
+                      ->tap($scope)
+                      ->tap($excludeCorrupted)
+                      ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                      ->when($strict, fn($q) => $q->where('pending_count', 0))
+                      ->orderByDesc('occurrence_count')
+                      ->limit(50)
+                      ->get();
+                  if ($strict) {
+                      $georefCandidates = $georefCandidates->reject($hasSimilarSibling);
+                  }
+                  $group = $georefCandidates->isNotEmpty() ? $georefCandidates->random() : null;
+              }
+
+              if (!$group && $wantsValidate) {
+                  $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
+                      ->where('occurrence_count', '>', 0)
+                      ->tap($scope)
+                      ->tap($excludeCorrupted)
+                      ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                      ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
+                          $s->where('user_id', auth()->id())->where('status', 'pending')
+                      ))
+                      ->orderByDesc('pending_count')
+                      ->limit(50)
+                      ->get();
+                  $group = $validateCandidates->isNotEmpty() ? $validateCandidates->random() : null;
+              }
+          }
+
+          if ($group) break;
         }
-
         if ($group) break;
       }
       if ($group) break;
@@ -405,6 +416,14 @@ public function next(Request $request)
 
     if (!$group) {
         return response()->json(['group' => null]);
+    }
+
+    // Found only after dropping the seenIds exclusion — this session's "seen" list no
+    // longer reflects reality for this context (everything left was already shown), so
+    // reset it instead of leaving it to immediately re-exhaust on the very next request.
+    if (($attempt ?? 0) === 1) {
+        session()->forget($focusKey);
+        $seenIds = [];
     }
 
     // Remember this group as seen (per focus term) and store geographic coherence
