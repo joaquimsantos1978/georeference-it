@@ -659,6 +659,22 @@ class GbifImportDownload extends Command
                         AND s.gbif_id BETWEEN {$from} AND {$to}
                     ON DUPLICATE KEY UPDATE
                         dataset_key                   = VALUES(dataset_key),
+                        publisher_key                 = VALUES(publisher_key),
+                        basis_of_record                = VALUES(basis_of_record),
+                        institution_code              = VALUES(institution_code),
+                        collection_code               = VALUES(collection_code),
+                        catalog_number                = VALUES(catalog_number),
+                        recorded_by                    = VALUES(recorded_by),
+                        event_date                    = VALUES(event_date),
+                        country                       = VALUES(country),
+                        country_code                  = VALUES(country_code),
+                        state_province                = VALUES(state_province),
+                        county                        = VALUES(county),
+                        municipality                  = VALUES(municipality),
+                        verbatim_locality             = VALUES(verbatim_locality),
+                        island                        = VALUES(island),
+                        island_group                  = VALUES(island_group),
+                        water_body                    = VALUES(water_body),
                         scientific_name               = VALUES(scientific_name),
                         taxon_rank                    = VALUES(taxon_rank),
                         kingdom                       = VALUES(kingdom),
@@ -667,6 +683,14 @@ class GbifImportDownload extends Command
                         gbif_decimal_longitude        = VALUES(gbif_decimal_longitude),
                         gbif_coordinate_uncertainty_m = VALUES(gbif_coordinate_uncertainty_m),
                         gbif_geodetic_datum           = VALUES(gbif_geodetic_datum),
+                        -- All descriptive/location fields above are now kept in sync with
+                        -- whatever GBIF currently publishes (a publisher can correct locality
+                        -- text, country code, catalog number, etc. after the fact) — this used
+                        -- to only touch taxonomy/coordinates, so a corrected or corrupted-at-
+                        -- import row would stay stuck forever once it existed. locality_group_id
+                        -- below already re-associates the row when these fields change; now the
+                        -- row's own copies actually match the group it ends up in.
+                        --
                         -- Must run BEFORE the locality_group_id assignment below: MySQL applies
                         -- ON DUPLICATE KEY UPDATE assignments in order, so a bare column
                         -- reference here still sees the OLD (pre-update) locality_group_id.
