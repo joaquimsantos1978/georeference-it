@@ -1773,12 +1773,22 @@ function loadNextGroup() {
     clearPanel();
     var parts = [];
     var focus = window._georefFocus;
-    // When no explicit focus, derive one from the current group's locality (cascading fallback)
+    // When no explicit focus, derive one from the current group's locality (cascading fallback:
+    // stay as geographically close as the group's own data allows). country_code deliberately
+    // stops at the "country" param below, not here — it's a 2-letter code, not free text, and
+    // MATCH AGAINST(...) on a term that short is a fulltext pathological case (observed hanging
+    // for minutes on production, since it falls below InnoDB's default minimum token size).
     if (!focus && currentGroup) {
-        focus = currentGroup.verbatim_locality || currentGroup.county || currentGroup.state_province || currentGroup.country_code || '';
+        focus = currentGroup.verbatim_locality || currentGroup.county || currentGroup.state_province || '';
     }
     if (focus) parts.push('focus=' + encodeURIComponent(focus));
-    if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
+    // Same "stay in the same place" intent as the focus cascade above, one level broader: if
+    // there's no locality-level text to search AND no country filter already active, fall back
+    // to the current group's own country via the real (indexed) country scope instead of no
+    // scope at all. Only when a country filter isn't already driving the request — don't
+    // override an explicit one.
+    var countryParam = window._georefCountry || (!focus && currentGroup ? currentGroup.country_code : '') || '';
+    if (countryParam) parts.push('country=' + encodeURIComponent(countryParam));
     if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
