@@ -334,9 +334,15 @@ public function next(Request $request)
     // for exactly this kind of lookup) — two separate targeted queries, one per task type,
     // rather than one broad dataset_key-only query, so a mostly-finished dataset's first 500
     // rows being validated/gbif_georeferenced doesn't starve out the georef/validate pools.
+    // Also filters by country_code here (not just via $scope on locality_groups afterwards)
+    // when a country is active: a multi-country dataset's first 500 (dataset_key,
+    // georef_status)-matching rows aren't guaranteed to include any of a minority country's
+    // occurrences, so a dataset+country combo could come back empty despite matching groups
+    // existing further down — pushing the country filter into this query instead of only
+    // intersecting afterwards keeps the 500-row sample itself representative.
     // Recomputed per seenIds attempt below (not just once) so the "retry with seenIds
     // relaxed" fallback actually sees the wider candidate set instead of the original one.
-    $datasetRestrictions = function (array $seenIdsForAttempt) use ($datasetKey) {
+    $datasetRestrictions = function (array $seenIdsForAttempt) use ($datasetKey, $country) {
         if ($datasetKey === '') {
             $noop = fn($q) => $q;
             return [$noop, $noop];
@@ -345,6 +351,7 @@ public function next(Request $request)
             ->where('dataset_key', $datasetKey)
             ->where('georef_status', 'ungeoreferenced')
             ->whereNull('deleted_at')
+            ->when($country, fn($q) => $q->where('country_code', $country))
             ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('locality_group_id', $seenIdsForAttempt))
             ->limit(500)
             ->pluck('locality_group_id')
@@ -354,6 +361,7 @@ public function next(Request $request)
             ->where('dataset_key', $datasetKey)
             ->whereIn('georef_status', ['has_suggestion', 'conflicted'])
             ->whereNull('deleted_at')
+            ->when($country, fn($q) => $q->where('country_code', $country))
             ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('locality_group_id', $seenIdsForAttempt))
             ->limit(500)
             ->pluck('locality_group_id')
