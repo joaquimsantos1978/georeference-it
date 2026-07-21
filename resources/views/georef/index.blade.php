@@ -23,6 +23,10 @@
                     <span>{{ __('Dataset') }}: <span id="dataset-filter-name" style="font-weight:600"></span></span>
                     <button id="dataset-filter-clear" title="{{ __('Clear dataset filter') }}" type="button" style="background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;font-size:14px;">×</button>
                 </div>
+                <div id="project-filter-badge" style="{{ $projectTitle ? 'display:flex' : 'display:none' }};margin-top:6px;font-size:10px;color:#16a34a;align-items:center;gap:4px;">
+                    <span>{{ __('Project') }}: <span id="project-filter-name" style="font-weight:600">{{ $projectTitle }}</span></span>
+                    <button id="project-filter-clear" title="{{ __('Clear project filter') }}" type="button" style="background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;font-size:14px;">×</button>
+                </div>
                 {{-- hidden country select kept for auto-detect --}}
                 <select id="country-select" style="display:none;" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
     <option value="">{{ __('All countries') }}</option>
@@ -1798,6 +1802,7 @@ function loadNextGroup() {
     var countryParam = window._georefCountry || (!focus && currentGroup ? currentGroup.country_code : '') || '';
     if (countryParam) parts.push('country=' + encodeURIComponent(countryParam));
     if (window._georefDataset) parts.push('dataset=' + encodeURIComponent(window._georefDataset));
+    if (window._georefProject) parts.push('project=' + encodeURIComponent(window._georefProject));
     if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
@@ -2791,13 +2796,24 @@ document.getElementById('dataset-filter-clear').addEventListener('click', functi
     document.getElementById('dataset-filter-badge').style.display = 'none';
     loadNextGroup();
 });
+// Project's badge text is server-rendered from $projectTitle (a bare id isn't
+// self-descriptive like a dataset key), so JS here only needs to set the session
+// variable and wire the clear button — the visible/hidden state already matches
+// $projectTitle from the initial page render.
+var urlProject = urlParams.get('project');
+if (urlProject) window._georefProject = urlProject;
+document.getElementById('project-filter-clear').addEventListener('click', function() {
+    window._georefProject = '';
+    document.getElementById('project-filter-badge').style.display = 'none';
+    loadNextGroup();
+});
 if(urlGbifKey) {
     loadByGbifKey(urlGbifKey);
 } else if(urlGroupId) {
     var existingIdx = sessionHistory.findIndex(function(g){ return g.id === parseInt(urlGroupId); });
     if(existingIdx !== -1) { historyIndex = existingIdx; updateHistoryNav(); }
     loadGroup(parseInt(urlGroupId));
-} else if(!urlCountry && !urlDataset && sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
+} else if(!urlCountry && !urlDataset && !urlProject && sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
     loadGroup(sessionHistory[historyIndex].id);
 } else {
     function applyLocationAndLoad(loc) {
