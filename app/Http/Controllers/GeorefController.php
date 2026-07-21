@@ -188,11 +188,36 @@ class GeorefController extends Controller
         ];
     }
 
+// Bounds the fulltext query cost regardless of how long/word-heavy $focus is — it can be
+// hand-typed, but is just as often auto-derived from a group's raw verbatim_locality, which
+// runs to a full sentence ("11 mi. WNW of Lebanon, in Bennett Spring State Park, Bennett
+// Spring Branch, about midway between the Spring and confluence of the branch with Niangua
+// River"). BOOLEAN MODE's default is to OR untouched words together, so cost scales with how
+// many (and how common) they are — common words like "state", "park", "spring", "river" each
+// match a huge fraction of a 200M+ row corpus, and MySQL has to merge all of those matches
+// before any other WHERE filter gets a chance to narrow things down; this was observed taking
+// 2+ minutes in production. Keep only the longest words (a cheap proxy for "rarest, most
+// distinctive" — short common words like "the"/"park"/"near" lose to proper nouns like
+// "Niangua"/"Bennett"), cap the count, and require all of them (+word = AND semantics)
+// instead of OR-ing — an intersection of a few rare terms is index-cheap where a union of
+// many common ones isn't. Returns null when nothing usable survives (e.g. a bare country
+// code), meaning "don't build a focus scope for this at all".
+private function focusSearchTerms(string $focus): ?string
+{
+    $words = preg_split('/[^\p{L}\p{N}]+/u', $focus, -1, PREG_SPLIT_NO_EMPTY);
+    $words = array_values(array_unique(array_filter($words, fn($w) => mb_strlen($w) >= 4)));
+    if (empty($words)) return null;
+    usort($words, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
+    $words = array_slice($words, 0, 6);
+    return implode(' ', array_map(fn($w) => '+' . $w, $words));
+}
+
 public function next(Request $request)
 {
     session()->save(); // release session lock before heavy DB work
 
     $focus         = trim($request->get('focus', ''));
+    $focusTerms    = $focus !== '' ? $this->focusSearchTerms($focus) : null;
     $country       = strtoupper(trim($request->get('country', ''))) ?: null;
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
 
@@ -261,11 +286,12 @@ public function next(Request $request)
     }
 
     $scopes = [];
-    if ($focus !== '') {
+    $hasFocusScope = $focusTerms !== null;
+    if ($hasFocusScope) {
         // Focus is an explicit user intent — don't restrict by country so "Braga" finds PT groups even if country=AT
         $scopes[] = fn($q) => $q->whereRaw(
             'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
-            [$focus]
+            [$focusTerms]
         );
     }
     if ($lastCounty) {
@@ -330,7 +356,7 @@ public function next(Request $request)
     foreach ($seenIdsAttempts as $attempt => $seenIdsForAttempt) {
       foreach ($strictPasses as $strict) {
         foreach ($scopes as $scopeIdx => $scope) {
-          $isFocusScope = ($focus !== '' && $scopeIdx === 0);
+          $isFocusScope = ($hasFocusScope && $scopeIdx === 0);
 
           // Within the focus scope, always try both task types regardless of preference
           // (the user explicitly said where they want to work — show any available work there)
@@ -342,7 +368,7 @@ public function next(Request $request)
               // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
               $focusMatch = fn($q) => $q->whereRaw(
                   'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
-                  [$focus]
+                  [$focusTerms]
               )->when($country, fn($q2) => $q2->where('country_code', $country));
 
               // No ORDER BY — fulltext index is used directly; we random() the results anyway
