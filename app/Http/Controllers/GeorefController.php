@@ -10,7 +10,9 @@ use App\Models\LocalityGroup;
 use App\Models\LocalityGroupComment;
 use App\Models\Occurrence;
 use App\Models\PlatformSetting;
+use App\Models\Project;
 use App\Models\User;
+use App\Support\ProjectCriteriaEvaluator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -18,9 +20,21 @@ use Illuminate\Support\Facades\Mail;
 
 class GeorefController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('georef.index');
+        // A bare project id in the URL isn't self-descriptive like a dataset key string,
+        // so the title is resolved here (not client-side) for the frontend badge —
+        // respecting visibility so a private project's title never leaks to a non-owner
+        // via a shared link.
+        $projectTitle = null;
+        if ($projectId = (int) $request->get('project', 0)) {
+            $project = Project::find($projectId);
+            if ($project && $project->isVisibleTo(auth()->user())) {
+                $projectTitle = $project->title;
+            }
+        }
+
+        return view('georef.index', compact('projectTitle'));
     }
 
     // Kept identical to Api\OccurrenceController::GEOREFERENCE_PROTOCOL so the API's
@@ -212,6 +226,27 @@ private function focusSearchTerms(string $focus): ?string
     return implode(' ', array_map(fn($w) => '+' . $w, $words));
 }
 
+// Shared by the dataset and project filters in next(): both resolve to a bounded set of
+// candidate locality_group ids via `occurrences` (neither dataset_key nor a project's
+// criteria/id-list are columns on locality_groups itself — see the callers for why), split
+// into ungeoreferenced-vs-pending pools so a mostly-finished dataset/project's first 500
+// matching rows being already-validated doesn't starve either pool, and always pushing
+// country down into this same query (not left to intersect afterwards) so a multi-country
+// scope's 500-row sample stays representative instead of depending on incidental row order.
+private function candidateGroupIds(\Closure $scope, array $statuses, array $seenIdsForAttempt, ?string $country): array
+{
+    return DB::table('occurrences')
+        ->tap($scope)
+        ->whereIn('occurrences.georef_status', $statuses)
+        ->whereNull('occurrences.deleted_at')
+        ->when($country, fn($q) => $q->where('occurrences.country_code', $country))
+        ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('occurrences.locality_group_id', $seenIdsForAttempt))
+        ->limit(500)
+        ->pluck('occurrences.locality_group_id')
+        ->unique()
+        ->all();
+}
+
 public function next(Request $request)
 {
     session()->save(); // release session lock before heavy DB work
@@ -222,10 +257,19 @@ public function next(Request $request)
     $datasetKey    = trim($request->get('dataset', ''));
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
 
+    // Private + not the owner behaves as if no project was given, rather than erroring —
+    // a stale/shared link to a project that got made private (or deleted) shouldn't break
+    // the whole page, it should just fall back to the unfiltered flow.
+    $projectId = (int) $request->get('project', 0) ?: null;
+    $project   = $projectId ? Project::find($projectId) : null;
+    if ($project && !$project->isVisibleTo(auth()->user())) {
+        $project = null;
+    }
+
     // Session-based exclusion list per focus term (persists across skip calls) — keyed by
-    // dataset too, so switching dataset (even with no focus active) doesn't inherit a
-    // "seen" list built up under a different/no dataset filter.
-    $focusKey  = 'georef_seen_' . md5($focus . '|' . $datasetKey);
+    // dataset and project too, so switching either (even with no focus active) doesn't
+    // inherit a "seen" list built up under a different/no filter.
+    $focusKey  = 'georef_seen_' . md5($focus . '|' . $datasetKey . '|' . $projectId);
     $seenIds   = session($focusKey, []);
 
     // Exclude the group the user just acted on (may have been loaded directly, not via /next)
@@ -237,9 +281,10 @@ public function next(Request $request)
     }
 
     // Priority: sibling of just-completed group (same normalized_locality + county + country)
-    // Skip when focus or a dataset filter is active — the user explicitly changed context,
-    // and a plain locality sibling isn't guaranteed to belong to the requested dataset.
-    if ($excludeId && $focus === '' && $datasetKey === '') {
+    // Skip when focus, a dataset, or a project filter is active — the user explicitly
+    // changed context, and a plain locality sibling isn't guaranteed to belong to the
+    // requested dataset/project.
+    if ($excludeId && $focus === '' && $datasetKey === '' && !$project) {
         $sibling = LocalityGroup::where('id', '!=', $excludeId)
             ->whereNotIn('id', $seenIds)
             ->where(function ($q) use ($excludeId) {
@@ -329,44 +374,42 @@ public function next(Request $request)
     // dataset_key isn't a column on locality_groups (a group can hold occurrences from
     // several datasets sharing the same locality text — see project notes on why Datasets'
     // own stats stay a separate pipeline), so "only this dataset" can't be a plain ->where()
-    // like country_code. Resolve it to a bounded set of candidate group ids via occurrences
-    // instead, using the (dataset_key, georef_status) composite index added in b8a7ce9 (built
-    // for exactly this kind of lookup) — two separate targeted queries, one per task type,
-    // rather than one broad dataset_key-only query, so a mostly-finished dataset's first 500
-    // rows being validated/gbif_georeferenced doesn't starve out the georef/validate pools.
-    // Also filters by country_code here (not just via $scope on locality_groups afterwards)
-    // when a country is active: a multi-country dataset's first 500 (dataset_key,
-    // georef_status)-matching rows aren't guaranteed to include any of a minority country's
-    // occurrences, so a dataset+country combo could come back empty despite matching groups
-    // existing further down — pushing the country filter into this query instead of only
-    // intersecting afterwards keeps the 500-row sample itself representative.
-    // Recomputed per seenIds attempt below (not just once) so the "retry with seenIds
-    // relaxed" fallback actually sees the wider candidate set instead of the original one.
+    // like country_code. Resolve it to a bounded set of candidate group ids via
+    // candidateGroupIds(), using the (dataset_key, georef_status) composite index added in
+    // b8a7ce9 (built for exactly this kind of lookup). Recomputed per seenIds attempt below
+    // (not just once) so the "retry with seenIds relaxed" fallback actually sees the wider
+    // candidate set instead of the original one.
     $datasetRestrictions = function (array $seenIdsForAttempt) use ($datasetKey, $country) {
         if ($datasetKey === '') {
             $noop = fn($q) => $q;
             return [$noop, $noop];
         }
-        $georefIds = DB::table('occurrences')
-            ->where('dataset_key', $datasetKey)
-            ->where('georef_status', 'ungeoreferenced')
-            ->whereNull('deleted_at')
-            ->when($country, fn($q) => $q->where('country_code', $country))
-            ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('locality_group_id', $seenIdsForAttempt))
-            ->limit(500)
-            ->pluck('locality_group_id')
-            ->unique()
-            ->all();
-        $pendingIds = DB::table('occurrences')
-            ->where('dataset_key', $datasetKey)
-            ->whereIn('georef_status', ['has_suggestion', 'conflicted'])
-            ->whereNull('deleted_at')
-            ->when($country, fn($q) => $q->where('country_code', $country))
-            ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('locality_group_id', $seenIdsForAttempt))
-            ->limit(500)
-            ->pluck('locality_group_id')
-            ->unique()
-            ->all();
+        $scope = fn($q) => $q->where('occurrences.dataset_key', $datasetKey);
+        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country);
+        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country);
+        return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
+    };
+
+    // Same shape as $datasetRestrictions, different source: a project's membership is
+    // either a pasted list of GBIF occurrence keys (indexed, cheap whereIn) or AND-only
+    // criteria evaluated live via ProjectCriteriaEvaluator (see there for why this is a live
+    // query rather than a materialized table — most criteria fields have no index, so this
+    // can be slow for a large/rare criteria project at production scale; acceptable for v1
+    // since project-scoped sessions are low-traffic compared to the default anonymous flow,
+    // revisit with a targeted index if a specific field proves to be a real bottleneck).
+    $projectRestrictions = function (array $seenIdsForAttempt) use ($project, $country) {
+        if (!$project) {
+            $noop = fn($q) => $q;
+            return [$noop, $noop];
+        }
+        if ($project->mode === 'id_list') {
+            $scope = fn($q) => $q->whereIn('occurrences.gbif_occurrence_key', $project->submitted_keys ?? []);
+        } else {
+            [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($project->criteria ?? []);
+            $scope = $where !== '' ? fn($q) => $q->whereRaw($where, $bindings) : fn($q) => $q;
+        }
+        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country);
+        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country);
         return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
     };
 
@@ -403,6 +446,7 @@ public function next(Request $request)
 
     foreach ($seenIdsAttempts as $attempt => $seenIdsForAttempt) {
       [$restrictDatasetGeoref, $restrictDatasetValidate] = $datasetRestrictions($seenIdsForAttempt);
+      [$restrictProjectGeoref, $restrictProjectValidate] = $projectRestrictions($seenIdsForAttempt);
       foreach ($strictPasses as $strict) {
         foreach ($scopes as $scopeIdx => $scope) {
           $isFocusScope = ($hasFocusScope && $scopeIdx === 0);
@@ -427,6 +471,7 @@ public function next(Request $request)
                   ->tap($focusMatch)
                   ->tap($excludeCorrupted)
                   ->tap($restrictDatasetGeoref)
+                  ->tap($restrictProjectGeoref)
                   ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                   ->limit(50)
                   ->get();
@@ -438,6 +483,7 @@ public function next(Request $request)
                       ->tap($focusMatch)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetValidate)
+                      ->tap($restrictProjectValidate)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->limit(50)
                       ->get();
@@ -458,6 +504,7 @@ public function next(Request $request)
                       ->tap($scope)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetGeoref)
+                      ->tap($restrictProjectGeoref)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->when($strict, fn($q) => $q->where('pending_count', 0))
                       ->orderByDesc('occurrence_count')
@@ -475,6 +522,7 @@ public function next(Request $request)
                       ->tap($scope)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetValidate)
+                      ->tap($restrictProjectValidate)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
                           $s->where('user_id', auth()->id())->where('status', 'pending')
