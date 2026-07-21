@@ -27,6 +27,73 @@
                     <span>{{ __('Project') }}: <span id="project-filter-name" style="font-weight:600">{{ $projectTitle }}</span></span>
                     <button id="project-filter-clear" title="{{ __('Clear project filter') }}" type="button" style="background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;font-size:14px;">×</button>
                 </div>
+                <div id="adhoc-filter-badge" style="display:none;margin-top:6px;font-size:10px;color:#16a34a;align-items:center;gap:4px;">
+                    <span>{{ __('Advanced search active') }}</span>
+                    <button id="adhoc-filter-clear" title="{{ __('Clear advanced search') }}" type="button" style="background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;font-size:14px;">×</button>
+                </div>
+
+                <div class="mt-1.5" x-data="advancedSearch()">
+                    <button type="button" @click="open = !open" class="text-xs text-gray-500 hover:text-green-600 flex items-center gap-1">
+                        🔍 {{ __('Advanced search') }}
+                    </button>
+                    <div x-show="open" @click.away="open = false" x-cloak
+                         class="bg-white dark:bg-gray-800 dark:border-gray-700 border border-gray-200 rounded-lg shadow-lg p-3 space-y-3"
+                         style="position:absolute;left:8px;right:8px;top:100%;z-index:60;margin-top:4px;">
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Country') }}</label>
+                            <select x-model="country" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
+                                <option value="">{{ __('All countries') }}</option>
+                                <template x-for="c in countryOptions" :key="c.code">
+                                    <option :value="c.code" x-text="c.name"></option>
+                                </template>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Dataset key') }}</label>
+                            <input type="text" x-model="dataset" placeholder="{{ __('GBIF dataset key (optional)') }}"
+                                   class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Criteria (all must match)') }}</label>
+                            <template x-for="(cond, i) in conditions" :key="i">
+                                <div class="flex gap-1 items-center mb-1">
+                                    <select x-model="cond.field" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
+                                        <option value="">{{ __('Field...') }}</option>
+                                        @foreach(\App\Models\Project::ALLOWED_CRITERIA_FIELDS as $field)
+                                        <option value="{{ $field }}">{{ $field }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select x-model="cond.operator" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1">
+                                        @foreach(\App\Models\Project::ALLOWED_OPERATORS as $operator)
+                                        <option value="{{ $operator }}">{{ $operator }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input type="text" x-model="cond.value" placeholder="{{ __('Value') }}"
+                                           class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
+                                    <button type="button" @click="conditions.splice(i, 1)" x-show="conditions.length > 1"
+                                            class="text-gray-400 hover:text-red-500 text-sm px-1">×</button>
+                                </div>
+                            </template>
+                            <button type="button" @click="conditions.push({field:'', operator:'equals', value:''})"
+                                    class="text-xs text-green-600 hover:underline">{{ __('+ Add condition') }}</button>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1 border-t border-gray-100 dark:border-gray-700">
+                            <button type="button" @click="apply()" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg">
+                                {{ __('Apply') }}
+                            </button>
+                            @auth
+                            <button type="button" @click="saveAsProject()" class="text-xs text-gray-500 hover:text-gray-700">
+                                {{ __('Save as project...') }}
+                            </button>
+                            @endauth
+                        </div>
+                    </div>
+                </div>
+
                 {{-- hidden country select kept for auto-detect --}}
                 <select id="country-select" style="display:none;" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
     <option value="">{{ __('All countries') }}</option>
@@ -1781,6 +1848,80 @@ function clearPanel() {
     var sgl=document.getElementById('similar-groups-list'); if(sgl) sgl.innerHTML='';
 }
 
+// Advanced search popup (Alpine component) — the same criteria mechanism a saved Project
+// uses, applied ad-hoc to the current session (window._georefAdhocCriteria, read by
+// loadNextGroup() above) without ever creating a Project row. "Save as project" reuses the
+// same in-progress conditions to actually persist one, via a throwaway hidden form POST
+// (simpler than wiring a fetch+CSRF here for a same-origin redirect-on-success endpoint).
+function advancedSearch() {
+    return {
+        open: false,
+        country: window._georefCountry || '',
+        dataset: window._georefDataset || '',
+        conditions: [{field: '', operator: 'equals', value: ''}],
+        countryOptions: [],
+        init() {
+            var sel = document.getElementById('country-select');
+            if (sel) {
+                this.countryOptions = Array.from(sel.options)
+                    .filter(function(o) { return o.value; })
+                    .map(function(o) { return {code: o.value, name: o.textContent}; });
+            }
+        },
+        buildCriteria() {
+            return this.conditions.filter(function(c) { return c.field && c.value; });
+        },
+        apply() {
+            var criteria = this.buildCriteria();
+            window._georefCountry = this.country || '';
+            window._georefDataset = this.dataset || '';
+            window._georefAdhocCriteria = criteria.length ? JSON.stringify(criteria) : '';
+            // Advanced search is a deliberate reset of context, not a refinement of
+            // wherever the user happened to be — clear the locality-text focus cascade
+            // so it doesn't silently combine with the new filters.
+            window._georefFocus = '';
+            var focusInputEl = document.getElementById('focus-input');
+            if (focusInputEl) focusInputEl.value = '';
+            var focusClearEl = document.getElementById('focus-clear');
+            if (focusClearEl) focusClearEl.style.display = 'none';
+
+            document.getElementById('dataset-filter-badge').style.display = this.dataset ? 'flex' : 'none';
+            document.getElementById('dataset-filter-name').textContent = this.dataset;
+            document.getElementById('adhoc-filter-badge').style.display = (this.country || criteria.length) ? 'flex' : 'none';
+
+            this.open = false;
+            currentGroup = null; // force a fresh /next fetch instead of "skip from" the old group
+            loadNextGroup();
+        },
+        saveAsProject() {
+            var criteria = this.buildCriteria();
+            if (!criteria.length) { alert('{{ __('Add at least one condition before saving as a project.') }}'); return; }
+            var title = prompt('{{ __('Project title:') }}');
+            if (!title) return;
+
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ route('projects.store') }}';
+            function addField(name, value) {
+                var input = document.createElement('input');
+                input.type = 'hidden'; input.name = name; input.value = value;
+                form.appendChild(input);
+            }
+            addField('_token', CSRF);
+            addField('title', title);
+            addField('visibility', 'private');
+            addField('mode', 'criteria');
+            criteria.forEach(function(c, i) {
+                addField('conditions['+i+'][field]', c.field);
+                addField('conditions['+i+'][operator]', c.operator);
+                addField('conditions['+i+'][value]', c.value);
+            });
+            document.body.appendChild(form);
+            form.submit();
+        }
+    };
+}
+
 function loadNextGroup() {
     clearPanel();
     var parts = [];
@@ -1803,6 +1944,7 @@ function loadNextGroup() {
     if (countryParam) parts.push('country=' + encodeURIComponent(countryParam));
     if (window._georefDataset) parts.push('dataset=' + encodeURIComponent(window._georefDataset));
     if (window._georefProject) parts.push('project=' + encodeURIComponent(window._georefProject));
+    if (window._georefAdhocCriteria) parts.push('criteria=' + encodeURIComponent(window._georefAdhocCriteria));
     if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
@@ -2805,6 +2947,11 @@ if (urlProject) window._georefProject = urlProject;
 document.getElementById('project-filter-clear').addEventListener('click', function() {
     window._georefProject = '';
     document.getElementById('project-filter-badge').style.display = 'none';
+    loadNextGroup();
+});
+document.getElementById('adhoc-filter-clear').addEventListener('click', function() {
+    window._georefAdhocCriteria = '';
+    document.getElementById('adhoc-filter-badge').style.display = 'none';
     loadNextGroup();
 });
 if(urlGbifKey) {

@@ -266,10 +266,24 @@ public function next(Request $request)
         $project = null;
     }
 
+    // Advanced search's "Apply" (as opposed to "Save as project"): the same AND-only
+    // criteria a saved project would use, sent directly as a JSON-encoded conditions array
+    // instead of a project id — lets the popup filter the current session live without
+    // ever creating a Project row. Malformed/invalid JSON degrades to "no ad-hoc criteria"
+    // rather than a 500, same spirit as an unknown/private project id degrading silently.
+    $adhocCriteriaRaw = trim($request->get('criteria', ''));
+    $adhocCriteria    = null;
+    if ($adhocCriteriaRaw !== '') {
+        $decoded = json_decode($adhocCriteriaRaw, true);
+        if (is_array($decoded)) {
+            $adhocCriteria = $decoded;
+        }
+    }
+
     // Session-based exclusion list per focus term (persists across skip calls) — keyed by
-    // dataset and project too, so switching either (even with no focus active) doesn't
-    // inherit a "seen" list built up under a different/no filter.
-    $focusKey  = 'georef_seen_' . md5($focus . '|' . $datasetKey . '|' . $projectId);
+    // dataset, project, and ad-hoc criteria too, so switching any of them (even with no
+    // focus active) doesn't inherit a "seen" list built up under a different/no filter.
+    $focusKey  = 'georef_seen_' . md5($focus . '|' . $datasetKey . '|' . $projectId . '|' . $adhocCriteriaRaw);
     $seenIds   = session($focusKey, []);
 
     // Exclude the group the user just acted on (may have been loaded directly, not via /next)
@@ -281,10 +295,9 @@ public function next(Request $request)
     }
 
     // Priority: sibling of just-completed group (same normalized_locality + county + country)
-    // Skip when focus, a dataset, or a project filter is active — the user explicitly
-    // changed context, and a plain locality sibling isn't guaranteed to belong to the
-    // requested dataset/project.
-    if ($excludeId && $focus === '' && $datasetKey === '' && !$project) {
+    // Skip when focus, a dataset, a project, or ad-hoc criteria are active — the user
+    // explicitly changed context, and a plain locality sibling isn't guaranteed to match.
+    if ($excludeId && $focus === '' && $datasetKey === '' && !$project && !$adhocCriteria) {
         $sibling = LocalityGroup::where('id', '!=', $excludeId)
             ->whereNotIn('id', $seenIds)
             ->where(function ($q) use ($excludeId) {
@@ -413,6 +426,22 @@ public function next(Request $request)
         return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
     };
 
+    // Advanced search's "Apply" — same criteria mechanism as a project, but the conditions
+    // arrive raw in the request instead of being read off a saved Project row (see
+    // $adhocCriteria above). Lets the popup filter live without ever persisting anything;
+    // "Save as project" is a separate action that actually creates the Project row.
+    $adhocRestrictions = function (array $seenIdsForAttempt) use ($adhocCriteria, $country) {
+        if (!$adhocCriteria) {
+            $noop = fn($q) => $q;
+            return [$noop, $noop];
+        }
+        [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($adhocCriteria);
+        $scope = $where !== '' ? fn($q) => $q->whereRaw($where, $bindings) : fn($q) => $q;
+        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country);
+        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country);
+        return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
+    };
+
     $group  = null;
     $userId = auth()->check() ? auth()->id() : null;
 
@@ -447,6 +476,7 @@ public function next(Request $request)
     foreach ($seenIdsAttempts as $attempt => $seenIdsForAttempt) {
       [$restrictDatasetGeoref, $restrictDatasetValidate] = $datasetRestrictions($seenIdsForAttempt);
       [$restrictProjectGeoref, $restrictProjectValidate] = $projectRestrictions($seenIdsForAttempt);
+      [$restrictAdhocGeoref, $restrictAdhocValidate] = $adhocRestrictions($seenIdsForAttempt);
       foreach ($strictPasses as $strict) {
         foreach ($scopes as $scopeIdx => $scope) {
           $isFocusScope = ($hasFocusScope && $scopeIdx === 0);
@@ -472,6 +502,7 @@ public function next(Request $request)
                   ->tap($excludeCorrupted)
                   ->tap($restrictDatasetGeoref)
                   ->tap($restrictProjectGeoref)
+                  ->tap($restrictAdhocGeoref)
                   ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                   ->limit(50)
                   ->get();
@@ -484,6 +515,7 @@ public function next(Request $request)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetValidate)
                       ->tap($restrictProjectValidate)
+                      ->tap($restrictAdhocValidate)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->limit(50)
                       ->get();
@@ -505,6 +537,7 @@ public function next(Request $request)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetGeoref)
                       ->tap($restrictProjectGeoref)
+                      ->tap($restrictAdhocGeoref)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->when($strict, fn($q) => $q->where('pending_count', 0))
                       ->orderByDesc('occurrence_count')
@@ -523,6 +556,7 @@ public function next(Request $request)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetValidate)
                       ->tap($restrictProjectValidate)
+                      ->tap($restrictAdhocValidate)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
                           $s->where('user_id', auth()->id())->where('status', 'pending')
