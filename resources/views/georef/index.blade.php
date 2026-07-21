@@ -942,7 +942,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         const slider = document.getElementById('uncertainty-slider');
         if (v > +slider.max) slider.max = v;
         slider.value = v;
-        document.getElementById('uncertainty-display').textContent = v.toLocaleString() + 'm';
+        document.getElementById('uncertainty-display').textContent = v.toLocaleString() + 'm (' + milesStr(v) + ')';
         if (circle) { circle.setRadius(v); updateRadiusHandle(); }
     }
 
@@ -997,7 +997,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         const uncSlider = document.getElementById('uncertainty-slider');
         if (unc > +uncSlider.max) uncSlider.max = unc;
         uncSlider.value = unc;
-        document.getElementById('uncertainty-display').textContent = unc.toLocaleString() + 'm';
+        document.getElementById('uncertainty-display').textContent = unc.toLocaleString() + 'm (' + milesStr(unc) + ')';
         updateSubmitBtn();
         var ms = document.getElementById('mob-submit-btn'); if(ms){ms.disabled=false;ms.style.opacity='1';}
 
@@ -1034,8 +1034,12 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     // ── Distance measurement tool ─────────────────────────────────────────────
     let measureMode = false, measurePoints = [], measureLines = [], measureMarkers = [], measureLabel = null;
 
+    function milesStr(m) {
+        return (m / 1609.344).toFixed(2) + ' mi';
+    }
+
     function formatDist(m) {
-        return m >= 1000 ? (m/1000).toFixed(2) + ' km' : Math.round(m) + ' m';
+        return (m >= 1000 ? (m/1000).toFixed(2) + ' km' : Math.round(m) + ' m') + ' (' + milesStr(m) + ')';
     }
 
     function updateMeasureLabel() {
@@ -1551,7 +1555,7 @@ function buildLocalityString(g) {
             document.getElementById('uncertainty-input').value=unc;
             document.getElementById('uncertainty-slider').max=Math.max(500000,Math.round(unc*1.5));
             document.getElementById('uncertainty-slider').value=unc;
-            document.getElementById('uncertainty-display').textContent=unc.toLocaleString()+'m';
+            document.getElementById('uncertainty-display').textContent=unc.toLocaleString()+'m ('+milesStr(unc)+')';
             placeMarker(mecLat,mecLon); map.fitBounds(bounds,{padding:[20,20]});
         } else {
             placeMarker(lat,lon);
