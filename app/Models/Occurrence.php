@@ -30,6 +30,9 @@ class Occurrence extends Model
         'water_body',
         'higher_geography',
         'event_date',
+        'year',
+        'month',
+        'day',
         'recorded_by',
         'field_number',
         'gbif_decimal_latitude',
@@ -43,7 +46,13 @@ class Occurrence extends Model
         'scientific_name',
         'taxon_rank',
         'kingdom',
+        'phylum',
+        'class',
+        'order',
         'family',
+        'genus',
+        'specific_epithet',
+        'type_status',
     ];
 
     protected $casts = [
