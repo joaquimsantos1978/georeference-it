@@ -27,15 +27,23 @@ class GbifPruneCorrupted extends Command
         // against occurrences (200M+ rows, no usable index for a functional REGEXP) —
         // the exact anti-pattern that made a single /georef/next request take 10-35s
         // before 5e716a0 cached this same list.
+        // The verbatim_locality/country_code OR must be wrapped in its own outer
+        // where(), not chained as a bare ->where()->orWhere() after whereNull() — a
+        // top-level ->orWhere() breaks out of the preceding AND-chain entirely (Laravel
+        // builds `AND (cond1) OR (cond2)`, not `AND (cond1 OR cond2)`), which silently
+        // dropped the deleted_at/locality_group_id scoping from the country_code branch
+        // and turned it into an unbounded full-table REGEXP scan in production (observed
+        // running 6+ hours before being killed). Same fix applied to $affected below.
         $corruptedGroupIds = DB::table('locality_groups')
             ->whereNull('deleted_at')
             ->where(function ($q) {
-                $q->whereNotNull('verbatim_locality')
-                  ->whereRaw("verbatim_locality REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
-            })
-            ->orWhere(function ($q) {
-                $q->whereNotNull('country_code')
-                  ->whereRaw("country_code REGEXP BINARY '[a-z]'");
+                $q->where(function ($q2) {
+                    $q2->whereNotNull('verbatim_locality')
+                       ->whereRaw("verbatim_locality REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
+                })->orWhere(function ($q2) {
+                    $q2->whereNotNull('country_code')
+                       ->whereRaw("country_code REGEXP BINARY '[a-z]'");
+                });
             })
             ->pluck('id');
 
@@ -57,12 +65,13 @@ class GbifPruneCorrupted extends Command
             ->whereIn('locality_group_id', $corruptedGroupIds)
             ->whereNull('deleted_at')
             ->where(function ($q) {
-                $q->whereNotNull('verbatim_locality')
-                  ->whereRaw("verbatim_locality REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
-            })
-            ->orWhere(function ($q) {
-                $q->whereNotNull('country_code')
-                  ->whereRaw("country_code REGEXP BINARY '[a-z]'");
+                $q->where(function ($q2) {
+                    $q2->whereNotNull('verbatim_locality')
+                       ->whereRaw("verbatim_locality REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
+                })->orWhere(function ($q2) {
+                    $q2->whereNotNull('country_code')
+                       ->whereRaw("country_code REGEXP BINARY '[a-z]'");
+                });
             });
 
         $affectedCount = (clone $affected)->count();
