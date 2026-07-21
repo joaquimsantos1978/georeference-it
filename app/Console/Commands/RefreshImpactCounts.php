@@ -85,6 +85,15 @@ class RefreshImpactCounts extends Command
             ->distinct()
             ->pluck('country_code');
 
+        // A group in $corruptedGroupIds is permanently excluded from every candidate
+        // query in GeorefController::next() (see $excludeCorrupted there) — its
+        // ungeoreferenced/pending occurrences can never actually be served to a user.
+        // Counting them here anyway is exactly how "2 remaining in Curaçao" and then
+        // "no occurrences found" for that same country happened: Stats/Impact showed
+        // phantom work next() would never hand out. Exclude the same ids here so the
+        // numbers only ever promise what's reachable.
+        $excludeCorruptedGroups = fn ($q) => $q->whereNotIn('id', $corruptedGroupIds);
+
         $now  = now();
         $rows = [];
 
@@ -107,6 +116,7 @@ class RefreshImpactCounts extends Command
                 ->where('country_code', $code)
                 ->whereNull('deleted_at')
                 ->where('occurrence_count', '>', 0)
+                ->tap($excludeCorruptedGroups)
                 ->first();
             $elapsed = microtime(true) - $t0;
 
@@ -156,6 +166,7 @@ class RefreshImpactCounts extends Command
         $global = DB::table('locality_groups')
             ->whereNull('deleted_at')
             ->where('occurrence_count', '>', 0)
+            ->tap($excludeCorruptedGroups)
             ->selectRaw("
                 SUM(occurrence_count)         AS total_occ,
                 SUM(ungeoreferenced_count)    AS ungeoref_occ,
@@ -169,6 +180,7 @@ class RefreshImpactCounts extends Command
         $global->pending_groups = DB::table('locality_groups')
             ->whereNull('deleted_at')
             ->whereRaw('ungeoreferenced_count > 0 OR pending_count > 0')
+            ->tap($excludeCorruptedGroups)
             ->count();
 
         // "All countries" subtotals for impact_counts, straight from $global above —
