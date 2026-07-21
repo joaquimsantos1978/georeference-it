@@ -7,6 +7,7 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatasetController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +44,7 @@ Route::get('/api-docs/swagger', function () {
 })->name('api-docs.swagger');
 
 Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets');
+Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/user/{id}', [UserProfileController::class, 'show'])->name('user.profile')->where('id', '[0-9]+');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
@@ -103,6 +105,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/avatar', [ProfileController::class, 'removeAvatar'])->name('profile.avatar.remove');
 
     Route::get('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+
+    Route::get('/projects/create', [ProjectController::class, 'create'])->name('projects.create');
+    Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
+    Route::get('/projects/{project}/edit', [ProjectController::class, 'edit'])->name('projects.edit')->where('project', '[0-9]+');
+    Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update')->where('project', '[0-9]+');
+    Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy')->where('project', '[0-9]+');
 });
 
 // Admin routes
