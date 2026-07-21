@@ -219,10 +219,13 @@ public function next(Request $request)
     $focus         = trim($request->get('focus', ''));
     $focusTerms    = $focus !== '' ? $this->focusSearchTerms($focus) : null;
     $country       = strtoupper(trim($request->get('country', ''))) ?: null;
+    $datasetKey    = trim($request->get('dataset', ''));
     $preferredTask = auth()->check() ? auth()->user()->preferred_task : 'georef';
 
-    // Session-based exclusion list per focus term (persists across skip calls)
-    $focusKey  = 'georef_seen_' . md5($focus ?: '__no_focus__');
+    // Session-based exclusion list per focus term (persists across skip calls) — keyed by
+    // dataset too, so switching dataset (even with no focus active) doesn't inherit a
+    // "seen" list built up under a different/no dataset filter.
+    $focusKey  = 'georef_seen_' . md5($focus . '|' . $datasetKey);
     $seenIds   = session($focusKey, []);
 
     // Exclude the group the user just acted on (may have been loaded directly, not via /next)
@@ -234,8 +237,9 @@ public function next(Request $request)
     }
 
     // Priority: sibling of just-completed group (same normalized_locality + county + country)
-    // Skip when focus is active — the user explicitly changed context
-    if ($excludeId && $focus === '') {
+    // Skip when focus or a dataset filter is active — the user explicitly changed context,
+    // and a plain locality sibling isn't guaranteed to belong to the requested dataset.
+    if ($excludeId && $focus === '' && $datasetKey === '') {
         $sibling = LocalityGroup::where('id', '!=', $excludeId)
             ->whereNotIn('id', $seenIds)
             ->where(function ($q) use ($excludeId) {
@@ -322,6 +326,42 @@ public function next(Request $request)
     $corruptedIds = Cache::get('georef:corrupted_group_ids', []);
     $excludeCorrupted = fn($q) => $q->whereNotIn('id', $corruptedIds);
 
+    // dataset_key isn't a column on locality_groups (a group can hold occurrences from
+    // several datasets sharing the same locality text — see project notes on why Datasets'
+    // own stats stay a separate pipeline), so "only this dataset" can't be a plain ->where()
+    // like country_code. Resolve it to a bounded set of candidate group ids via occurrences
+    // instead, using the (dataset_key, georef_status) composite index added in b8a7ce9 (built
+    // for exactly this kind of lookup) — two separate targeted queries, one per task type,
+    // rather than one broad dataset_key-only query, so a mostly-finished dataset's first 500
+    // rows being validated/gbif_georeferenced doesn't starve out the georef/validate pools.
+    // Recomputed per seenIds attempt below (not just once) so the "retry with seenIds
+    // relaxed" fallback actually sees the wider candidate set instead of the original one.
+    $datasetRestrictions = function (array $seenIdsForAttempt) use ($datasetKey) {
+        if ($datasetKey === '') {
+            $noop = fn($q) => $q;
+            return [$noop, $noop];
+        }
+        $georefIds = DB::table('occurrences')
+            ->where('dataset_key', $datasetKey)
+            ->where('georef_status', 'ungeoreferenced')
+            ->whereNull('deleted_at')
+            ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('locality_group_id', $seenIdsForAttempt))
+            ->limit(500)
+            ->pluck('locality_group_id')
+            ->unique()
+            ->all();
+        $pendingIds = DB::table('occurrences')
+            ->where('dataset_key', $datasetKey)
+            ->whereIn('georef_status', ['has_suggestion', 'conflicted'])
+            ->whereNull('deleted_at')
+            ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('locality_group_id', $seenIdsForAttempt))
+            ->limit(500)
+            ->pluck('locality_group_id')
+            ->unique()
+            ->all();
+        return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
+    };
+
     $group  = null;
     $userId = auth()->check() ? auth()->id() : null;
 
@@ -354,6 +394,7 @@ public function next(Request $request)
     $seenIdsAttempts = $seenIds ? [$seenIds, []] : [$seenIds];
 
     foreach ($seenIdsAttempts as $attempt => $seenIdsForAttempt) {
+      [$restrictDatasetGeoref, $restrictDatasetValidate] = $datasetRestrictions($seenIdsForAttempt);
       foreach ($strictPasses as $strict) {
         foreach ($scopes as $scopeIdx => $scope) {
           $isFocusScope = ($hasFocusScope && $scopeIdx === 0);
@@ -377,6 +418,7 @@ public function next(Request $request)
                   ->where('occurrence_count', '<', 10000)
                   ->tap($focusMatch)
                   ->tap($excludeCorrupted)
+                  ->tap($restrictDatasetGeoref)
                   ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                   ->limit(50)
                   ->get();
@@ -387,6 +429,7 @@ public function next(Request $request)
                       ->where('occurrence_count', '<', 10000)
                       ->tap($focusMatch)
                       ->tap($excludeCorrupted)
+                      ->tap($restrictDatasetValidate)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->limit(50)
                       ->get();
@@ -406,6 +449,7 @@ public function next(Request $request)
                       ->where('occurrence_count', '<', 10000)
                       ->tap($scope)
                       ->tap($excludeCorrupted)
+                      ->tap($restrictDatasetGeoref)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->when($strict, fn($q) => $q->where('pending_count', 0))
                       ->orderByDesc('occurrence_count')
@@ -422,6 +466,7 @@ public function next(Request $request)
                       ->where('occurrence_count', '>', 0)
                       ->tap($scope)
                       ->tap($excludeCorrupted)
+                      ->tap($restrictDatasetValidate)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
                           $s->where('user_id', auth()->id())->where('status', 'pending')

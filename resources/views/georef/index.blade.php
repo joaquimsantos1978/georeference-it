@@ -19,6 +19,10 @@
                     <span id="focus-hint" style="font-size:10px;color:#9ca3af;white-space:nowrap;display:none;"></span>
                 </div>
                 <div id="focus-dropdown" class="bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100" style="display:none;position:absolute;left:0;right:0;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 6px 6px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.08);max-height:200px;overflow-y:auto;"></div>
+                <div id="dataset-filter-badge" style="display:none;margin-top:6px;font-size:10px;color:#16a34a;align-items:center;gap:4px;">
+                    <span>{{ __('Dataset') }}: <span id="dataset-filter-name" style="font-weight:600"></span></span>
+                    <button id="dataset-filter-clear" title="{{ __('Clear dataset filter') }}" type="button" style="background:none;border:none;cursor:pointer;color:#9ca3af;line-height:1;font-size:14px;">×</button>
+                </div>
                 {{-- hidden country select kept for auto-detect --}}
                 <select id="country-select" style="display:none;" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
     <option value="">{{ __('All countries') }}</option>
@@ -1793,6 +1797,7 @@ function loadNextGroup() {
     // override an explicit one.
     var countryParam = window._georefCountry || (!focus && currentGroup ? currentGroup.country_code : '') || '';
     if (countryParam) parts.push('country=' + encodeURIComponent(countryParam));
+    if (window._georefDataset) parts.push('dataset=' + encodeURIComponent(window._georefDataset));
     if (currentGroup) parts.push('exclude=' + currentGroup.id);
     fetch(APP_URL+'/georef/next?' + parts.join('&'), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
@@ -2775,13 +2780,24 @@ var urlGroupId = urlParams.get('group');
 var urlGbifKey = urlParams.get('gbif');
 var urlCountry = urlParams.get('country');
 if (urlCountry) window._georefCountry = urlCountry.toUpperCase();
+var urlDataset = urlParams.get('dataset');
+if (urlDataset) {
+    window._georefDataset = urlDataset;
+    document.getElementById('dataset-filter-name').textContent = urlDataset;
+    document.getElementById('dataset-filter-badge').style.display = 'flex';
+}
+document.getElementById('dataset-filter-clear').addEventListener('click', function() {
+    window._georefDataset = '';
+    document.getElementById('dataset-filter-badge').style.display = 'none';
+    loadNextGroup();
+});
 if(urlGbifKey) {
     loadByGbifKey(urlGbifKey);
 } else if(urlGroupId) {
     var existingIdx = sessionHistory.findIndex(function(g){ return g.id === parseInt(urlGroupId); });
     if(existingIdx !== -1) { historyIndex = existingIdx; updateHistoryNav(); }
     loadGroup(parseInt(urlGroupId));
-} else if(!urlCountry && sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
+} else if(!urlCountry && !urlDataset && sessionHistory.length > 0 && historyIndex >= 0 && historyIndex < sessionHistory.length) {
     loadGroup(sessionHistory[historyIndex].id);
 } else {
     function applyLocationAndLoad(loc) {

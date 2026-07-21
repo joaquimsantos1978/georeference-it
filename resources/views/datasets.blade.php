@@ -103,6 +103,12 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2 justify-end">
+                                @if($ds->ungeoreferenced > 0)
+                                <a href="{{ route('georef.index') }}?dataset={{ $ds->dataset_key }}"
+                                   class="inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors">
+                                    {{ __('Georeference') }}
+                                </a>
+                                @endif
                                 <a href="{{ route('explore') }}?dataset_key={{ $ds->dataset_key }}"
                                    class="text-xs text-green-600 hover:underline whitespace-nowrap">{{ __('Browse') }}</a>
                                 <a href="{{ url('/api/v1/occurrences') }}?datasetKey={{ $ds->dataset_key }}&status=validated"
