@@ -53,11 +53,20 @@ class HomeController extends Controller
             ->where('country_code', 'all')
             ->value('count') ?? 0;
 
-        // Same ordering LeaderboardController uses, just the top 3 and no join-heavy
-        // suggestion/review/specimen subqueries — those exist to break ties and to fill
-        // out the full leaderboard table, neither needed for a 3-row teaser.
+        // Same ordering LeaderboardController uses — including the suggestions_count
+        // tiebreaker. Dropping that tiebreaker (as an earlier version of this did) looked
+        // fine when total_validated varied, but with several users tied at 0 it fell back
+        // to arbitrary row order, which didn't match the first 3 rows of the real
+        // /leaderboard page. reviews_count/specimens_count are still skipped — those exist
+        // to fill out the full leaderboard table, not to order a 3-row teaser.
+        // select() replaces the whole select clause, so it has to come before
+        // withCount() — the other way around, withCount()'s suggestions_count subquery
+        // gets wiped out before the orderBy below can reference it (exactly what happened
+        // when this was written the other way: "Unknown column 'suggestions_count'").
         $topContributors = User::select('id', 'name', 'public_name', 'avatar', 'total_validated')
+            ->withCount('suggestions')
             ->orderByDesc('total_validated')
+            ->orderByDesc('suggestions_count')
             ->take(3)
             ->get();
 
