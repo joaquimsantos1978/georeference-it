@@ -415,7 +415,12 @@ class GbifImportDownload extends Command
         Cache::forget('gbif:staging-loaded-from');
         $this->clearCheckpoints(); // stale otherwise — staging content is about to change
 
-        $colString  = implode(', ', $colList);
+        // Backtick every real column name — `order` is a reserved SQL keyword and breaks
+        // LOAD DATA's column list unquoted; @dummy is a user variable and must stay bare.
+        $colString = implode(', ', array_map(
+            fn($col) => $col === '@dummy' ? $col : "`{$col}`",
+            $colList
+        ));
         $escapedPath = str_replace('\\', '/', $csvPath);
         // Only emit ENCLOSED BY when the archive actually declares one — GBIF's
         // occurrence.txt normally has fieldsEnclosedBy="" (no quoting at all), and
@@ -971,7 +976,12 @@ class GbifImportDownload extends Command
         DB::statement('TRUNCATE TABLE gbif_multimedia_staging');
         Cache::forget('gbif:multimedia-staging-loaded-from');
 
-        $colString   = implode(', ', $colList);
+        // Same reserved-keyword guard as the occurrence LOAD DATA above (@skipN is a
+        // user variable and must stay bare).
+        $colString = implode(', ', array_map(
+            fn($col) => str_starts_with($col, '@skip') ? $col : "`{$col}`",
+            $colList
+        ));
         $escapedPath = str_replace('\\', '/', $path);
 
         try {
