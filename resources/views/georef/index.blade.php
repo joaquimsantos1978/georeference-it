@@ -45,9 +45,13 @@
                          specific value), which left this falling back to the browser's
                          default block display and pinned left instead of centered; a class
                          rule isn't touched by that. --}}
+                    {{-- z-index 10000: above every other overlay on this page (map tooltips
+                         and popups peak at 9999, the video modal at 2000) so it can never
+                         end up visually under the map's own locality-search bar or history
+                         dropdown regardless of Leaflet's internal pane stacking. --}}
                     <div x-show="open" x-cloak class="flex items-start justify-center"
                          @click.self="open = false" @keydown.escape.window="open = false"
-                         style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:rgba(0,0,0,0.4);padding-top:8vh;">
+                         style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:10000;background:rgba(0,0,0,0.4);padding-top:8vh;">
                         <div @click.stop
                              class="bg-white dark:bg-gray-800 dark:border-gray-700 border border-gray-200 rounded-lg shadow-2xl p-4 space-y-3"
                              style="width:440px;max-width:92vw;max-height:80vh;overflow-y:auto;">
