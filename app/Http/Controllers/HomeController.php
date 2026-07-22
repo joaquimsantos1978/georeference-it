@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -52,6 +53,14 @@ class HomeController extends Controller
             ->where('country_code', 'all')
             ->value('count') ?? 0;
 
-        return view('home', compact('global', 'projects', 'projectStats', 'recentActivity', 'impactTotal'));
+        // Same ordering LeaderboardController uses, just the top 3 and no join-heavy
+        // suggestion/review/specimen subqueries — those exist to break ties and to fill
+        // out the full leaderboard table, neither needed for a 3-row teaser.
+        $topContributors = User::select('id', 'name', 'public_name', 'avatar', 'total_validated')
+            ->orderByDesc('total_validated')
+            ->take(3)
+            ->get();
+
+        return view('home', compact('global', 'projects', 'projectStats', 'recentActivity', 'impactTotal', 'topContributors'));
     }
 }

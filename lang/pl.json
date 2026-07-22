@@ -574,5 +574,9 @@
     "No activity yet.": "Brak aktywności.",
     "Learn more": "Dowiedz się więcej",
     "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "Miliony rekordów bioróżnorodności w GBIF nie mają współrzędnych geograficznych. Wolontariusze umieszczają te okazy na mapie za pomocą systemu walidacji opartego na konsensusie.",
-    "See impact": "Zobacz wpływ"
+    "See impact": "Zobacz wpływ",
+    "Contributors": "Współtwórcy",
+    "No contributions yet.": "Brak wkładów.",
+    "Georeferences": "Georeferencje",
+    "Last contribution": "Ostatni wkład"
 }

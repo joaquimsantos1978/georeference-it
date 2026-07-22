@@ -574,5 +574,9 @@
     "No activity yet.": "لا يوجد نشاط بعد.",
     "Learn more": "اعرف المزيد",
     "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "ملايين سجلات التنوع البيولوجي في GBIF تفتقر إلى الإحداثيات الجغرافية. يقوم المتطوعون بتحديد مواقع هذه العينات على الخريطة باستخدام نظام تحقق قائم على الإجماع.",
-    "See impact": "عرض الأثر"
+    "See impact": "عرض الأثر",
+    "Contributors": "المساهمون",
+    "No contributions yet.": "لا توجد مساهمات بعد.",
+    "Georeferences": "عمليات الإحداثيات الجغرافية",
+    "Last contribution": "آخر مساهمة"
 }

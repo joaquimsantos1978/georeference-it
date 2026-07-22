@@ -574,5 +574,9 @@
     "No activity yet.": "尚無活動。",
     "Learn more": "了解更多",
     "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "GBIF 中數百萬筆生物多樣性記錄缺少地理座標。志工透過基於共識的驗證系統將這些標本標註在地圖上。",
-    "See impact": "查看影響"
+    "See impact": "查看影響",
+    "Contributors": "貢獻者",
+    "No contributions yet.": "尚無貢獻。",
+    "Georeferences": "地理定位次數",
+    "Last contribution": "最近貢獻"
 }

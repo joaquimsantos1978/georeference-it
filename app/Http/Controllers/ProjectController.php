@@ -31,6 +31,18 @@ class ProjectController extends Controller
         return view('projects.index', compact('projects', 'stats'));
     }
 
+    public function show(int $project): View
+    {
+        $project = Project::with('user')->findOrFail($project);
+        abort_unless($project->isVisibleTo(auth()->user()), 403);
+
+        return view('projects.show', [
+            'project'      => $project,
+            'stats'        => $this->projectStats($project),
+            'contributors' => $this->projectContributors($project),
+        ]);
+    }
+
     public function create(): View
     {
         return view('projects.create', [
@@ -195,26 +207,25 @@ class ProjectController extends Controller
         return '/storage/' . $filename;
     }
 
-    // Stats for the directory (total/georeferenced/validated/ungeoreferenced), computed by
-    // applying the exact same scope `next()` uses (id_list -> whereIn gbif_occurrence_key,
-    // criteria -> ProjectCriteriaEvaluator), then cached — never a live query on page load.
-    // Not built on CountsWithStaleWhileRevalidate (used elsewhere for a single int) because
-    // all 4 numbers come from one aggregate query; caching them separately would mean
-    // running a potentially-expensive unindexed scan up to 4x for no reason.
-    private function projectStats(Project $project): array
+    // Same "compute once, cache forever, refresh stale in the background" shape used for
+    // both stats and contributors below — extracted so that logic (lock, stale check,
+    // afterResponse refresh) isn't duplicated per cached value. Not built on
+    // CountsWithStaleWhileRevalidate (used elsewhere for a single int) because both callers
+    // here cache an array from one aggregate query; caching each field separately would mean
+    // running a potentially-expensive unindexed scan multiple times for no reason.
+    private function cachedCompute(string $cacheKeyBase, callable $compute, $default)
     {
-        $cacheKey  = "project_stats_{$project->id}";
-        $dataKey   = $cacheKey . ':data';
-        $cached    = Cache::get($dataKey);
+        $dataKey = $cacheKeyBase . ':data';
+        $cached  = Cache::get($dataKey);
         $staleAfterSeconds = 3600;
 
         if ($cached === null) {
-            $lock = Cache::lock($cacheKey . ':lock', 300);
+            $lock = Cache::lock($cacheKeyBase . ':lock', 300);
             if ($lock->get()) {
                 try {
-                    $cached = $this->computeProjectStats($project);
+                    $cached = $compute();
                     Cache::forever($dataKey, $cached);
-                    Cache::forever($cacheKey . ':computed_at', now()->timestamp);
+                    Cache::forever($cacheKeyBase . ':computed_at', now()->timestamp);
                 } finally {
                     $lock->release();
                 }
@@ -228,17 +239,17 @@ class ProjectController extends Controller
                 $cached = Cache::get($dataKey);
             }
 
-            return $cached ?? ['total' => 0, 'georeferenced' => 0, 'validated' => 0, 'ungeoreferenced' => 0];
+            return $cached ?? $default;
         }
 
-        $isStale = Cache::get($cacheKey . ':computed_at', 0) < now()->subSeconds($staleAfterSeconds)->timestamp;
+        $isStale = Cache::get($cacheKeyBase . ':computed_at', 0) < now()->subSeconds($staleAfterSeconds)->timestamp;
         if ($isStale) {
-            $lock = Cache::lock($cacheKey . ':lock', 300);
+            $lock = Cache::lock($cacheKeyBase . ':lock', 300);
             if ($lock->get()) {
-                dispatch(function () use ($project, $dataKey, $cacheKey, $lock) {
+                dispatch(function () use ($compute, $dataKey, $cacheKeyBase, $lock) {
                     try {
-                        Cache::forever($dataKey, $this->computeProjectStats($project));
-                        Cache::forever($cacheKey . ':computed_at', now()->timestamp);
+                        Cache::forever($dataKey, $compute());
+                        Cache::forever($cacheKeyBase . ':computed_at', now()->timestamp);
                     } finally {
                         $lock->release();
                     }
@@ -249,20 +260,21 @@ class ProjectController extends Controller
         return $cached;
     }
 
+    // Stats (total/georeferenced/validated/ungeoreferenced) for the directory and homepage,
+    // computed by applying the exact same scope `next()` uses (id_list -> whereIn
+    // gbif_occurrence_key, criteria -> ProjectCriteriaEvaluator).
+    private function projectStats(Project $project): array
+    {
+        return $this->cachedCompute(
+            "project_stats_{$project->id}",
+            fn() => $this->computeProjectStats($project),
+            ['total' => 0, 'georeferenced' => 0, 'validated' => 0, 'ungeoreferenced' => 0]
+        );
+    }
+
     private function computeProjectStats(Project $project): array
     {
-        $query = DB::table('occurrences')->whereNull('deleted_at');
-
-        if ($project->mode === 'id_list') {
-            $query->whereIn('gbif_occurrence_key', $project->submitted_keys ?? []);
-        } else {
-            [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($project->criteria ?? []);
-            if ($where !== '') {
-                $query->whereRaw($where, $bindings);
-            }
-        }
-
-        $agg = $query->selectRaw("
+        $agg = $this->scopedOccurrencesQuery($project)->selectRaw("
             COUNT(*) as total,
             SUM(georef_status != 'ungeoreferenced') as georeferenced,
             SUM(georef_status = 'validated') as validated,
@@ -277,10 +289,75 @@ class ProjectController extends Controller
         ];
     }
 
+    // Per-user contribution breakdown for the project's show page — who georeferenced
+    // something within this project's scope, how many times, and when they last did.
+    // Scoped through locality_groups the project's occurrences actually belong to (a
+    // bounded id list, same pattern GeorefController/GbifPruneCorrupted already use for
+    // "restrict to this candidate set") rather than joining occurrences directly, since
+    // activity_log only carries locality_group_id, not occurrence id.
+    private function projectContributors(Project $project): array
+    {
+        return $this->cachedCompute(
+            "project_contributors_{$project->id}",
+            fn() => $this->computeProjectContributors($project),
+            []
+        );
+    }
+
+    private function computeProjectContributors(Project $project): array
+    {
+        $groupIds = $this->scopedOccurrencesQuery($project)
+            ->whereNotNull('locality_group_id')
+            ->distinct()
+            ->pluck('locality_group_id');
+
+        if ($groupIds->isEmpty()) {
+            return [];
+        }
+
+        $rows = DB::table('activity_log as al')
+            ->join('users as u', 'u.id', '=', 'al.user_id')
+            ->whereIn('al.locality_group_id', $groupIds)
+            ->selectRaw('
+                u.id, u.name, u.public_name,
+                COUNT(*) as georef_count,
+                MAX(al.created_at) as last_contribution
+            ')
+            ->groupBy('u.id', 'u.name', 'u.public_name')
+            ->orderByDesc('georef_count')
+            ->limit(50)
+            ->get();
+
+        return $rows->map(fn($r) => [
+            'id'                => $r->id,
+            'name'              => $r->name,
+            'public_name'       => (bool) $r->public_name,
+            'georef_count'      => (int) $r->georef_count,
+            'last_contribution' => $r->last_contribution,
+        ])->all();
+    }
+
+    private function scopedOccurrencesQuery(Project $project): \Illuminate\Database\Query\Builder
+    {
+        $query = DB::table('occurrences')->whereNull('deleted_at');
+
+        if ($project->mode === 'id_list') {
+            $query->whereIn('gbif_occurrence_key', $project->submitted_keys ?? []);
+        } else {
+            [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($project->criteria ?? []);
+            if ($where !== '') {
+                $query->whereRaw($where, $bindings);
+            }
+        }
+
+        return $query;
+    }
+
     private function forgetStatsCache(Project $project): void
     {
-        $cacheKey = "project_stats_{$project->id}";
-        Cache::forget($cacheKey . ':data');
-        Cache::forget($cacheKey . ':computed_at');
+        foreach (["project_stats_{$project->id}", "project_contributors_{$project->id}"] as $cacheKey) {
+            Cache::forget($cacheKey . ':data');
+            Cache::forget($cacheKey . ':computed_at');
+        }
     }
 }

@@ -46,6 +46,7 @@ Route::get('/api-docs/swagger', function () {
 
 Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets');
 Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
+Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show')->where('project', '[0-9]+');
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/user/{id}', [UserProfileController::class, 'show'])->name('user.profile')->where('id', '[0-9]+');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');

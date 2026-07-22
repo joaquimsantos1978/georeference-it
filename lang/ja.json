@@ -574,5 +574,9 @@
     "No activity yet.": "まだアクティビティがありません。",
     "Learn more": "詳しく見る",
     "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "GBIFの生物多様性記録の多くには地理座標がありません。ボランティアが合意ベースの検証システムを使って標本を地図上に配置します。",
-    "See impact": "インパクトを見る"
+    "See impact": "インパクトを見る",
+    "Contributors": "貢献者",
+    "No contributions yet.": "まだ貢献がありません。",
+    "Georeferences": "ジオリファレンス数",
+    "Last contribution": "最終貢献"
 }

@@ -74,7 +74,7 @@
                                 @endif
                                 <div>
                                     <div class="font-medium text-gray-900 dark:text-white leading-snug text-sm">
-                                        {{ $project->title }}
+                                        <a href="{{ route('projects.show', $project->id) }}" class="hover:text-green-600">{{ $project->title }}</a>
                                         <span class="ml-1 text-xs font-normal px-1.5 py-0.5 rounded {{ $project->visibility === 'public' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500' }}">
                                             {{ $project->visibility === 'public' ? __('Public') : __('Private') }}
                                         </span>

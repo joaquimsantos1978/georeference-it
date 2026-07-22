@@ -574,5 +574,9 @@
     "No activity yet.": "Пока нет активности.",
     "Learn more": "Узнать больше",
     "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "Миллионы записей о биоразнообразии в GBIF не имеют географических координат. Волонтёры размещают эти образцы на карте с помощью системы проверки на основе консенсуса.",
-    "See impact": "Смотреть влияние"
+    "See impact": "Смотреть влияние",
+    "Contributors": "Участники",
+    "No contributions yet.": "Пока нет вкладов.",
+    "Georeferences": "Геопривязки",
+    "Last contribution": "Последний вклад"
 }
