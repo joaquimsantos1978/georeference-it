@@ -15,6 +15,18 @@ class ProjectController extends Controller
 {
     private const MAX_ID_LIST_KEYS = 20000;
 
+    // A criteria field with no index (e.g. family/recorded_by before the production index
+    // migration landed) can turn one computeProjectStats() call into a multi-hour
+    // full-table scan. A 300s lock TTL — reasonable for a "normal" background refresh —
+    // meant the lock expired mid-computation, so the next request to view that same
+    // project saw the cache still empty and dispatched ANOTHER copy of the identical scan.
+    // Observed in production as 14 near-identical multi-hour queries piled up
+    // simultaneously, all holding read metadata locks on `occurrences` and blocking a
+    // pt-online-schema-change run from ever acquiring the exclusive lock it needed for
+    // CREATE TRIGGER. Long enough to outlast any realistic unindexed scan; once the
+    // criteria-field indexes exist this margin costs nothing since the query is fast anyway.
+    private const COMPUTE_LOCK_SECONDS = 21600; // 6 hours
+
     public function index(Request $request): View
     {
         $projects = Project::visibleTo(auth()->user())
@@ -240,7 +252,7 @@ class ProjectController extends Controller
             // request" rule as the stale-refresh branch below (and as Stats/Activity/
             // Impact elsewhere) — return the default immediately and let the background
             // job populate the real numbers whenever it finishes.
-            $lock = Cache::lock($cacheKeyBase . ':lock', 300);
+            $lock = Cache::lock($cacheKeyBase . ':lock', self::COMPUTE_LOCK_SECONDS);
             if ($lock->get()) {
                 // Not $lock->release() in the closure — dispatch(Closure) always wraps it
                 // in a serializable job (CallQueuedClosure) regardless of ->afterResponse(),
@@ -264,7 +276,7 @@ class ProjectController extends Controller
 
         $isStale = Cache::get($cacheKeyBase . ':computed_at', 0) < now()->subSeconds($staleAfterSeconds)->timestamp;
         if ($isStale) {
-            $lock = Cache::lock($cacheKeyBase . ':lock', 300);
+            $lock = Cache::lock($cacheKeyBase . ':lock', self::COMPUTE_LOCK_SECONDS);
             if ($lock->get()) {
                 dispatch(function () use ($compute, $dataKey, $cacheKeyBase) {
                     try {
