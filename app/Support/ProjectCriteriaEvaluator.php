@@ -37,6 +37,19 @@ class ProjectCriteriaEvaluator
             // allowlist, never taken from raw user input otherwise.
             $column = "occurrences.{$field}";
 
+            // A plain B-tree index can't be used for a leading-wildcard LIKE '%value%' at
+            // all — MySQL scans every row regardless. Fields in FULLTEXT_CRITERIA_FIELDS
+            // carry a FULLTEXT index instead, so route 'contains' through MATCH()/AGAINST()
+            // for those: word-based matching, not arbitrary substring (a search for
+            // "arriss" won't match inside "Carrisso" the way LIKE would), but that's the
+            // tradeoff that makes "contains" on a free-text field fast instead of a
+            // full-table scan over 280M+ rows.
+            if ($operator === 'contains' && in_array($field, Project::FULLTEXT_CRITERIA_FIELDS, true)) {
+                $clauses[]  = "MATCH({$column}) AGAINST(? IN BOOLEAN MODE)";
+                $bindings[] = self::fulltextBooleanQuery((string) $value);
+                continue;
+            }
+
             match ($operator) {
                 'equals' => [
                     $clauses[]  = "LOWER({$column}) = LOWER(?)",
@@ -54,5 +67,15 @@ class ProjectCriteriaEvaluator
         }
 
         return [implode(' AND ', $clauses), $bindings];
+    }
+
+    // AND semantics across words (require every one, same spirit as
+    // GeorefController::focusSearchTerms()) rather than BOOLEAN MODE's OR default — a
+    // multi-word "contains" value should narrow results, not broaden them. Trailing '*'
+    // allows a word to match as a prefix too (partial-word typing while it's still short).
+    private static function fulltextBooleanQuery(string $value): string
+    {
+        $words = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+        return implode(' ', array_map(fn($w) => '+' . $w . '*', $words));
     }
 }

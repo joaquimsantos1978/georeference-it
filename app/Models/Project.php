@@ -23,6 +23,13 @@ class Project extends Model
 
     public const ALLOWED_OPERATORS = ['equals', 'contains', 'starts_with'];
 
+    // Fields carrying a FULLTEXT index in addition to a plain one — ProjectCriteriaEvaluator
+    // uses MATCH()/AGAINST() instead of LIKE '%value%' for these when the operator is
+    // 'contains', since a plain B-tree index can't be used for a leading-wildcard LIKE at
+    // all. Word-based matching, not arbitrary substring — the tradeoff that makes "contains"
+    // on a free-text field fast instead of a full-table scan over 280M+ rows.
+    public const FULLTEXT_CRITERIA_FIELDS = ['recorded_by', 'scientific_name', 'catalog_number'];
+
     protected $fillable = [
         'user_id', 'title', 'description', 'tags', 'image', 'visibility', 'mode',
         'criteria', 'submitted_keys', 'invalid_keys',
