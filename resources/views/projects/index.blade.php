@@ -60,6 +60,7 @@
                     @forelse($projects as $project)
                     @php
                         $s = $stats[$project->id];
+                        $isComputing = $computing[$project->id];
                         $pct = $s['total'] > 0 ? round($s['georeferenced'] / $s['total'] * 100) : 0;
                         $barColor = $pct >= 75 ? '#22c55e' : ($pct >= 40 ? '#fbbf24' : '#f87171');
                         $isOwner = $project->isOwnedBy(auth()->user());
@@ -86,6 +87,14 @@
                                 </div>
                             </div>
                         </td>
+                        @if($isComputing)
+                        <td colspan="5" class="px-4 py-3">
+                            <div class="flex items-center gap-1.5 text-xs text-gray-400">
+                                <svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                {{ __('Calculating statistics…') }}
+                            </div>
+                        </td>
+                        @else
                         <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">{{ number_format($s['total']) }}</td>
                         <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">{{ number_format($s['georeferenced']) }}</td>
                         <td class="px-4 py-3 text-right">
@@ -102,9 +111,10 @@
                                 <span class="text-xs text-gray-500 w-8 text-right tabular-nums">{{ $pct }}%</span>
                             </div>
                         </td>
+                        @endif
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2 justify-end">
-                                @if(($s['total'] - $s['georeferenced']) > 0)
+                                @if(!$isComputing && ($s['total'] - $s['georeferenced']) > 0)
                                 <a href="{{ route('georef.index') }}?project={{ $project->id }}"
                                    class="inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors">
                                     {{ __('Georeference') }}

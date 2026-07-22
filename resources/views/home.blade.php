@@ -71,6 +71,7 @@
                     @foreach($projects as $project)
                         @php
                             $s = $projectStats[$project->id];
+                            $isComputing = $projectComputing[$project->id];
                             $pct = $s['total'] > 0 ? round($s['georeferenced'] / $s['total'] * 100) : 0;
                             $barColor = $pct >= 75 ? '#22c55e' : ($pct >= 40 ? '#fbbf24' : '#f87171');
                         @endphp
@@ -89,6 +90,12 @@
                             @if($project->description)
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-2">{{ $project->description }}</p>
                             @endif
+                            @if($isComputing)
+                            <div class="flex items-center gap-1.5 mt-3 text-xs text-gray-400">
+                                <svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                {{ __('Calculating statistics…') }}
+                            </div>
+                            @else
                             <div class="flex items-center gap-3 mt-2 text-xs text-gray-500 tabular-nums">
                                 <span>{{ number_format($s['total']) }} {{ __('Total') }}</span>
                                 <span class="text-green-700 dark:text-green-400">{{ number_format($s['validated']) }} {{ __('Validated') }}</span>
@@ -104,6 +111,7 @@
                                class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5">
                                 {{ __('Georeference') }}
                             </a>
+                            @endif
                             @endif
                         </div>
                     @endforeach

@@ -23,12 +23,14 @@ class ProjectController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $stats = [];
+        $stats     = [];
+        $computing = [];
         foreach ($projects as $project) {
-            $stats[$project->id] = $this->projectStats($project);
+            $stats[$project->id]     = $this->projectStats($project);
+            $computing[$project->id] = $this->isComputing("project_stats_{$project->id}");
         }
 
-        return view('projects.index', compact('projects', 'stats'));
+        return view('projects.index', compact('projects', 'stats', 'computing'));
     }
 
     public function show(int $project): View
@@ -37,10 +39,20 @@ class ProjectController extends Controller
         abort_unless($project->isVisibleTo(auth()->user()), 403);
 
         return view('projects.show', [
-            'project'      => $project,
-            'stats'        => $this->projectStats($project),
-            'contributors' => $this->projectContributors($project),
+            'project'             => $project,
+            'stats'               => $this->projectStats($project),
+            'statsComputing'      => $this->isComputing("project_stats_{$project->id}"),
+            'contributors'        => $this->projectContributors($project),
+            'contributorsComputing' => $this->isComputing("project_contributors_{$project->id}"),
         ]);
+    }
+
+    // True only for "never computed yet" (background job dispatched but hasn't finished,
+    // or genuinely never ran) — distinct from "computed and the real answer is zero",
+    // which cachedCompute()'s default return value can't tell apart from on its own.
+    private function isComputing(string $cacheKeyBase): bool
+    {
+        return Cache::get($cacheKeyBase . ':computed_at') === null;
     }
 
     public function create(): View

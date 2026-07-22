@@ -29,11 +29,16 @@ class HomeController extends Controller
             ->limit(6)
             ->get();
 
-        $projectStats = [];
+        $projectStats     = [];
+        $projectComputing = [];
         foreach ($projects as $project) {
             $projectStats[$project->id] = Cache::get("project_stats_{$project->id}:data", [
                 'total' => 0, 'georeferenced' => 0, 'validated' => 0, 'ungeoreferenced' => 0,
             ]);
+            // "Never computed yet" (background job dispatched but not finished, or never
+            // ran) vs "computed and the real answer is zero" — the cache read above can't
+            // tell those apart on its own, so check the companion computed_at key too.
+            $projectComputing[$project->id] = Cache::get("project_stats_{$project->id}:computed_at") === null;
         }
 
         $recentActivity = DB::table('activity_log as al')
@@ -70,6 +75,6 @@ class HomeController extends Controller
             ->take(3)
             ->get();
 
-        return view('home', compact('global', 'projects', 'projectStats', 'recentActivity', 'impactTotal', 'topContributors'));
+        return view('home', compact('global', 'projects', 'projectStats', 'projectComputing', 'recentActivity', 'impactTotal', 'topContributors'));
     }
 }
