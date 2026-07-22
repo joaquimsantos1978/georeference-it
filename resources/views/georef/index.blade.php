@@ -1908,9 +1908,13 @@ function advancedSearch() {
             var focusClearEl = document.getElementById('focus-clear');
             if (focusClearEl) focusClearEl.style.display = 'none';
 
-            document.getElementById('dataset-filter-badge').style.display = this.dataset ? 'flex' : 'none';
-            document.getElementById('dataset-filter-name').textContent = this.dataset;
-            document.getElementById('adhoc-filter-badge').style.display = (this.country || criteria.length) ? 'flex' : 'none';
+            // The dedicated "Dataset: X" badge is reserved for arriving via a direct
+            // ?dataset= link (from /datasets' "Georeference" button) — a dataset set here,
+            // through the popup, is just one more advanced-search filter and is folded into
+            // the single "Advanced search active" badge instead, same as country/criteria.
+            // Showing both badges for the same dataset was the redundant/confusing state
+            // being fixed here.
+            document.getElementById('adhoc-filter-badge').style.display = (this.country || this.dataset || criteria.length) ? 'flex' : 'none';
 
             this.open = false;
             currentGroup = null; // force a fresh /next fetch instead of "skip from" the old group
@@ -2973,8 +2977,14 @@ document.getElementById('project-filter-clear').addEventListener('click', functi
     loadNextGroup();
 });
 document.getElementById('adhoc-filter-clear').addEventListener('click', function() {
+    // Clears everything the popup can set — country and dataset are folded into this
+    // same badge now (see advancedSearch().apply()), so clearing it needs to clear all
+    // three, not just the criteria.
     window._georefAdhocCriteria = '';
+    window._georefCountry = '';
+    window._georefDataset = '';
     document.getElementById('adhoc-filter-badge').style.display = 'none';
+    document.getElementById('dataset-filter-badge').style.display = 'none';
     loadNextGroup();
 });
 if(urlGbifKey) {
