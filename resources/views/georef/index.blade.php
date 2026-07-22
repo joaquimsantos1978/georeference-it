@@ -33,63 +33,77 @@
                 </div>
 
                 <div class="mt-1.5" x-data="advancedSearch()">
-                    <button type="button" @click="open = !open" class="text-xs text-gray-500 hover:text-green-600 flex items-center gap-1">
+                    <button type="button" @click="open = true" class="text-xs text-gray-500 hover:text-green-600 flex items-center gap-1">
                         🔍 {{ __('Advanced search') }}
                     </button>
-                    <div x-show="open" @click.away="open = false" x-cloak
-                         class="bg-white dark:bg-gray-800 dark:border-gray-700 border border-gray-200 rounded-lg shadow-lg p-3 space-y-3"
-                         style="position:absolute;left:8px;right:8px;top:100%;z-index:60;margin-top:4px;">
 
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Country') }}</label>
-                            <select x-model="country" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
-                                <option value="">{{ __('All countries') }}</option>
-                                <template x-for="c in countryOptions" :key="c.code">
-                                    <option :value="c.code" x-text="c.name"></option>
+                    {{-- Floating modal (not a dropdown squeezed into the 260px left panel) —
+                         fixed overlay, centered, with its own width so the criteria builder
+                         rows (field/operator/value) have room to breathe. --}}
+                    <div x-show="open" x-cloak x-transition.opacity
+                         @click.self="open = false" @keydown.escape.window="open = false"
+                         style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.4);display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;">
+                        <div @click.stop
+                             class="bg-white dark:bg-gray-800 dark:border-gray-700 border border-gray-200 rounded-lg shadow-2xl p-4 space-y-3"
+                             style="width:440px;max-width:92vw;max-height:80vh;overflow-y:auto;">
+
+                            <div class="flex items-center justify-between pb-1 border-b border-gray-100 dark:border-gray-700">
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">🔍 {{ __('Advanced search') }}</h3>
+                                <button type="button" @click="open = false" title="{{ __('Close') }}"
+                                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none px-1">×</button>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Country') }}</label>
+                                <select x-model="country" class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800">
+                                    <option value="">{{ __('All countries') }}</option>
+                                    <template x-for="c in countryOptions" :key="c.code">
+                                        <option :value="c.code" x-text="c.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Dataset key') }}</label>
+                                <input type="text" x-model="dataset" placeholder="{{ __('GBIF dataset key (optional)') }}"
+                                       class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Criteria (all must match)') }}</label>
+                                <template x-for="(cond, i) in conditions" :key="i">
+                                    <div class="flex gap-1 items-center mb-1">
+                                        <select x-model="cond.field" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
+                                            <option value="">{{ __('Field...') }}</option>
+                                            @foreach(\App\Models\Project::ALLOWED_CRITERIA_FIELDS as $field)
+                                            <option value="{{ $field }}">{{ $field }}</option>
+                                            @endforeach
+                                        </select>
+                                        <select x-model="cond.operator" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1">
+                                            @foreach(\App\Models\Project::ALLOWED_OPERATORS as $operator)
+                                            <option value="{{ $operator }}">{{ $operator }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="text" x-model="cond.value" placeholder="{{ __('Value') }}"
+                                               class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
+                                        <button type="button" @click="conditions.splice(i, 1)" x-show="conditions.length > 1"
+                                                class="text-gray-400 hover:text-red-500 text-sm px-1">×</button>
+                                    </div>
                                 </template>
-                            </select>
-                        </div>
+                                <button type="button" @click="conditions.push({field:'', operator:'equals', value:''})"
+                                        class="text-xs text-green-600 hover:underline">{{ __('+ Add condition') }}</button>
+                            </div>
 
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Dataset key') }}</label>
-                            <input type="text" x-model="dataset" placeholder="{{ __('GBIF dataset key (optional)') }}"
-                                   class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Criteria (all must match)') }}</label>
-                            <template x-for="(cond, i) in conditions" :key="i">
-                                <div class="flex gap-1 items-center mb-1">
-                                    <select x-model="cond.field" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
-                                        <option value="">{{ __('Field...') }}</option>
-                                        @foreach(\App\Models\Project::ALLOWED_CRITERIA_FIELDS as $field)
-                                        <option value="{{ $field }}">{{ $field }}</option>
-                                        @endforeach
-                                    </select>
-                                    <select x-model="cond.operator" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1">
-                                        @foreach(\App\Models\Project::ALLOWED_OPERATORS as $operator)
-                                        <option value="{{ $operator }}">{{ $operator }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input type="text" x-model="cond.value" placeholder="{{ __('Value') }}"
-                                           class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
-                                    <button type="button" @click="conditions.splice(i, 1)" x-show="conditions.length > 1"
-                                            class="text-gray-400 hover:text-red-500 text-sm px-1">×</button>
-                                </div>
-                            </template>
-                            <button type="button" @click="conditions.push({field:'', operator:'equals', value:''})"
-                                    class="text-xs text-green-600 hover:underline">{{ __('+ Add condition') }}</button>
-                        </div>
-
-                        <div class="flex items-center gap-2 pt-1 border-t border-gray-100 dark:border-gray-700">
-                            <button type="button" @click="apply()" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg">
-                                {{ __('Apply') }}
-                            </button>
-                            @auth
-                            <button type="button" @click="saveAsProject()" class="text-xs text-gray-500 hover:text-gray-700">
-                                {{ __('Save as project...') }}
-                            </button>
-                            @endauth
+                            <div class="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                <button type="button" @click="apply()" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg">
+                                    {{ __('Apply') }}
+                                </button>
+                                @auth
+                                <button type="button" @click="saveAsProject()" class="text-xs text-gray-500 hover:text-gray-700">
+                                    {{ __('Save as project...') }}
+                                </button>
+                                @endauth
+                            </div>
                         </div>
                     </div>
                 </div>
