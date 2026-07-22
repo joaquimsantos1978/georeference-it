@@ -193,7 +193,12 @@
                                 @else
                                     <span class="min-w-0 flex-1 truncate text-gray-400 italic">{{ __('Hidden contributor') }}</span>
                                 @endif
-                                <span class="text-xs text-gray-500 tabular-nums flex-shrink-0">{{ number_format($user->total_validated) }}</span>
+                                {{-- Suggestions, not total_validated — validation needs other
+                                     users to reach a vote threshold, which stays at 0 for a
+                                     long time even for genuinely active contributors on a
+                                     small/growing platform. Suggestions submitted is non-zero
+                                     immediately and matches what Recent Activity shows. --}}
+                                <span class="text-xs text-gray-500 tabular-nums flex-shrink-0">{{ number_format($user->suggestions_count) }}</span>
                             </div>
                         @endforeach
                     </div>
