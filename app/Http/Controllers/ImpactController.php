@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\DB;
 
 class ImpactController extends Controller
 {
+    // No genuine user paginates by hand anywhere near this deep — hard ceiling protects
+    // against a bot walking through a still-"in range" but enormous offset regardless of
+    // how many rows really exist (see comment at the clamp below).
+    private const MAX_PAGE = 2000;
+
     public function index(Request $request)
     {
         $status  = $request->get('status');
@@ -35,7 +40,12 @@ class ImpactController extends Controller
         // of how little data actually comes back, and was seen holding a read lock on
         // `occurrences` for 10+ minutes — long enough to block unrelated DDL (a
         // pt-online-schema-change run) from ever acquiring the table lock it needed.
-        $maxPage = max(1, (int) ceil($totalCount / $perPage));
+        //
+        // That alone isn't enough: with ~14M rows actually eligible here, the real last
+        // page is itself around 289,000 — a bot walking deep but still "in range" (observed
+        // offsets ~12.6M-13.4M) produces the exact same multi-minute OFFSET scan and isn't
+        // caught by the clamp above. Cap hard regardless of how many rows really exist.
+        $maxPage = min(self::MAX_PAGE, max(1, (int) ceil($totalCount / $perPage)));
         $page    = min($page, $maxPage);
 
         $offset       = ($page - 1) * $perPage;
