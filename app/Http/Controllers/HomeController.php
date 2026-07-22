@@ -43,7 +43,7 @@ class HomeController extends Controller
                 DB::raw('IF(u.public_name = 1, u.name, NULL) as user_name')
             )
             ->orderByDesc('al.created_at')
-            ->limit(8)
+            ->limit(6)
             ->get();
 
         // Same pre-computed lookup ImpactController uses for its headline count — never

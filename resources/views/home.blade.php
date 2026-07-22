@@ -111,8 +111,12 @@
             @endif
         </div>
 
-        {{-- Recent activity + impact --}}
-        <div class="grid md:grid-cols-3 gap-4">
+        {{-- Recent activity + impact + leaderboard — three independent cards in one row
+             (not stacked), so adding the leaderboard teaser doesn't add page height: it
+             takes its own column instead of piling onto an existing one. Activity is
+             trimmed from 8 rows to 6 (see HomeController) to keep this row from growing
+             taller than it was before the leaderboard card existed. --}}
+        <div class="grid md:grid-cols-4 gap-4">
             <div class="md:col-span-2">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('Recent activity') }}</h2>
@@ -141,50 +145,45 @@
 
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{{ __('Impact') }}</h2>
-                {{-- One card, not two stacked ones — Impact + a top-3 leaderboard teaser
-                     used to be separate headers/boxes, which made this sidebar taller than
-                     the activity list next to it and grew the page. A single card with an
-                     internal divider keeps the same information in roughly the footprint
-                     the Impact card alone used to take. --}}
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-                    <a href="{{ route('impact') }}" class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-750">
-                        <div class="text-2xl font-bold text-green-600">{{ number_format($impactTotal) }}</div>
-                        <p class="text-xs text-gray-500 mt-1">
-                            {{ trans_choice('{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform', $impactTotal, ['count' => number_format($impactTotal)]) }}
-                        </p>
-                        <span class="text-xs text-green-600 hover:underline mt-1 inline-block">{{ __('See impact') }} →</span>
-                    </a>
+                <a href="{{ route('impact') }}" class="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:border-green-400 dark:hover:border-green-600 transition-colors">
+                    <div class="text-2xl font-bold text-green-600">{{ number_format($impactTotal) }}</div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ trans_choice('{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform', $impactTotal, ['count' => number_format($impactTotal)]) }}
+                    </p>
+                    <span class="text-xs text-green-600 hover:underline mt-2 inline-block">{{ __('See impact') }} →</span>
+                </a>
+            </div>
 
-                    <div class="p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Leaderboard') }}</span>
-                            <a href="{{ route('leaderboard') }}" class="text-xs text-gray-500 hover:text-gray-700">{{ __('See all') }} →</a>
-                        </div>
-                        @if($topContributors->isEmpty())
-                            <p class="text-xs text-gray-400">{{ __('No contributors yet.') }}</p>
-                        @else
-                            <div class="space-y-1.5">
-                                @foreach($topContributors as $i => $user)
-                                    @php $isPublic = $user->public_name || (auth()->check() && auth()->id() === $user->id); @endphp
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <span class="w-5 flex-shrink-0">
-                                            @if($i === 0) 🥇
-                                            @elseif($i === 1) 🥈
-                                            @else 🥉
-                                            @endif
-                                        </span>
-                                        @if($isPublic)
-                                            <a href="{{ route('user.profile', $user->id) }}" class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200 hover:text-green-600">{{ $user->name }}</a>
-                                        @else
-                                            <span class="min-w-0 flex-1 truncate text-gray-400 italic">{{ __('Hidden contributor') }}</span>
-                                        @endif
-                                        <span class="text-xs text-gray-500 tabular-nums flex-shrink-0">{{ number_format($user->total_validated) }}</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('Leaderboard') }}</h2>
+                    <a href="{{ route('leaderboard') }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('See all') }} →</a>
                 </div>
+                @if($topContributors->isEmpty())
+                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center text-xs text-gray-400">
+                        {{ __('No contributors yet.') }}
+                    </div>
+                @else
+                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach($topContributors as $i => $user)
+                            @php $isPublic = $user->public_name || (auth()->check() && auth()->id() === $user->id); @endphp
+                            <div class="px-4 py-2.5 flex items-center gap-2 text-sm">
+                                <span class="w-5 flex-shrink-0">
+                                    @if($i === 0) 🥇
+                                    @elseif($i === 1) 🥈
+                                    @else 🥉
+                                    @endif
+                                </span>
+                                @if($isPublic)
+                                    <a href="{{ route('user.profile', $user->id) }}" class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200 hover:text-green-600">{{ $user->name }}</a>
+                                @else
+                                    <span class="min-w-0 flex-1 truncate text-gray-400 italic">{{ __('Hidden contributor') }}</span>
+                                @endif
+                                <span class="text-xs text-gray-500 tabular-nums flex-shrink-0">{{ number_format($user->total_validated) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
 
