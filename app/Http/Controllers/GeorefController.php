@@ -218,12 +218,20 @@ class GeorefController extends Controller
 // code), meaning "don't build a focus scope for this at all".
 private function focusSearchTerms(string $focus): ?string
 {
+    $words = $this->focusWords($focus);
+    if (empty($words)) return null;
+    return implode(' ', array_map(fn($w) => '+' . $w, $words));
+}
+
+// Plain-word basis for focusSearchTerms() above (SQL fulltext string) and the PHP-side
+// substring filter used when a dataset/project/adhoc restriction is active (see next()) —
+// same longest-6-words selection either way, just without the SQL boolean-mode "+" prefix.
+private function focusWords(string $focus): array
+{
     $words = preg_split('/[^\p{L}\p{N}]+/u', $focus, -1, PREG_SPLIT_NO_EMPTY);
     $words = array_values(array_unique(array_filter($words, fn($w) => mb_strlen($w) >= 4)));
-    if (empty($words)) return null;
     usort($words, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
-    $words = array_slice($words, 0, 6);
-    return implode(' ', array_map(fn($w) => '+' . $w, $words));
+    return array_slice($words, 0, 6);
 }
 
 // Shared by the dataset and project filters in next(): both resolve to a bounded set of
@@ -488,37 +496,89 @@ public function next(Request $request)
 
           // Try georef first (preferred outcome for most users), then validate
           if ($isFocusScope) {
-              // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
-              $focusMatch = fn($q) => $q->whereRaw(
-                  'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
-                  [$focusTerms]
-              )->when($country, fn($q2) => $q2->where('country_code', $country));
+              // A dataset/project/adhoc restriction already resolves to a small (<=500)
+              // bounded id list via candidateGroupIds(). Combining that with a SQL fulltext
+              // MATCH in the same WHERE clause lets MySQL freely choose to scan the fulltext
+              // index first — which can match many thousands of rows for an ordinary word
+              // like "Galápagos" long before ever intersecting with the small id list —
+              // observed taking 190+ seconds in production. When a restriction is active,
+              // skip the fulltext index entirely and filter the already-small restricted
+              // set in PHP instead: same "require every distinctive word" semantics as
+              // focusSearchTerms(), just applied to <=500 in-memory rows, not the full table.
+              $hasScopeRestriction = $datasetKey !== '' || $project || $adhocCriteria;
 
-              // No ORDER BY — fulltext index is used directly; we random() the results anyway
-              $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
-                  ->where('occurrence_count', '>', 0)
-                  ->where('occurrence_count', '<', 10000)
-                  ->tap($focusMatch)
-                  ->tap($excludeCorrupted)
-                  ->tap($restrictDatasetGeoref)
-                  ->tap($restrictProjectGeoref)
-                  ->tap($restrictAdhocGeoref)
-                  ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
-                  ->limit(50)
-                  ->get();
+              if ($hasScopeRestriction) {
+                  $focusWords = $this->focusWords($focus);
+                  $matchesFocusWords = function (LocalityGroup $g) use ($focusWords) {
+                      $haystack = mb_strtolower($g->locality_string ?? '');
+                      foreach ($focusWords as $word) {
+                          if (mb_stripos($haystack, $word) === false) return false;
+                      }
+                      return true;
+                  };
 
-              if ($candidates->isEmpty()) {
-                  $candidates = LocalityGroup::where('pending_count', '>', 0)
+                  $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                      ->where('occurrence_count', '>', 0)
+                      ->where('occurrence_count', '<', 10000)
+                      ->when($country, fn($q) => $q->where('country_code', $country))
+                      ->tap($excludeCorrupted)
+                      ->tap($restrictDatasetGeoref)
+                      ->tap($restrictProjectGeoref)
+                      ->tap($restrictAdhocGeoref)
+                      ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                      ->limit(500)
+                      ->get()
+                      ->filter($matchesFocusWords)
+                      ->values();
+
+                  if ($candidates->isEmpty()) {
+                      $candidates = LocalityGroup::where('pending_count', '>', 0)
+                          ->where('occurrence_count', '>', 0)
+                          ->where('occurrence_count', '<', 10000)
+                          ->when($country, fn($q) => $q->where('country_code', $country))
+                          ->tap($excludeCorrupted)
+                          ->tap($restrictDatasetValidate)
+                          ->tap($restrictProjectValidate)
+                          ->tap($restrictAdhocValidate)
+                          ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                          ->limit(500)
+                          ->get()
+                          ->filter($matchesFocusWords)
+                          ->values();
+                  }
+              } else {
+                  // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
+                  $focusMatch = fn($q) => $q->whereRaw(
+                      'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
+                      [$focusTerms]
+                  )->when($country, fn($q2) => $q2->where('country_code', $country));
+
+                  // No ORDER BY — fulltext index is used directly; we random() the results anyway
+                  $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                       ->where('occurrence_count', '>', 0)
                       ->where('occurrence_count', '<', 10000)
                       ->tap($focusMatch)
                       ->tap($excludeCorrupted)
-                      ->tap($restrictDatasetValidate)
-                      ->tap($restrictProjectValidate)
-                      ->tap($restrictAdhocValidate)
+                      ->tap($restrictDatasetGeoref)
+                      ->tap($restrictProjectGeoref)
+                      ->tap($restrictAdhocGeoref)
                       ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
                       ->limit(50)
                       ->get();
+
+                  if ($candidates->isEmpty()) {
+                      $candidates = LocalityGroup::where('pending_count', '>', 0)
+                          ->where('occurrence_count', '>', 0)
+                          ->where('occurrence_count', '<', 10000)
+                          ->tap($focusMatch)
+                          ->tap($excludeCorrupted)
+                          ->tap($restrictDatasetValidate)
+                          ->tap($restrictProjectValidate)
+                          ->tap($restrictAdhocValidate)
+                          ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                          ->limit(50)
+                          ->get();
+                  }
               }
 
               $group = $candidates->isNotEmpty() ? $candidates->random() : null;
