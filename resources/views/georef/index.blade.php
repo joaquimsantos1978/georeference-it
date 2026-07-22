@@ -2998,7 +2998,13 @@ if(urlGbifKey) {
 } else {
     function applyLocationAndLoad(loc) {
         var countryCode = loc && loc.country_code ? loc.country_code : null;
-        if (countryCode && !urlCountry) {
+        // A project/dataset scope is an explicit choice of what to work on — the
+        // visitor's IP-detected country has nothing to do with where a project's
+        // specimens were actually collected (a "Darwin specimens" project has no reason
+        // to contain anything from Portugal just because a visitor is browsing from
+        // there), and combining them silently returned zero candidates forever, with
+        // Skip unable to get out of it since every retry carried the same country.
+        if (countryCode && !urlCountry && !urlDataset && !urlProject) {
             window._georefCountry = countryCode;
             var sel = document.getElementById('country-select');
             if (sel) {
