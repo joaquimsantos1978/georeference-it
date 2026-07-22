@@ -131,10 +131,16 @@
                     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($recentActivity as $event)
                             <div class="px-4 py-2.5 flex items-center justify-between text-sm">
-                                <div class="min-w-0 flex-1">
+                                {{-- truncate has to be on this block-level div, not an inline
+                                     span inside it — location_label can be a very long,
+                                     repeated locality string in real GBIF data, and
+                                     truncate on an inline element doesn't constrain width at
+                                     all, so the line just wrapped and overflowed past this
+                                     column into Impact/Leaderboard next to it. --}}
+                                <div class="min-w-0 flex-1 truncate">
                                     <span class="text-gray-700 dark:text-gray-200">{{ $event->user_name ?? __('Hidden contributor') }}</span>
                                     <span class="text-gray-400"> — </span>
-                                    <span class="text-gray-500 truncate">{{ $event->location_label ?: $event->country_code }}</span>
+                                    <span class="text-gray-500">{{ $event->location_label ?: $event->country_code }}</span>
                                 </div>
                                 <span class="text-xs text-gray-400 flex-shrink-0 ml-3">{{ \Carbon\Carbon::parse($event->created_at)->diffForHumans() }}</span>
                             </div>
