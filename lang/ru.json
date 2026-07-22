@@ -566,5 +566,12 @@
     "Title": "Название",
     "Visibility": "Видимость",
     "comma-separated": "через запятую",
-    "projects": "проекты"
+    "projects": "проекты",
+    "Browse projects": "Просмотреть проекты",
+    "Full stats": "Полная статистика",
+    "See all": "Смотреть всё",
+    "Recent activity": "Недавняя активность",
+    "No activity yet.": "Пока нет активности.",
+    "Learn more": "Узнать больше",
+    "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "Миллионы записей о биоразнообразии в GBIF не имеют географических координат. Волонтёры размещают эти образцы на карте с помощью системы проверки на основе консенсуса."
 }

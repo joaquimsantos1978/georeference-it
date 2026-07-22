@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GeorefController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\NotificationController;
@@ -11,7 +12,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [GeorefController::class, 'index'])->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/lang/{locale}', function (string $locale) {
     if (array_key_exists($locale, \App\Http\Middleware\SetLocale::SUPPORTED)) {

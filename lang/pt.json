@@ -580,5 +580,12 @@
     "Title": "Título",
     "Visibility": "Visibilidade",
     "comma-separated": "separadas por vírgulas",
-    "projects": "projetos"
+    "projects": "projetos",
+    "Browse projects": "Explorar projetos",
+    "Full stats": "Estatísticas completas",
+    "See all": "Ver tudo",
+    "Recent activity": "Atividade recente",
+    "No activity yet.": "Ainda sem atividade.",
+    "Learn more": "Saber mais",
+    "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "Milhões de registos de biodiversidade no GBIF não têm coordenadas geográficas. Os voluntários colocam estes espécimes no mapa através de um sistema de validação baseado em consenso."
 }

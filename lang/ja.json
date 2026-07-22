@@ -566,5 +566,12 @@
     "Title": "タイトル",
     "Visibility": "公開範囲",
     "comma-separated": "カンマ区切り",
-    "projects": "プロジェクト"
+    "projects": "プロジェクト",
+    "Browse projects": "プロジェクトを見る",
+    "Full stats": "詳細統計",
+    "See all": "すべて見る",
+    "Recent activity": "最近のアクティビティ",
+    "No activity yet.": "まだアクティビティがありません。",
+    "Learn more": "詳しく見る",
+    "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "GBIFの生物多様性記録の多くには地理座標がありません。ボランティアが合意ベースの検証システムを使って標本を地図上に配置します。"
 }

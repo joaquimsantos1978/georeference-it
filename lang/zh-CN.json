@@ -566,5 +566,12 @@
     "Title": "标题",
     "Visibility": "可见性",
     "comma-separated": "用逗号分隔",
-    "projects": "项目"
+    "projects": "项目",
+    "Browse projects": "浏览项目",
+    "Full stats": "完整统计",
+    "See all": "查看全部",
+    "Recent activity": "最近活动",
+    "No activity yet.": "暂无活动。",
+    "Learn more": "了解更多",
+    "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "GBIF 中数百万条生物多样性记录缺少地理坐标。志愿者通过基于共识的验证系统将这些标本标注在地图上。"
 }

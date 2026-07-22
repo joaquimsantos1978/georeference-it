@@ -566,5 +566,12 @@
     "Title": "Název",
     "Visibility": "Viditelnost",
     "comma-separated": "oddělené čárkami",
-    "projects": "projekty"
+    "projects": "projekty",
+    "Browse projects": "Procházet projekty",
+    "Full stats": "Úplné statistiky",
+    "See all": "Zobrazit vše",
+    "Recent activity": "Nedávná aktivita",
+    "No activity yet.": "Zatím žádná aktivita.",
+    "Learn more": "Zjistit více",
+    "Millions of biodiversity records in GBIF lack geographic coordinates. Volunteers place these specimens on the map using a consensus-based validation system.": "Miliony záznamů o biodiverzitě v GBIF postrádají zeměpisné souřadnice. Dobrovolníci umisťují tyto exempláře na mapu pomocí systému ověřování založeného na konsensu."
 }
