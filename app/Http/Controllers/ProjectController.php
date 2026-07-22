@@ -220,38 +220,46 @@ class ProjectController extends Controller
         $staleAfterSeconds = 3600;
 
         if ($cached === null) {
+            // Never compute inline here, even on the very first view — a criteria field
+            // with no index (e.g. `family`, before the planned production index lands)
+            // turns this into a full-table scan over 280M+ rows, and a brand-new project
+            // computing that synchronously in the request that renders /projects is
+            // exactly what produced a 504 in practice. Same "never compute on the page
+            // request" rule as the stale-refresh branch below (and as Stats/Activity/
+            // Impact elsewhere) — return the default immediately and let the background
+            // job populate the real numbers whenever it finishes.
             $lock = Cache::lock($cacheKeyBase . ':lock', 300);
             if ($lock->get()) {
-                try {
-                    $cached = $compute();
-                    Cache::forever($dataKey, $cached);
-                    Cache::forever($cacheKeyBase . ':computed_at', now()->timestamp);
-                } finally {
-                    $lock->release();
-                }
-            } else {
-                try {
-                    $lock->block(10);
-                    $lock->release();
-                } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
-                    // still running — fall through to the safe default below
-                }
-                $cached = Cache::get($dataKey);
+                // Not $lock->release() in the closure — dispatch(Closure) always wraps it
+                // in a serializable job (CallQueuedClosure) regardless of ->afterResponse(),
+                // and this app's cache/queue driver is DB-backed, so a captured Lock object
+                // holds a live PDO connection that can't be serialized ("Serialization of
+                // 'PDO' is not allowed" — confirmed in the log, silently swallowed since
+                // dispatch() failures here aren't awaited). A fresh forceRelease() call only
+                // needs the cache key string, which serializes fine.
+                dispatch(function () use ($compute, $dataKey, $cacheKeyBase) {
+                    try {
+                        Cache::forever($dataKey, $compute());
+                        Cache::forever($cacheKeyBase . ':computed_at', now()->timestamp);
+                    } finally {
+                        Cache::lock($cacheKeyBase . ':lock')->forceRelease();
+                    }
+                })->afterResponse();
             }
 
-            return $cached ?? $default;
+            return $default;
         }
 
         $isStale = Cache::get($cacheKeyBase . ':computed_at', 0) < now()->subSeconds($staleAfterSeconds)->timestamp;
         if ($isStale) {
             $lock = Cache::lock($cacheKeyBase . ':lock', 300);
             if ($lock->get()) {
-                dispatch(function () use ($compute, $dataKey, $cacheKeyBase, $lock) {
+                dispatch(function () use ($compute, $dataKey, $cacheKeyBase) {
                     try {
                         Cache::forever($dataKey, $compute());
                         Cache::forever($cacheKeyBase . ':computed_at', now()->timestamp);
                     } finally {
-                        $lock->release();
+                        Cache::lock($cacheKeyBase . ':lock')->forceRelease();
                     }
                 })->afterResponse();
             }
