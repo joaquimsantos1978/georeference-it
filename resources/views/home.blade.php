@@ -93,7 +93,7 @@
                             @if($isComputing)
                             <div class="flex items-center gap-1.5 mt-3 text-xs text-gray-400">
                                 <svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-                                {{ __('Calculating statistics…') }}
+                                {{ __('Preparing project…') }}
                             </div>
                             @else
                             <div class="flex items-center gap-3 mt-2 text-xs text-gray-500 tabular-nums">

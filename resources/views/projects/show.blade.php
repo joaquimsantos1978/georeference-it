@@ -48,7 +48,7 @@
             @if($statsComputing)
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 flex items-center justify-center gap-2 text-sm text-gray-400">
                 <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-                {{ __('Calculating statistics…') }}
+                {{ __('Preparing project…') }}
             </div>
             @else
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -91,7 +91,7 @@
             @if($contributorsComputing)
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 flex items-center justify-center gap-2 text-sm text-gray-400">
                     <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-                    {{ __('Calculating statistics…') }}
+                    {{ __('Preparing project…') }}
                 </div>
             @elseif(empty($contributors))
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center text-sm text-gray-400">
