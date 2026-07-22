@@ -39,10 +39,15 @@
 
                     {{-- Floating modal (not a dropdown squeezed into the 260px left panel) —
                          fixed overlay, centered, with its own width so the criteria builder
-                         rows (field/operator/value) have room to breathe. --}}
-                    <div x-show="open" x-cloak x-transition.opacity
+                         rows (field/operator/value) have room to breathe. `display:flex` is
+                         a class, not inline style — Alpine's x-show clears the inline
+                         `display` property entirely when showing (rather than restoring a
+                         specific value), which left this falling back to the browser's
+                         default block display and pinned left instead of centered; a class
+                         rule isn't touched by that. --}}
+                    <div x-show="open" x-cloak class="flex items-start justify-center"
                          @click.self="open = false" @keydown.escape.window="open = false"
-                         style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.4);display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;">
+                         style="position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:rgba(0,0,0,0.4);padding-top:8vh;">
                         <div @click.stop
                              class="bg-white dark:bg-gray-800 dark:border-gray-700 border border-gray-200 rounded-lg shadow-2xl p-4 space-y-3"
                              style="width:440px;max-width:92vw;max-height:80vh;overflow-y:auto;">

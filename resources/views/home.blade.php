@@ -86,7 +86,14 @@
                                     <div class="text-xs text-gray-500 truncate">{{ $project->user->name ?? '' }}</div>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-1.5 mt-3">
+                            @if($project->description)
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-2">{{ $project->description }}</p>
+                            @endif
+                            <div class="flex items-center gap-3 mt-2 text-xs text-gray-500 tabular-nums">
+                                <span>{{ number_format($s['total']) }} {{ __('Total') }}</span>
+                                <span class="text-green-700 dark:text-green-400">{{ number_format($s['validated']) }} {{ __('Validated') }}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-2">
                                 <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
                                     <div class="h-1.5 rounded-full" style="width:{{ $pct }}%;background:{{ $barColor }}"></div>
                                 </div>
@@ -104,31 +111,44 @@
             @endif
         </div>
 
-        {{-- Recent activity --}}
-        <div>
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('Recent activity') }}</h2>
-                <a href="{{ route('activity') }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('See all') }} →</a>
+        {{-- Recent activity + impact --}}
+        <div class="grid md:grid-cols-3 gap-4">
+            <div class="md:col-span-2">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('Recent activity') }}</h2>
+                    <a href="{{ route('activity') }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('See all') }} →</a>
+                </div>
+
+                @if($recentActivity->isEmpty())
+                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center text-sm text-gray-400">
+                        {{ __('No activity yet.') }}
+                    </div>
+                @else
+                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach($recentActivity as $event)
+                            <div class="px-4 py-2.5 flex items-center justify-between text-sm">
+                                <div class="min-w-0 flex-1">
+                                    <span class="text-gray-700 dark:text-gray-200">{{ $event->user_name ?? __('Hidden contributor') }}</span>
+                                    <span class="text-gray-400"> — </span>
+                                    <span class="text-gray-500 truncate">{{ $event->location_label ?: $event->country_code }}</span>
+                                </div>
+                                <span class="text-xs text-gray-400 flex-shrink-0 ml-3">{{ \Carbon\Carbon::parse($event->created_at)->diffForHumans() }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
 
-            @if($recentActivity->isEmpty())
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center text-sm text-gray-400">
-                    {{ __('No activity yet.') }}
-                </div>
-            @else
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-                    @foreach($recentActivity as $event)
-                        <div class="px-4 py-2.5 flex items-center justify-between text-sm">
-                            <div class="min-w-0 flex-1">
-                                <span class="text-gray-700 dark:text-gray-200">{{ $event->user_name ?? __('Hidden contributor') }}</span>
-                                <span class="text-gray-400"> — </span>
-                                <span class="text-gray-500 truncate">{{ $event->location_label ?: $event->country_code }}</span>
-                            </div>
-                            <span class="text-xs text-gray-400 flex-shrink-0 ml-3">{{ \Carbon\Carbon::parse($event->created_at)->diffForHumans() }}</span>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{{ __('Impact') }}</h2>
+                <a href="{{ route('impact') }}" class="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:border-green-400 dark:hover:border-green-600 transition-colors">
+                    <div class="text-2xl font-bold text-green-600">{{ number_format($impactTotal) }}</div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ trans_choice('{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform', $impactTotal, ['count' => number_format($impactTotal)]) }}
+                    </p>
+                    <span class="text-xs text-green-600 hover:underline mt-2 inline-block">{{ __('See impact') }} →</span>
+                </a>
+            </div>
         </div>
 
         {{-- About blurb --}}

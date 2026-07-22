@@ -45,6 +45,13 @@ class HomeController extends Controller
             ->limit(8)
             ->get();
 
-        return view('home', compact('global', 'projects', 'projectStats', 'recentActivity'));
+        // Same pre-computed lookup ImpactController uses for its headline count — never
+        // counted here, just read.
+        $impactTotal = DB::table('impact_counts')
+            ->where('status', 'all')
+            ->where('country_code', 'all')
+            ->value('count') ?? 0;
+
+        return view('home', compact('global', 'projects', 'projectStats', 'recentActivity', 'impactTotal'));
     }
 }
