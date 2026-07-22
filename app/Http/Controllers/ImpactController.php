@@ -29,6 +29,15 @@ class ImpactController extends Controller
             ->where('country_code', $country ?: 'all')
             ->value('count') ?? 0;
 
+        // Clamp to the last real page — an out-of-range ?page= (a crawler blindly walking
+        // page numbers past the end, observed requesting page ~265,169) otherwise builds a
+        // LIMIT/OFFSET in the millions on a 280M+ row table, which is expensive regardless
+        // of how little data actually comes back, and was seen holding a read lock on
+        // `occurrences` for 10+ minutes — long enough to block unrelated DDL (a
+        // pt-online-schema-change run) from ever acquiring the table lock it needed.
+        $maxPage = max(1, (int) ceil($totalCount / $perPage));
+        $page    = min($page, $maxPage);
+
         $offset       = ($page - 1) * $perPage;
         $statusFilter = $status && in_array($status, $validStatuses) ? [$status] : $validStatuses;
         $countryWhere = $country ? "AND country_code = " . DB::connection()->getPdo()->quote($country) : '';
