@@ -1407,10 +1407,15 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
                     $sub->whereHas('suggestions', fn($s) => $s->where('status', '!=', 'rejected'))
                         ->orWhereHas('occurrences', fn($o) => $o->where('georef_status', 'gbif_georeferenced'));
                 })
+                // Most-recently-georeferenced first, not relevance — the fulltext MATCH
+                // still does the actual filtering to matching localities, it just no
+                // longer decides display order. updated_at is touched by
+                // recalculateCounters() on every submit/validate/vote, so it's a reliable
+                // "last touched" signal for a group.
                 ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
-                ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanQuery])
+                ->orderByDesc('updated_at')
                 ->limit($poolSize)
-                ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count']);
+                ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'updated_at']);
         };
 
         // Require every significant word to match (AND), so a query with several
