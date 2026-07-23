@@ -75,6 +75,12 @@
                 </div>
                 <span class="text-sm text-gray-500 tabular-nums">{{ $pct }}%</span>
             </div>
+            <div class="text-xs text-gray-400 mt-2">
+                {{ trans_choice('{1} :count locality|[2,*] :count localities', $stats['locality_groups'] ?? 0, ['count' => number_format($stats['locality_groups'] ?? 0)]) }}
+                @if(($stats['locality_groups_missing'] ?? 0) > 0)
+                    — {{ trans_choice('{1} :count still needs georeferencing|[2,*] :count still need georeferencing', $stats['locality_groups_missing'], ['count' => number_format($stats['locality_groups_missing'])]) }}
+                @endif
+            </div>
             @if(($stats['total'] - $stats['georeferenced']) > 0)
             <a href="{{ route('georef.index') }}?project={{ $project->id }}"
                class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-2">

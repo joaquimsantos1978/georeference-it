@@ -95,7 +95,10 @@
                             </div>
                         </td>
                         @else
-                        <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">{{ number_format($s['total']) }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">
+                            {{ number_format($s['total']) }}
+                            <div class="text-xs text-gray-400 font-normal">{{ trans_choice('{1} :count locality|[2,*] :count localities', $s['locality_groups'] ?? 0, ['count' => number_format($s['locality_groups'] ?? 0)]) }}</div>
+                        </td>
                         <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">{{ number_format($s['georeferenced']) }}</td>
                         <td class="px-4 py-3 text-right">
                             <span class="text-green-700 dark:text-green-400 tabular-nums">{{ number_format($s['validated']) }}</span>

@@ -300,24 +300,35 @@ class ProjectController extends Controller
         return $this->cachedCompute(
             "project_stats_{$project->id}",
             fn() => $this->computeProjectStats($project),
-            ['total' => 0, 'georeferenced' => 0, 'validated' => 0, 'ungeoreferenced' => 0]
+            [
+                'total' => 0, 'georeferenced' => 0, 'validated' => 0, 'ungeoreferenced' => 0,
+                'locality_groups' => 0, 'locality_groups_missing' => 0,
+            ]
         );
     }
 
     private function computeProjectStats(Project $project): array
     {
+        // Specimen counts alone understate/overstate the real effort — georeferencing is
+        // done per locality description, not per specimen, so a project spanning 3,000
+        // specimens might only be ~200 distinct places to actually look at (same reasoning
+        // as the global Stats page's "N locality groups with work remaining").
         $agg = $this->scopedOccurrencesQuery($project)->selectRaw("
             COUNT(*) as total,
             SUM(georef_status != 'ungeoreferenced') as georeferenced,
             SUM(georef_status = 'validated') as validated,
-            SUM(georef_status = 'ungeoreferenced') as ungeoreferenced
+            SUM(georef_status = 'ungeoreferenced') as ungeoreferenced,
+            COUNT(DISTINCT locality_group_id) as locality_groups,
+            COUNT(DISTINCT CASE WHEN georef_status = 'ungeoreferenced' THEN locality_group_id END) as locality_groups_missing
         ")->first();
 
         return [
-            'total'           => (int) $agg->total,
-            'georeferenced'   => (int) $agg->georeferenced,
-            'validated'       => (int) $agg->validated,
-            'ungeoreferenced' => (int) $agg->ungeoreferenced,
+            'total'                    => (int) $agg->total,
+            'georeferenced'            => (int) $agg->georeferenced,
+            'validated'                => (int) $agg->validated,
+            'ungeoreferenced'          => (int) $agg->ungeoreferenced,
+            'locality_groups'          => (int) $agg->locality_groups,
+            'locality_groups_missing'  => (int) $agg->locality_groups_missing,
         ];
     }
 
