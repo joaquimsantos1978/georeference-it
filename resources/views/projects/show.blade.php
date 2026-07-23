@@ -14,6 +14,7 @@
         $pctValidated = $total > 0 ? number_format($validCount   / $total * 100, 2, '.', '') : '0';
         $pctPending   = $total > 0 ? number_format($pendingCount / $total * 100, 2, '.', '') : '0';
         $pctNoCoord   = $total > 0 ? number_format($noCoordCount / $total * 100, 1, '.', '') : '0';
+        $tagList = $project->tags ? array_filter(array_map('trim', explode(',', $project->tags))) : [];
     @endphp
 
     <div class="max-w-4xl mx-auto space-y-6 pb-16">
@@ -33,10 +34,6 @@
                         {{ $project->visibility === 'public' ? __('Public') : __('Private') }}
                     </span>
                 </div>
-                <p class="text-sm text-gray-500 mt-0.5">{{ $project->user->name ?? '' }}</p>
-                @if($project->tags)
-                <p class="text-xs text-gray-400 mt-1">{{ $project->tags }}</p>
-                @endif
             </div>
             @if($isOwner)
             <div class="flex items-center gap-3 flex-shrink-0">
@@ -52,6 +49,20 @@
         @if($project->description)
         <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">{{ $project->description }}</p>
         @endif
+
+        <div class="space-y-2">
+            @if(!empty($tagList))
+            <div class="flex flex-wrap gap-1.5">
+                @foreach($tagList as $tag)
+                <a href="{{ route('projects') }}?q={{ urlencode($tag) }}"
+                   class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full px-2.5 py-1">
+                    {{ $tag }}
+                </a>
+                @endforeach
+            </div>
+            @endif
+            <p class="text-xs text-gray-400">{{ __('by') }} {{ $project->user->name ?? '' }}</p>
+        </div>
 
         {{-- Stats --}}
         <div>

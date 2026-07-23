@@ -30,7 +30,10 @@ class ProjectController extends Controller
     public function index(Request $request): View
     {
         $projects = Project::visibleTo(auth()->user())
-            ->when($request->filled('q'), fn($q) => $q->where('title', 'like', '%' . $request->get('q') . '%'))
+            ->when($request->filled('q'), fn($q) => $q->where(function ($q) use ($request) {
+                $term = '%' . $request->get('q') . '%';
+                $q->where('title', 'like', $term)->orWhere('tags', 'like', $term);
+            }))
             ->orderByDesc('updated_at')
             ->paginate(50)
             ->withQueryString();

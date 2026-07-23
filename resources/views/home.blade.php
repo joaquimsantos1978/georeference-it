@@ -84,12 +84,12 @@
                                 @endif
                                 <div class="min-w-0">
                                     <a href="{{ route('projects.show', $project->id) }}" class="font-medium text-gray-900 dark:text-white text-sm truncate hover:text-green-600 block">{{ $project->title }}</a>
-                                    <div class="text-xs text-gray-500 truncate">{{ $project->user->name ?? '' }}</div>
                                 </div>
                             </div>
                             @if($project->description)
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-3 line-clamp-2">{{ $project->description }}</p>
                             @endif
+                            <div class="text-xs text-gray-400 truncate mt-1.5">{{ __('by') }} {{ $project->user->name ?? '' }}</div>
                             @if($isComputing)
                             <div class="flex items-center gap-1.5 mt-3 text-xs text-gray-400">
                                 <svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>

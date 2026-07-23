@@ -27,7 +27,7 @@
     <form method="GET" action="{{ route('projects') }}" class="flex flex-wrap gap-2 items-end">
         <div class="flex-1 min-w-[200px]">
             <input type="text" name="q" value="{{ request('q') }}"
-                   placeholder="{{ __('Search project title...') }}"
+                   placeholder="{{ __('Search title or tags...') }}"
                    class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-green-500">
         </div>
         <button type="submit" class="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">{{ __('Search') }}</button>
@@ -80,10 +80,10 @@
                                             {{ $project->visibility === 'public' ? __('Public') : __('Private') }}
                                         </span>
                                     </div>
-                                    <div class="text-xs text-gray-500 mt-0.5">{{ $project->user->name ?? '' }}</div>
                                     @if($project->description)
-                                    <div class="text-xs text-gray-400 mt-1.5">{{ \Illuminate\Support\Str::limit($project->description, 100) }}</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">{{ \Illuminate\Support\Str::limit($project->description, 100) }}</div>
                                     @endif
+                                    <div class="text-xs text-gray-400 mt-1.5">{{ __('by') }} {{ $project->user->name ?? '' }}</div>
                                 </div>
                             </div>
                         </td>
