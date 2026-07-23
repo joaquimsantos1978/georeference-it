@@ -61,7 +61,6 @@
                 @endforeach
             </div>
             @endif
-            <p class="text-xs text-gray-400">{{ __('by') }} {{ $project->user->name ?? '' }}</p>
         </div>
 
         {{-- Stats --}}
@@ -71,6 +70,7 @@
                 <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
                 {{ __('Preparing project…') }}
             </div>
+            <p class="text-xs text-gray-400 mt-2">{{ __('by') }} {{ $project->user->name ?? '' }}</p>
             @else
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
@@ -110,12 +110,15 @@
                     — {{ trans_choice('{1} :count still needs georeferencing|[2,*] :count still need georeferencing', $stats['locality_groups_missing'], ['count' => number_format($stats['locality_groups_missing'])]) }}
                 @endif
             </div>
-            @if(($stats['total'] - $stats['georeferenced']) > 0)
-            <a href="{{ route('georef.index') }}?project={{ $project->id }}"
-               class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-2">
-                {{ __('Georeference') }}
-            </a>
-            @endif
+            <div class="flex items-center justify-between gap-2 mt-4">
+                <span class="text-xs text-gray-400">{{ __('by') }} {{ $project->user->name ?? '' }}</span>
+                @if(($stats['total'] - $stats['georeferenced']) > 0)
+                <a href="{{ route('georef.index') }}?project={{ $project->id }}"
+                   class="inline-flex items-center gap-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-2">
+                    {{ __('Georeference') }}
+                </a>
+                @endif
+            </div>
             @endif
         </div>
 

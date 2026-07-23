@@ -89,14 +89,14 @@
                             @if($project->description)
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-3 line-clamp-2">{{ $project->description }}</p>
                             @endif
-                            <div class="text-xs text-gray-400 truncate mt-1.5">{{ __('by') }} {{ $project->user->name ?? '' }}</div>
                             @if($isComputing)
+                            <div class="text-xs text-gray-400 truncate mt-1.5">{{ __('by') }} {{ $project->user->name ?? '' }}</div>
                             <div class="flex items-center gap-1.5 mt-3 text-xs text-gray-400">
                                 <svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
                                 {{ __('Preparing project…') }}
                             </div>
                             @else
-                            <div class="flex items-center gap-3 mt-2 text-xs text-gray-500 tabular-nums">
+                            <div class="flex items-center gap-3 mt-3 text-xs text-gray-500 tabular-nums">
                                 <span>{{ number_format($s['total']) }} {{ __('Total') }}</span>
                                 <span class="text-green-700 dark:text-green-400">{{ number_format($s['validated']) }} {{ __('Validated') }}</span>
                             </div>
@@ -106,12 +106,15 @@
                                 </div>
                                 <span class="text-xs text-gray-500 w-8 text-right tabular-nums">{{ $pct }}%</span>
                             </div>
-                            @if(($s['total'] - $s['georeferenced']) > 0)
-                            <a href="{{ route('georef.index') }}?project={{ $project->id }}"
-                               class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5">
-                                {{ __('Georeference') }}
-                            </a>
-                            @endif
+                            <div class="flex items-center justify-between gap-2 mt-3">
+                                <span class="text-xs text-gray-400 truncate">{{ __('by') }} {{ $project->user->name ?? '' }}</span>
+                                @if(($s['total'] - $s['georeferenced']) > 0)
+                                <a href="{{ route('georef.index') }}?project={{ $project->id }}"
+                                   class="flex-shrink-0 inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5">
+                                    {{ __('Georeference') }}
+                                </a>
+                                @endif
+                            </div>
                             @endif
                         </div>
                     @endforeach
