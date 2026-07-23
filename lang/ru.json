@@ -528,6 +528,8 @@
     "with GBIF coordinates": "с координатами GBIF",
     "{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform": "{1} :count образец геопривязан или улучшен на этой платформе|[2,4] :count образца геопривязаны или улучшены на этой платформе|[5,*] :count образцов геопривязаны или улучшены на этой платформе",
     "{1} :count specimen|[2,*] :count specimens": "{1} :count образец|[2,4] :count образца|[5,*] :count образцов",
+    "{1} :count locality|[2,*] :count localities": "{1} :count местонахождение|[2,4] :count местонахождения|[5,*] :count местонахождений",
+    "{1} :count still needs georeferencing|[2,*] :count still need georeferencing": "{1} :count всё ещё требует геопривязки|[2,4] :count всё ещё требуют геопривязки|[5,*] :count всё ещё требуют геопривязки",
     "+ Add condition": "+ Добавить условие",
     ":count of the pasted keys did not match any occurrence:": ":count вставленных ключей не соответствуют ни одной записи:",
     "Add at least one condition before saving as a project.": "Добавьте хотя бы одно условие перед сохранением как проект.",

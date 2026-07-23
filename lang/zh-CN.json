@@ -528,6 +528,8 @@
     "with GBIF coordinates": "含 GBIF 坐标",
     "{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform": "{1} 在本平台标注或改进了 :count 件标本|[2,*] 在本平台标注或改进了 :count 件标本",
     "{1} :count specimen|[2,*] :count specimens": "{1} :count 件标本|[2,*] :count 件标本",
+    "{1} :count locality|[2,*] :count localities": "{1} :count 个地点|[2,*] :count 个地点",
+    "{1} :count still needs georeferencing|[2,*] :count still need georeferencing": "{1} :count 仍需要标注|[2,*] :count 仍需要标注",
     "+ Add condition": "+ 添加条件",
     ":count of the pasted keys did not match any occurrence:": "：count 个粘贴的键未匹配任何记录：",
     "Add at least one condition before saving as a project.": "另存为项目前，请至少添加一个条件。",

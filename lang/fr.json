@@ -528,6 +528,8 @@
     "with GBIF coordinates": "avec coordonnées GBIF",
     "{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform": "{1} :count spécimen géoréférencé ou amélioré sur cette plateforme|[2,*] :count spécimens géoréférencés ou améliorés sur cette plateforme",
     "{1} :count specimen|[2,*] :count specimens": "{1} :count spécimen|[2,*] :count spécimens",
+    "{1} :count locality|[2,*] :count localities": "{1} :count localité|[2,*] :count localités",
+    "{1} :count still needs georeferencing|[2,*] :count still need georeferencing": "{1} :count nécessite encore un géoréférencement|[2,*] :count nécessitent encore un géoréférencement",
     "+ Add condition": "+ Ajouter une condition",
     ":count of the pasted keys did not match any occurrence:": ":count des clés collées ne correspondent à aucune occurrence :",
     "Add at least one condition before saving as a project.": "Ajoutez au moins une condition avant d'enregistrer comme projet.",

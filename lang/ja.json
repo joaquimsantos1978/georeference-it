@@ -528,6 +528,8 @@
     "with GBIF coordinates": "GBIF座標あり",
     "{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform": "{1} このプラットフォームでジオリファレンスまたは改善された標本 :count件|[2,*] このプラットフォームでジオリファレンスまたは改善された標本 :count件",
     "{1} :count specimen|[2,*] :count specimens": "{1} :count件の標本|[2,*] :count件の標本",
+    "{1} :count locality|[2,*] :count localities": "{1} :count件の地名|[2,*] :count件の地名",
+    "{1} :count still needs georeferencing|[2,*] :count still need georeferencing": "{1} :countはまだジオリファレンスが必要です|[2,*] :countはまだジオリファレンスが必要です",
     "+ Add condition": "+ 条件を追加",
     ":count of the pasted keys did not match any occurrence:": ":count 件の貼り付けたキーはどの記録とも一致しませんでした：",
     "Add at least one condition before saving as a project.": "プロジェクトとして保存する前に、少なくとも1つの条件を追加してください。",
