@@ -2,8 +2,18 @@
 
     @php
         $pct = $stats['total'] > 0 ? round($stats['georeferenced'] / $stats['total'] * 100) : 0;
-        $barColor = $pct >= 75 ? '#22c55e' : ($pct >= 40 ? '#fbbf24' : '#f87171');
         $isOwner = $project->isOwnedBy(auth()->user());
+
+        // Same four-way breakdown as the global Stats page's progress bar.
+        $total        = $stats['total'] ?? 0;
+        $gbifCount    = $stats['gbif'] ?? 0;
+        $validCount   = $stats['validated'] ?? 0;
+        $pendingCount = $stats['pending'] ?? 0;
+        $noCoordCount = $stats['ungeoreferenced'] ?? 0;
+        $pctGbif      = $total > 0 ? number_format($gbifCount    / $total * 100, 2, '.', '') : '0';
+        $pctValidated = $total > 0 ? number_format($validCount   / $total * 100, 2, '.', '') : '0';
+        $pctPending   = $total > 0 ? number_format($pendingCount / $total * 100, 2, '.', '') : '0';
+        $pctNoCoord   = $total > 0 ? number_format($noCoordCount / $total * 100, 1, '.', '') : '0';
     @endphp
 
     <div class="max-w-4xl mx-auto space-y-6 pb-16">
@@ -69,11 +79,19 @@
                     <div class="text-xs text-gray-500 mt-0.5">{{ __('Missing') }}</div>
                 </div>
             </div>
-            <div class="flex items-center gap-2 mt-3">
-                <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-                    <div class="h-2 rounded-full" style="width:{{ $pct }}%;background:{{ $barColor }}"></div>
-                </div>
-                <span class="text-sm text-gray-500 tabular-nums">{{ $pct }}%</span>
+            <div class="w-full rounded-full h-4 overflow-hidden flex mt-3" style="background:#e5e7eb">
+                <div style="width:{{ $pctGbif }}%;background:#22c55e;height:100%"></div>
+                <div style="width:{{ $pctValidated }}%;background:#15803d;height:100%"></div>
+                <div style="width:{{ $pctPending }}%;background:#fb923c;height:100%"></div>
+            </div>
+            <div class="flex flex-wrap items-center gap-y-2 mt-3 text-xs text-gray-500" style="gap-x:0">
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#22c55e"></span> {{ __('Coordinates from GBIF') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($gbifCount) }}</strong>&nbsp;({{ $pctGbif }}%)</span>
+                <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#15803d"></span> {{ __('Validated by community') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($validCount) }}</strong>&nbsp;({{ $pctValidated }}%)</span>
+                <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
+                <span class="flex items-center gap-1.5" style="padding-right:20px"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:#fb923c"></span> {{ __('Pending review') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($pendingCount) }}</strong>&nbsp;({{ $pctPending }}%)</span>
+                <span style="border-left:1px solid #d1d5db;height:14px;margin-right:20px"></span>
+                <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0 border border-gray-300" style="background:#e5e7eb"></span> {{ __('No coordinates') }} <strong class="text-gray-700 dark:text-gray-300 ml-1">{{ number_format($noCoordCount) }}</strong>&nbsp;({{ $pctNoCoord }}%)</span>
             </div>
             <div class="text-xs text-gray-400 mt-2">
                 {{ trans_choice('{1} :count locality|[2,*] :count localities', $stats['locality_groups'] ?? 0, ['count' => number_format($stats['locality_groups'] ?? 0)]) }}

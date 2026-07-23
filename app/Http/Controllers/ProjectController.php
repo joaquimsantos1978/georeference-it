@@ -303,6 +303,7 @@ class ProjectController extends Controller
             [
                 'total' => 0, 'georeferenced' => 0, 'validated' => 0, 'ungeoreferenced' => 0,
                 'locality_groups' => 0, 'locality_groups_missing' => 0,
+                'gbif' => 0, 'pending' => 0,
             ]
         );
     }
@@ -313,11 +314,18 @@ class ProjectController extends Controller
         // done per locality description, not per specimen, so a project spanning 3,000
         // specimens might only be ~200 distinct places to actually look at (same reasoning
         // as the global Stats page's "N locality groups with work remaining").
+        //
+        // 'gbif'/'pending' mirror the global Stats page's breakdown ('Coordinates from GBIF'
+        // combines gbif_georeferenced+gbif_reviewed; 'pending' = has_suggestion, i.e.
+        // suggestions submitted but not yet at the validation threshold) so the project
+        // progress bar can use the same four-way legend instead of a single georeferenced%.
         $agg = $this->scopedOccurrencesQuery($project)->selectRaw("
             COUNT(*) as total,
             SUM(georef_status != 'ungeoreferenced') as georeferenced,
             SUM(georef_status = 'validated') as validated,
             SUM(georef_status = 'ungeoreferenced') as ungeoreferenced,
+            SUM(georef_status IN ('gbif_georeferenced', 'gbif_reviewed')) as gbif,
+            SUM(georef_status = 'has_suggestion') as pending,
             COUNT(DISTINCT locality_group_id) as locality_groups,
             COUNT(DISTINCT CASE WHEN georef_status = 'ungeoreferenced' THEN locality_group_id END) as locality_groups_missing
         ")->first();
@@ -327,6 +335,8 @@ class ProjectController extends Controller
             'georeferenced'            => (int) $agg->georeferenced,
             'validated'                => (int) $agg->validated,
             'ungeoreferenced'          => (int) $agg->ungeoreferenced,
+            'gbif'                     => (int) $agg->gbif,
+            'pending'                  => (int) $agg->pending,
             'locality_groups'          => (int) $agg->locality_groups,
             'locality_groups_missing'  => (int) $agg->locality_groups_missing,
         ];
