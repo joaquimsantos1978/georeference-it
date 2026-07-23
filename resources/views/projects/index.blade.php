@@ -48,7 +48,7 @@
                 <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
                         <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Project') }}</th>
-                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Total') }}</th>
+                        <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Specimens') }}</th>
                         <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-28">{{ __('Georeferenced') }}</th>
                         <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Validated') }}</th>
                         <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-24">{{ __('Missing') }}</th>

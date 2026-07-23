@@ -54,7 +54,7 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['total']) }}</div>
-                    <div class="text-xs text-gray-500 mt-0.5">{{ __('Total') }}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{{ __('Specimens') }}</div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                     <div class="text-2xl font-bold text-green-600">{{ number_format($stats['georeferenced']) }}</div>
