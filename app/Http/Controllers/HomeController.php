@@ -44,7 +44,7 @@ class HomeController extends Controller
         $recentActivity = DB::table('activity_log as al')
             ->leftJoin('users as u', 'u.id', '=', 'al.user_id')
             ->select(
-                'al.id', 'al.type', 'al.location_label', 'al.country_code', 'al.created_at',
+                'al.id', 'al.type', 'al.location_label', 'al.country_code', 'al.created_at', 'al.user_id',
                 DB::raw('IF(u.public_name = 1, u.name, NULL) as user_name')
             )
             ->orderByDesc('al.created_at')

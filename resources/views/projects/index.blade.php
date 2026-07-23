@@ -82,7 +82,7 @@
                                     </div>
                                     <div class="text-xs text-gray-500 mt-0.5">{{ $project->user->name ?? '' }}</div>
                                     @if($project->description)
-                                    <div class="text-xs text-gray-400 mt-0.5">{{ \Illuminate\Support\Str::limit($project->description, 100) }}</div>
+                                    <div class="text-xs text-gray-400 mt-1.5">{{ \Illuminate\Support\Str::limit($project->description, 100) }}</div>
                                     @endif
                                 </div>
                             </div>

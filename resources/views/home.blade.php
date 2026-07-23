@@ -88,7 +88,7 @@
                                 </div>
                             </div>
                             @if($project->description)
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-2">{{ $project->description }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-3 line-clamp-2">{{ $project->description }}</p>
                             @endif
                             @if($isComputing)
                             <div class="flex items-center gap-1.5 mt-3 text-xs text-gray-400">
@@ -146,7 +146,7 @@
                                      all, so the line just wrapped and overflowed past this
                                      column into Impact/Leaderboard next to it. --}}
                                 <div class="min-w-0 flex-1 truncate">
-                                    <span class="text-gray-700 dark:text-gray-200">{{ $event->user_name ?? __('Hidden contributor') }}</span>
+                                    <span class="text-gray-700 dark:text-gray-200">{{ $event->user_name ?? ($event->user_id ? __('Hidden contributor') : __('Anonymous')) }}</span>
                                     <span class="text-gray-400"> — </span>
                                     <span class="text-gray-500">{{ $event->location_label ?: $event->country_code }}</span>
                                 </div>
