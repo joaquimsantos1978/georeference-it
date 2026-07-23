@@ -107,13 +107,13 @@
                                 <span class="text-xs text-gray-500 w-8 text-right tabular-nums">{{ $pct }}%</span>
                             </div>
                             <div class="flex items-center justify-between gap-2 mt-3">
-                                <span class="text-xs text-gray-400 truncate">{{ __('by') }} {{ $project->user->name ?? '' }}</span>
                                 @if(($s['total'] - $s['georeferenced']) > 0)
                                 <a href="{{ route('georef.index') }}?project={{ $project->id }}"
                                    class="flex-shrink-0 inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5">
                                     {{ __('Georeference') }}
                                 </a>
                                 @endif
+                                <span class="text-xs text-gray-400 truncate text-right ml-auto">{{ __('by') }} {{ $project->user->name ?? '' }}</span>
                             </div>
                             @endif
                         </div>

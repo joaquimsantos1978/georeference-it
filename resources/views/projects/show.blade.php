@@ -111,13 +111,13 @@
                 @endif
             </div>
             <div class="flex items-center justify-between gap-2 mt-4">
-                <span class="text-xs text-gray-400">{{ __('by') }} {{ $project->user->name ?? '' }}</span>
                 @if(($stats['total'] - $stats['georeferenced']) > 0)
                 <a href="{{ route('georef.index') }}?project={{ $project->id }}"
                    class="inline-flex items-center gap-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-2">
                     {{ __('Georeference') }}
                 </a>
                 @endif
+                <span class="text-xs text-gray-400 ml-auto">{{ __('by') }} {{ $project->user->name ?? '' }}</span>
             </div>
             @endif
         </div>
