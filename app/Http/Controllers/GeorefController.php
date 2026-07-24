@@ -1482,10 +1482,14 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
     $candidates = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($ftQuery, $poolSize) {
         $fetchGroups = function (string $booleanQuery) use ($poolSize) {
             return LocalityGroup::query()
-                ->where(function ($sub) {
-                    $sub->whereHas('suggestions', fn($s) => $s->where('status', '!=', 'rejected'))
-                        ->orWhereHas('occurrences', fn($o) => $o->where('georef_status', 'gbif_georeferenced'));
-                })
+                // Was whereHas('suggestions', ...)->orWhereHas('occurrences', ...) — two
+                // correlated EXISTS subqueries evaluated per fulltext-matched row, the
+                // actual source of the "300+ seconds without a cache" cost mentioned
+                // below. These counters are already maintained per-group by
+                // recalculateCounters() on every submit/validate/vote (same columns
+                // RefreshImpactCounts sums for the Stats page), so this is a plain
+                // indexed-free integer comparison instead — no subquery at all.
+                ->whereRaw('(has_suggestion_count > 0 OR validated_count > 0 OR conflicted_count > 0 OR gbif_georeferenced_count > 0)')
                 // Most-recently-georeferenced first, not relevance — the fulltext MATCH
                 // still does the actual filtering to matching localities, it just no
                 // longer decides display order. updated_at is touched by
