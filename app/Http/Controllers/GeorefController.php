@@ -241,7 +241,7 @@ private function focusWords(string $focus): array
 // matching rows being already-validated doesn't starve either pool, and always pushing
 // country down into this same query (not left to intersect afterwards) so a multi-country
 // scope's 500-row sample stays representative instead of depending on incidental row order.
-private function candidateGroupIds(\Closure $scope, array $statuses, array $seenIdsForAttempt, ?string $country): array
+private function candidateGroupIds(\Closure $scope, array $statuses, array $seenIdsForAttempt, ?string $country, ?int $userId = null): array
 {
     return DB::table('occurrences')
         ->tap($scope)
@@ -249,6 +249,21 @@ private function candidateGroupIds(\Closure $scope, array $statuses, array $seen
         ->whereNull('occurrences.deleted_at')
         ->when($country, fn($q) => $q->where('occurrences.country_code', $country))
         ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('occurrences.locality_group_id', $seenIdsForAttempt))
+        // seenIds above is only this browsing session's exclusion list — it resets on a
+        // new tab/session or a different focus/dataset/project key, which let a group the
+        // user already submitted a suggestion or cast a vote on resurface as a "next" task
+        // (most visible in small projects, where the candidate pool is small enough to
+        // cycle back around). This is the persistent, per-user version of that exclusion.
+        ->when($userId, fn($q) => $q
+            ->whereNotExists(fn($sub) => $sub->select(DB::raw(1))
+                ->from('georef_suggestions')
+                ->whereColumn('georef_suggestions.locality_group_id', 'occurrences.locality_group_id')
+                ->where('georef_suggestions.user_id', $userId))
+            ->whereNotExists(fn($sub) => $sub->select(DB::raw(1))
+                ->from('georef_validations')
+                ->join('georef_suggestions', 'georef_suggestions.id', '=', 'georef_validations.suggestion_id')
+                ->whereColumn('georef_suggestions.locality_group_id', 'occurrences.locality_group_id')
+                ->where('georef_validations.user_id', $userId)))
         ->limit(500)
         ->pluck('occurrences.locality_group_id')
         ->unique()
@@ -406,8 +421,8 @@ public function next(Request $request)
             return [$noop, $noop];
         }
         $scope = fn($q) => $q->where('occurrences.dataset_key', $datasetKey);
-        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country);
-        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country);
+        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country, auth()->id());
+        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country, auth()->id());
         return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
     };
 
@@ -429,8 +444,8 @@ public function next(Request $request)
             [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($project->criteria ?? []);
             $scope = $where !== '' ? fn($q) => $q->whereRaw($where, $bindings) : fn($q) => $q;
         }
-        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country);
-        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country);
+        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country, auth()->id());
+        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country, auth()->id());
         return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
     };
 
@@ -445,8 +460,8 @@ public function next(Request $request)
         }
         [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($adhocCriteria);
         $scope = $where !== '' ? fn($q) => $q->whereRaw($where, $bindings) : fn($q) => $q;
-        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country);
-        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country);
+        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country, auth()->id());
+        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country, auth()->id());
         return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
     };
 
