@@ -965,8 +965,11 @@ public function next(Request $request)
 
         }
 
-        // Log the georef event
-        $locationLabel = trim(implode(', ', array_filter([
+        // Log the georef event. locality_string is the pre-computed, richer combined
+        // label (continent/country/state/county/municipality/locality/... — see the
+        // locality_groups build query) — falls back to the narrow verbatim_locality/
+        // municipality/county chain only for older rows from before that column existed.
+        $locationLabel = $group->locality_string ?: trim(implode(', ', array_filter([
             $group->verbatim_locality, $group->municipality, $group->county,
         ])));
         $activitySource = auth()->check() ? 'user' : 'anonymous';
@@ -988,7 +991,7 @@ public function next(Request $request)
         // Log similar group georef events
         if (!empty($validated['similar_group_ids'])) {
             foreach (LocalityGroup::whereIn('id', $validated['similar_group_ids'])->get() as $simGroup) {
-                $simLabel = trim(implode(', ', array_filter([$simGroup->verbatim_locality, $simGroup->municipality, $simGroup->county])));
+                $simLabel = $simGroup->locality_string ?: trim(implode(', ', array_filter([$simGroup->verbatim_locality, $simGroup->municipality, $simGroup->county])));
                 DB::table('activity_log')->insert([
                     'type'             => 'georef',
                     'source'           => $activitySource,
@@ -1652,7 +1655,7 @@ private function countryNameToIso2(): array
         // Log validation — skip auto-agree on own submission (suggestion owner == voter)
         if ($logActivity && $suggestion->user_id !== $user->id) {
             $group = $suggestion->localityGroup;
-            $locationLabel = $group ? trim(implode(', ', array_filter([$group->verbatim_locality, $group->municipality, $group->county]))) : null;
+            $locationLabel = $group ? ($group->locality_string ?: trim(implode(', ', array_filter([$group->verbatim_locality, $group->municipality, $group->county])))) : null;
             DB::table('activity_log')->insert([
                 'type'             => 'validation_' . $vote,
                 'source'           => 'user',

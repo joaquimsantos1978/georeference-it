@@ -81,7 +81,7 @@
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-750">
                         <td class="px-4 py-2.5">
                             <div class="font-medium text-gray-900 dark:text-white text-sm leading-snug">
-                                {{ $group->verbatim_locality ?: ($group->municipality ?: ($group->county ?: $group->state_province)) }}
+                                {{ $group->verbatim_locality ?: ($group->municipality ?: ($group->county ?: ($group->state_province ?: $group->locality_string))) }}
                             </div>
                             @if($group->state_province || $group->county || $group->municipality)
                             <div class="text-xs text-gray-400 mt-0.5">

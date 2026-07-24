@@ -96,7 +96,7 @@
                         @foreach($suggestions as $s)
                         @php
                             $g = $s->localityGroup;
-                            $locality = $g ? ($g->verbatim_locality ?: ($g->municipality ?: ($g->county ?: $g->state_province))) : '—';
+                            $locality = $g ? ($g->verbatim_locality ?: ($g->municipality ?: ($g->county ?: ($g->state_province ?: $g->locality_string)))) : '—';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-750" id="sug-row-{{ $s->id }}">
                             <td class="px-4 py-3">
@@ -173,7 +173,7 @@
                         @php
                             $sg = $v->suggestion;
                             $grp = $sg?->localityGroup;
-                            $loc = $grp ? ($grp->verbatim_locality ?: ($grp->municipality ?: ($grp->county ?: $grp->state_province))) : '—';
+                            $loc = $grp ? ($grp->verbatim_locality ?: ($grp->municipality ?: ($grp->county ?: ($grp->state_province ?: $grp->locality_string)))) : '—';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-750" id="val-row-{{ $v->id }}">
                             <td class="px-4 py-3">
