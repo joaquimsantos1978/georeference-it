@@ -35,11 +35,11 @@ class BackfillActivityLog extends Command
                 MIN(gs.coordinate_uncertainty_m),
                 MIN(gs.georeference_remarks),
                 lg.country_code,
-                COALESCE(NULLIF(lg.locality_string, ''), TRIM(CONCAT_WS(', ',
+                COALESCE(NULLIF(TRIM(CONCAT_WS(', ',
                     NULLIF(lg.verbatim_locality, ''),
                     NULLIF(lg.municipality, ''),
                     NULLIF(lg.county, '')
-                ))),
+                )), ''), lg.locality_string),
                 MIN(gs.created_at)
             FROM georef_suggestions gs
             JOIN locality_groups lg ON lg.id = gs.locality_group_id
@@ -58,11 +58,11 @@ class BackfillActivityLog extends Command
                 gs.locality_group_id,
                 1,
                 lg.country_code,
-                COALESCE(NULLIF(lg.locality_string, ''), TRIM(CONCAT_WS(', ',
+                COALESCE(NULLIF(TRIM(CONCAT_WS(', ',
                     NULLIF(lg.verbatim_locality, ''),
                     NULLIF(lg.municipality, ''),
                     NULLIF(lg.county, '')
-                ))),
+                )), ''), lg.locality_string),
                 gv.created_at
             FROM georef_validations gv
             JOIN georef_suggestions gs ON gs.id = gv.suggestion_id

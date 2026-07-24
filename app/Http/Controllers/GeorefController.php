@@ -965,13 +965,14 @@ public function next(Request $request)
 
         }
 
-        // Log the georef event. locality_string is the pre-computed, richer combined
-        // label (continent/country/state/county/municipality/locality/... — see the
-        // locality_groups build query) — falls back to the narrow verbatim_locality/
-        // municipality/county chain only for older rows from before that column existed.
-        $locationLabel = $group->locality_string ?: trim(implode(', ', array_filter([
+        // Log the georef event. Short name-style chain first (clean, e.g. "Bahia") —
+        // locality_string is a last-resort fallback only, since it's a long combined
+        // string (continent/country/state/county/.../location_remarks, often with the
+        // raw continent enum like "SOUTH_AMERICA" leading it) meant for a detail panel,
+        // not this compact feed. Only used when the short chain is completely empty.
+        $locationLabel = trim(implode(', ', array_filter([
             $group->verbatim_locality, $group->municipality, $group->county,
-        ])));
+        ]))) ?: $group->locality_string;
         $activitySource = auth()->check() ? 'user' : 'anonymous';
         DB::table('activity_log')->insert([
             'type'             => 'georef',
@@ -991,7 +992,7 @@ public function next(Request $request)
         // Log similar group georef events
         if (!empty($validated['similar_group_ids'])) {
             foreach (LocalityGroup::whereIn('id', $validated['similar_group_ids'])->get() as $simGroup) {
-                $simLabel = $simGroup->locality_string ?: trim(implode(', ', array_filter([$simGroup->verbatim_locality, $simGroup->municipality, $simGroup->county])));
+                $simLabel = trim(implode(', ', array_filter([$simGroup->verbatim_locality, $simGroup->municipality, $simGroup->county]))) ?: $simGroup->locality_string;
                 DB::table('activity_log')->insert([
                     'type'             => 'georef',
                     'source'           => $activitySource,
@@ -1655,7 +1656,7 @@ private function countryNameToIso2(): array
         // Log validation — skip auto-agree on own submission (suggestion owner == voter)
         if ($logActivity && $suggestion->user_id !== $user->id) {
             $group = $suggestion->localityGroup;
-            $locationLabel = $group ? ($group->locality_string ?: trim(implode(', ', array_filter([$group->verbatim_locality, $group->municipality, $group->county])))) : null;
+            $locationLabel = $group ? (trim(implode(', ', array_filter([$group->verbatim_locality, $group->municipality, $group->county]))) ?: $group->locality_string) : null;
             DB::table('activity_log')->insert([
                 'type'             => 'validation_' . $vote,
                 'source'           => 'user',
