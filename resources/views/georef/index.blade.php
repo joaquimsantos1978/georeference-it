@@ -1534,7 +1534,7 @@ function buildLocalityString(g) {
         var results = window._nominatimResults || [];
         var itemsHtml = results.map((r, i) =>
             '<button onclick="applyNominatimResult('+i+')" style="display:block;width:100%;text-align:left;font-size:11px;padding:5px;border-radius:4px;border:1px solid '+(i===selectedIndex?'#16a34a':'#e5e7eb')+';margin-bottom:2px;background:'+(i===selectedIndex?'#f0fdf4':'white')+';cursor:pointer" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\''+(i===selectedIndex?'#f0fdf4':'white')+'\'">'+
-            '<span style="font-weight:500;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+(i===selectedIndex?'✓ ':'')+r.display_name+'</span>'+
+            '<span title="'+r.display_name.replace(/"/g, '&quot;')+'" style="font-weight:500;display:block;white-space:normal;overflow-wrap:break-word">'+(i===selectedIndex?'✓ ':'')+r.display_name+'</span>'+
             '<span style="color:#9ca3af">'+r.type+' · '+parseFloat(r.lat).toFixed(4)+', '+parseFloat(r.lon).toFixed(4)+'</span></button>'
         ).join('');
         if (_nominatimHasMore) {
