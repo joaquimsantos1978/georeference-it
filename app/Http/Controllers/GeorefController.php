@@ -1490,16 +1490,18 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
                 // RefreshImpactCounts sums for the Stats page), so this is a plain
                 // indexed-free integer comparison instead — no subquery at all.
                 ->whereRaw('(has_suggestion_count > 0 OR validated_count > 0 OR conflicted_count > 0 OR gbif_georeferenced_count > 0)')
-                // Ordering by updated_at (most-recently-georeferenced first) forced a
-                // filesort over every fulltext-matched row, since that order has nothing
-                // to do with the MATCH relevance score. While the GBIF monthly refresh is
-                // writing heavily to locality_groups (including this same FULLTEXT
-                // column), that filesort contends with the FTS index's own background
-                // sync and turned a sub-second search into ~30s. Ordering by relevance
-                // instead lets MySQL use the fulltext ranking it already computed for the
-                // MATCH filter, avoiding the extra sort pass.
+                // The FTS index (type: fulltext in EXPLAIN) is organized by search term,
+                // not by row order, so MySQL always has to collect every matching row
+                // before it can sort by anything else — there's no way to stream results
+                // in a different column's order and stop early. Given that, order by
+                // updated_at (a plain physical column, "Using filesort" only) rather than
+                // by MATCH() AGAINST() relevance (a computed expression, which EXPLAIN
+                // showed also needs "Using temporary" to materialize the scores before
+                // sorting — structurally heavier, not lighter). Most-recently-
+                // georeferenced first; updated_at is touched by recalculateCounters() on
+                // every submit/validate/vote.
                 ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
-                ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanQuery])
+                ->orderByDesc('updated_at')
                 ->limit($poolSize)
                 ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'updated_at']);
         };
