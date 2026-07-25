@@ -1490,13 +1490,16 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
                 // RefreshImpactCounts sums for the Stats page), so this is a plain
                 // indexed-free integer comparison instead — no subquery at all.
                 ->whereRaw('(has_suggestion_count > 0 OR validated_count > 0 OR conflicted_count > 0 OR gbif_georeferenced_count > 0)')
-                // Most-recently-georeferenced first, not relevance — the fulltext MATCH
-                // still does the actual filtering to matching localities, it just no
-                // longer decides display order. updated_at is touched by
-                // recalculateCounters() on every submit/validate/vote, so it's a reliable
-                // "last touched" signal for a group.
+                // Ordering by updated_at (most-recently-georeferenced first) forced a
+                // filesort over every fulltext-matched row, since that order has nothing
+                // to do with the MATCH relevance score. While the GBIF monthly refresh is
+                // writing heavily to locality_groups (including this same FULLTEXT
+                // column), that filesort contends with the FTS index's own background
+                // sync and turned a sub-second search into ~30s. Ordering by relevance
+                // instead lets MySQL use the fulltext ranking it already computed for the
+                // MATCH filter, avoiding the extra sort pass.
                 ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
-                ->orderByDesc('updated_at')
+                ->orderByRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanQuery])
                 ->limit($poolSize)
                 ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'updated_at']);
         };
