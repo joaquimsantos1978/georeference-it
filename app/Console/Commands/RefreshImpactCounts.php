@@ -179,7 +179,12 @@ class RefreshImpactCounts extends Command
 
         $global->pending_groups = DB::table('locality_groups')
             ->whereNull('deleted_at')
-            ->whereRaw('ungeoreferenced_count > 0 OR pending_count > 0')
+            // Parens are load-bearing: whereRaw() is AND-ed in as-is, so without them the
+            // OR silently escapes the deleted_at/exclusion filters — this used to compile
+            // to "deleted_at IS NULL AND ungeoreferenced_count > 0 OR (pending_count > 0
+            // AND id NOT IN (...))", letting corrupted groups slip back in through the
+            // ungeoreferenced_count side.
+            ->whereRaw('(ungeoreferenced_count > 0 OR pending_count > 0)')
             ->tap($excludeCorruptedGroups)
             ->count();
 
