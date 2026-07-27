@@ -563,6 +563,7 @@ class GbifImportDownload extends Command
                 $groupsCreated += DB::affectingStatement("
                     INSERT IGNORE INTO locality_groups
                         (group_hash, country_code, continent, state_province, county, municipality,
+                         island, island_group,
                          verbatim_locality, location_remarks, higher_geography, locality_string, created_at, updated_at)
                     SELECT
                         SHA1(CONCAT_WS('|',
@@ -583,6 +584,8 @@ class GbifImportDownload extends Command
                         MIN(state_province),
                         MIN(county),
                         MIN(municipality),
+                        MIN(NULLIF(island, '')),
+                        MIN(NULLIF(island_group, '')),
                         MIN(COALESCE(NULLIF(TRIM(verbatim_locality),''), NULLIF(TRIM(locality),''))) ,
                         MIN(location_remarks),
                         MIN(higher_geography),
