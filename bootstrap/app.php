@@ -45,6 +45,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt('00:00')
             ->timezone('UTC')
             ->when(fn () => now()->isSaturday() && now()->day <= 7)
+            // Manual escape hatch for skipping the next trigger — e.g. this month's run
+            // was manually resumed after a crash and finished only days before the next
+            // one would otherwise fire. Set via `Cache::put('gbif:monthly-refresh:paused',
+            // true, now()->addDays(N))`; TTL'd on purpose so a forgotten flag can't
+            // silently disable the whole pipeline forever.
+            ->skip(fn () => \Illuminate\Support\Facades\Cache::get('gbif:monthly-refresh:paused', false))
             ->withoutOverlapping(1440) // minutes; import can take hours, never double-run
             ->runInBackground()
             ->appendOutputTo(storage_path('logs/gbif-monthly-refresh.log'));
