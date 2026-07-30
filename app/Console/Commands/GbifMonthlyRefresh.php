@@ -15,7 +15,7 @@ class GbifMonthlyRefresh extends Command
                             {--skip-request : Skip requesting a new download (use --key instead)}
                             {--key= : Reuse an existing GBIF download key instead of requesting a new one}';
 
-    protected $description = 'Full monthly GBIF refresh: request download, wait, import, then re-run auto-suggestions, consistency checks, counters and dataset stats';
+    protected $description = 'Full monthly GBIF refresh: request download, wait, import, reconcile suggestions, then re-run auto-suggestions, consistency checks, counters and dataset stats';
 
     // Cache key the heartbeat command (gbif:refresh-heartbeat) reads to know a refresh is
     // in progress and report on it — see that command for the periodic-email side of this.
@@ -101,8 +101,8 @@ class GbifMonthlyRefresh extends Command
 
         // Step 2: poll, download, and import (gbif:import-download already polls internally
         // for up to 8 hours, downloads the DWCA, stages it, and upserts in batches)
-        $this->markStep('Step 2/6: Importing (download key: ' . $key . ')');
-        $this->info('Step 2/6: Importing (polling until GBIF finishes preparing the download — may take hours)...');
+        $this->markStep('Step 2/7: Importing (download key: ' . $key . ')');
+        $this->info('Step 2/7: Importing (polling until GBIF finishes preparing the download — may take hours)...');
         // --prune-deleted is safe here since the monthly refresh always requests a full,
         // unfiltered world download (never --country-scoped).
         $exit = Artisan::call('gbif:import-download', ['key' => $key, '--prune-deleted' => true]);
@@ -112,27 +112,37 @@ class GbifMonthlyRefresh extends Command
             return $this->abortWith('gbif:import-download failed — aborting refresh before downstream steps.');
         }
 
-        // Step 3: regenerate system auto-suggestions for newly-eligible groups
-        $this->markStep('Step 3/6: Creating system auto-suggestions');
-        $this->info('Step 3/6: Creating system auto-suggestions...');
+        // Step 3: an occurrence whose published locality GBIF corrected this cycle may have
+        // moved to a different locality_group — clean up whatever suggestion it left behind
+        // on its old (now possibly empty) group, and attach it to its new group's existing
+        // suggestion if there is one. Must run before auto-suggest below, which skips any
+        // group that already has a suggestion and would otherwise never revisit these.
+        $this->markStep('Step 3/7: Reconciling suggestions after re-grouping');
+        $this->info('Step 3/7: Reconciling suggestions after re-grouping...');
+        Artisan::call('gbif:reconcile-suggestions');
+        $this->line(Artisan::output());
+
+        // Step 4: regenerate system auto-suggestions for newly-eligible groups
+        $this->markStep('Step 4/7: Creating system auto-suggestions');
+        $this->info('Step 4/7: Creating system auto-suggestions...');
         Artisan::call('gbif:auto-suggest');
         $this->line(Artisan::output());
 
-        // Step 4: re-run consistency checks (new/changed coordinates may reveal conflicts)
-        $this->markStep('Step 4/6: Checking consistency');
-        $this->info('Step 4/6: Checking consistency...');
+        // Step 5: re-run consistency checks (new/changed coordinates may reveal conflicts)
+        $this->markStep('Step 5/7: Checking consistency');
+        $this->info('Step 5/7: Checking consistency...');
         Artisan::call('gbif:check-consistency');
         $this->line(Artisan::output());
 
-        // Step 5: backfill locality_groups.ungeoreferenced_count from the fresh occurrences data
-        $this->markStep('Step 5/6: Backfilling ungeoreferenced counts');
-        $this->info('Step 5/6: Backfilling ungeoreferenced counts...');
+        // Step 6: backfill locality_groups.ungeoreferenced_count from the fresh occurrences data
+        $this->markStep('Step 6/7: Backfilling ungeoreferenced counts');
+        $this->info('Step 6/7: Backfilling ungeoreferenced counts...');
         Artisan::call('gbif:backfill-ungeoreferenced');
         $this->line(Artisan::output());
 
-        // Step 6: refresh dataset metadata/stats shown on the Datasets page
-        $this->markStep('Step 6/6: Syncing dataset stats');
-        $this->info('Step 6/6: Syncing dataset stats...');
+        // Step 7: refresh dataset metadata/stats shown on the Datasets page
+        $this->markStep('Step 7/7: Syncing dataset stats');
+        $this->info('Step 7/7: Syncing dataset stats...');
         Artisan::call('gbif:sync-datasets');
         $this->line(Artisan::output());
 

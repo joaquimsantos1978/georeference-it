@@ -58,7 +58,7 @@ class GbifImportDownload extends Command
 
     private function clearCheckpoints(): void
     {
-        foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted', 'multimedia_staging'] as $stage) {
+        foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted', 'multimedia_staging', 'reconcile_suggestions'] as $stage) {
             Cache::forget("gbif:progress:{$stage}");
         }
     }
