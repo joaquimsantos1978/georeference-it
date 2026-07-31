@@ -837,8 +837,16 @@ public function next(Request $request)
             ->first();
 
         if ($existing) {
-            if (auth()->check() && !$existing->validations()->where('user_id', auth()->id())->exists()) {
-                $this->applyVote($existing, auth()->user(), 'agree', true);
+            if (auth()->check()) {
+                $this->setVote($existing, auth()->user(), 'agree', true);
+                // Disagree with whatever other pending suggestions this user was previously
+                // attached to in this group — matching a coordinate they just re-submitted
+                // means they no longer stand by a different one.
+                GeorefSuggestion::where('locality_group_id', $group->id)
+                    ->where('status', 'pending')
+                    ->where('id', '!=', $existing->id)
+                    ->get()
+                    ->each(fn($other) => $this->setVote($other, auth()->user(), 'disagree', true));
             }
             $group->recalculateCounters();
             return response()->json(['success' => true, 'suggestion_id' => $existing->id]);
@@ -884,6 +892,16 @@ public function next(Request $request)
             ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
             ->update(['georef_status' => 'has_suggestion']);
 
+        // Submitting a new suggestion means the user no longer stands by any other pending
+        // suggestion they'd previously agreed with in this same group.
+        if (auth()->check()) {
+            GeorefSuggestion::where('locality_group_id', $group->id)
+                ->where('status', 'pending')
+                ->where('id', '!=', $suggestion->id)
+                ->get()
+                ->each(fn($other) => $this->setVote($other, auth()->user(), 'disagree', true));
+        }
+
         // Include georef occurrences from suggestions the user chose to correct
         if (!empty($validated['correct_suggestion_ids'])) {
             $correctSuggestions = GeorefSuggestion::whereIn('id', $validated['correct_suggestion_ids'])
@@ -925,8 +943,13 @@ public function next(Request $request)
                     ->first();
 
                 if ($existing) {
-                    if (auth()->check() && !$existing->validations()->where('user_id', auth()->id())->exists()) {
-                        $this->applyVote($existing, auth()->user(), 'agree', true);
+                    if (auth()->check()) {
+                        $this->setVote($existing, auth()->user(), 'agree', true);
+                        GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                            ->where('status', 'pending')
+                            ->where('id', '!=', $existing->id)
+                            ->get()
+                            ->each(fn($other) => $this->setVote($other, auth()->user(), 'disagree', true));
                     }
                     $simGroup->recalculateCounters();
                     continue;
@@ -969,6 +992,12 @@ public function next(Request $request)
 
                 if (auth()->check()) {
                     $this->applyVote($simSuggestion, auth()->user(), 'agree', false);
+
+                    GeorefSuggestion::where('locality_group_id', $simGroup->id)
+                        ->where('status', 'pending')
+                        ->where('id', '!=', $simSuggestion->id)
+                        ->get()
+                        ->each(fn($other) => $this->setVote($other, auth()->user(), 'disagree', true));
                 }
 
                 $simGroup->occurrences()
@@ -1054,19 +1083,13 @@ public function next(Request $request)
                 ->first();
 
             if ($existing) {
-                if (!$existing->validations()->where('user_id', auth()->id())->exists()) {
-                    $this->applyVote($existing, auth()->user(), 'agree', true);
-                }
+                $this->setVote($existing, auth()->user(), 'agree', true);
                 // Disagree on all other pending suggestions in this group
                 GeorefSuggestion::where('locality_group_id', $simGroup->id)
                     ->where('status', 'pending')
                     ->where('id', '!=', $existing->id)
                     ->get()
-                    ->each(function ($other) {
-                        if (!$other->validations()->where('user_id', auth()->id())->exists()) {
-                            $this->applyVote($other, auth()->user(), 'disagree', true);
-                        }
-                    });
+                    ->each(fn($other) => $this->setVote($other, auth()->user(), 'disagree', true));
                 $simGroup->recalculateCounters();
                 continue;
             }
@@ -1093,18 +1116,14 @@ public function next(Request $request)
                 'georeferenced_date'       => now(),
             ]);
 
-            $this->applyVote($simSuggestion, auth()->user(), 'agree', false);
+            $this->setVote($simSuggestion, auth()->user(), 'agree', false);
 
             // Disagree on all other existing pending suggestions in this group
             GeorefSuggestion::where('locality_group_id', $simGroup->id)
                 ->where('status', 'pending')
                 ->where('id', '!=', $simSuggestion->id)
                 ->get()
-                ->each(function ($other) {
-                    if (!$other->validations()->where('user_id', auth()->id())->exists()) {
-                        $this->applyVote($other, auth()->user(), 'disagree', true);
-                    }
-                });
+                ->each(fn($other) => $this->setVote($other, auth()->user(), 'disagree', true));
 
             $simGroup->occurrences()
                 ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
@@ -1196,15 +1215,16 @@ public function next(Request $request)
             }
         }
 
-        // Auto-disagree with all other pending suggestions in the same group
+        // Auto-disagree with all other pending suggestions in the same group — including
+        // ones the user already voted agree on (setVote flips that vote rather than
+        // skipping it, unlike a plain applyVote which would hit the unique constraint).
         $competing = GeorefSuggestion::where('locality_group_id', $suggestion->locality_group_id)
             ->where('id', '!=', $suggestion->id)
             ->where('status', 'pending')
-            ->whereDoesntHave('validations', fn($q) => $q->where('user_id', $user->id))
             ->get();
 
         foreach ($competing as $other) {
-            $this->applyVote($other, $user, 'disagree');
+            $this->setVote($other, $user, 'disagree');
         }
 
         return response()->json(['success' => true, 'advance' => true]);
@@ -1718,6 +1738,46 @@ private function countryNameToIso2(): array
         }
 
         return $validation;
+    }
+
+    // Like applyVote(), but safe to call when the user may already have a vote on this
+    // suggestion — flips it instead of trying a second INSERT (which would violate the
+    // suggestion_id+user_id unique index). Needed anywhere a user's action implies they no
+    // longer stand by an earlier "agree" on a competing suggestion in the same group — e.g.
+    // submitting their own new coordinates, or agreeing with a different suggestion.
+    private function setVote(GeorefSuggestion $suggestion, $user, string $vote, bool $logActivity = true): GeorefValidation
+    {
+        $existing = $suggestion->validations()->where('user_id', $user->id)->first();
+
+        if (!$existing) {
+            return $this->applyVote($suggestion, $user, $vote, $logActivity);
+        }
+
+        if ($existing->vote === $vote) {
+            return $existing;
+        }
+
+        $weight    = $user->getVoteWeight();
+        $oldPoints = $existing->points_awarded;
+        $newPoints = $vote === 'agree' ? $weight : -$weight;
+
+        $existing->update(['vote' => $vote, 'points_awarded' => $newPoints]);
+        $suggestion->increment('total_points', $newPoints - $oldPoints);
+        $suggestion->refresh();
+
+        if ($vote === 'agree') {
+            $threshold = (int) PlatformSetting::get('validation_threshold', 60);
+            if ($suggestion->total_points >= $threshold) {
+                $this->validateSuggestion($suggestion);
+            }
+        } elseif ($vote === 'disagree') {
+            $conflictThreshold = (int) PlatformSetting::get('conflict_threshold', -20);
+            if ($suggestion->total_points <= $conflictThreshold) {
+                $this->conflictSuggestion($suggestion);
+            }
+        }
+
+        return $existing;
     }
 
     private function conflictSuggestion(GeorefSuggestion $suggestion): void

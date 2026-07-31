@@ -3316,8 +3316,12 @@ function deleteSuggestion(id) {
         method: 'DELETE',
         headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'}
     }).then(r => r.json()).then(d => {
-        if (d.success && currentGroup) loadGroup(currentGroup.id);
-    });
+        if (d.success) {
+            location.reload();
+        } else {
+            alert(d.message || '{{ __("Could not delete the suggestion.") }}');
+        }
+    }).catch(() => alert('{{ __("Could not delete the suggestion.") }}'));
 }
 
 var _dismissBtn = document.getElementById('dismiss-system-btn');
