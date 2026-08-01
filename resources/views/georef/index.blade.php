@@ -1241,13 +1241,14 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         }
         return url;
     }
-    // GBIF caches/resizes images from publisher servers (some of which are slow or
-    // unreliable to hotlink directly) at api.gbif.org/v1/image/unsafe/{size}/{url} — used
-    // for the small row thumbnails only, where speed matters more than full resolution.
-    // Falls back to the original URL (see the onerror handler on the <img> itself) so a
-    // GBIF-side cache miss/outage never means a broken thumbnail.
+    // Used to proxy through GBIF's image cache/resizer (api.gbif.org/v1/image/unsafe/...)
+    // for the small row thumbnails, but that endpoint now rejects unsigned requests with
+    // "Image cache requests must be signed or use the occurrence API" — every thumbnail was
+    // guaranteed a failed request before falling back to the original URL (see the onerror
+    // handler on the <img> itself). Not worth signing requests for a 28px thumbnail — just
+    // go straight to the original.
     function gbifThumbUrl(originalUrl, size) {
-        return 'https://api.gbif.org/v1/image/unsafe/' + (size || '50x50') + '/' + encodeURI(originalUrl);
+        return originalUrl;
     }
     async function openImgViewer(rawUrl, title, link) {
         document.getElementById('img-viewer-title').textContent = title||'';
