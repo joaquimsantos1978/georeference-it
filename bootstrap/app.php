@@ -33,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
-        $middleware->throttleApi('60,1');  // 60 requests/minute per IP
+        $middleware->throttleApi('300,1');  // 300 requests/minute per IP
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command(SendWeeklySummary::class)->weeklyOn(1, '8:00'); // Monday 8am
