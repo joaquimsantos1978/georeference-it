@@ -147,14 +147,27 @@ class GeorefController extends Controller
                 ->where('normalized_locality', $group->normalized_locality)
                 ->where('county', $group->county)
                 ->where('country_code', $group->country_code)
+                // A common locality name can otherwise return dozens of siblings, each one
+                // driving its own query below — capped so a single group load can't balloon
+                // into an unbounded number of round-trips.
+                ->limit(50)
                 ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'ungeoreferenced_count', 'pending_count', 'validated_count']);
 
+            // One query for every sibling's suggestions instead of one query per sibling —
+            // this loop used to run a fresh GeorefSuggestion query per iteration (N+1), which
+            // is exactly the kind of thing that makes loading a single group slow even though
+            // next()'s own candidate-selection query is fast: the group itself just has a lot
+            // of associated data to gather. "Top 5 per group" is now cut in PHP instead of SQL
+            // since there's no per-group LIMIT in a single whereIn query.
+            $siblingSuggestionsByGroup = GeorefSuggestion::whereIn('locality_group_id', $siblings->pluck('id'))
+                ->where('status', 'pending')
+                ->with('user')
+                ->get()
+                ->groupBy('locality_group_id');
+
             foreach ($siblings as $sib) {
-                $sibSuggestions = GeorefSuggestion::where('locality_group_id', $sib->id)
-                    ->where('status', 'pending')
-                    ->limit(5)
-                    ->with('user')
-                    ->get()
+                $sibSuggestions = $siblingSuggestionsByGroup->get($sib->id, collect())
+                    ->take(5)
                     ->map(fn($s) => [
                         'id'                       => $s->id,
                         'decimal_latitude'         => $s->decimal_latitude,
