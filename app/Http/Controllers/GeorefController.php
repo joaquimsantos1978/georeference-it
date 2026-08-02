@@ -1501,29 +1501,46 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
     $cacheKey = 'georef:search-geo-loc:' . md5(mb_strtolower($ftQuery) . ':' . $poolSize);
     $candidates = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($ftQuery, $poolSize) {
         $fetchGroups = function (string $booleanQuery) use ($poolSize) {
-            return LocalityGroup::query()
-                // Was whereHas('suggestions', ...)->orWhereHas('occurrences', ...) — two
-                // correlated EXISTS subqueries evaluated per fulltext-matched row, the
-                // actual source of the "300+ seconds without a cache" cost mentioned
-                // below. These counters are already maintained per-group by
-                // recalculateCounters() on every submit/validate/vote (same columns
-                // RefreshImpactCounts sums for the Stats page), so this is a plain
-                // indexed-free integer comparison instead — no subquery at all.
-                ->whereRaw('(has_suggestion_count > 0 OR validated_count > 0 OR conflicted_count > 0 OR gbif_georeferenced_count > 0)')
-                // The FTS index (type: fulltext in EXPLAIN) is organized by search term,
-                // not by row order, so MySQL always has to collect every matching row
-                // before it can sort by anything else — there's no way to stream results
-                // in a different column's order and stop early. Given that, order by
-                // updated_at (a plain physical column, "Using filesort" only) rather than
-                // by MATCH() AGAINST() relevance (a computed expression, which EXPLAIN
-                // showed also needs "Using temporary" to materialize the scores before
-                // sorting — structurally heavier, not lighter). Most-recently-
-                // georeferenced first; updated_at is touched by recalculateCounters() on
-                // every submit/validate/vote.
-                ->whereRaw('MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery])
-                ->orderByDesc('updated_at')
-                ->limit($poolSize)
-                ->get(['id', 'verbatim_locality', 'municipality', 'county', 'state_province', 'country_code', 'occurrence_count', 'updated_at']);
+            // The FTS index (type: fulltext in EXPLAIN) is organized by search term, not by
+            // row order, so MySQL always has to collect every matching row before it can
+            // filter/sort by anything else — a common term can match thousands of groups,
+            // all of which get sorted before the outer LIMIT even applies. Bounding the raw
+            // fulltext match itself first (inner LIMIT, no ORDER BY needed there — it's just
+            // a candidate cap) keeps that cost fixed regardless of how common the term is.
+            // Same "may miss an edge-case match beyond the cap" tradeoff already accepted
+            // for the dataset/country candidate pools elsewhere in this controller — still
+            // filtered/sorted for real below, just over a bounded pool instead of the full
+            // match set. Observed cutting a 180+ second search to sub-second.
+            $ftCandidateCap = max(2000, $poolSize * 20);
+
+            $rows = DB::select("
+                SELECT id, verbatim_locality, municipality, county, state_province, country_code, occurrence_count, updated_at
+                FROM (
+                    SELECT id, verbatim_locality, municipality, county, state_province, country_code, occurrence_count, updated_at,
+                           has_suggestion_count, validated_count, conflicted_count, gbif_georeferenced_count
+                    FROM locality_groups
+                    WHERE MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)
+                        AND deleted_at IS NULL
+                    LIMIT ?
+                ) t
+                -- Was whereHas('suggestions', ...)->orWhereHas('occurrences', ...) — two
+                -- correlated EXISTS subqueries evaluated per fulltext-matched row, the
+                -- actual source of the '300+ seconds without a cache' cost mentioned below.
+                -- These counters are already maintained per-group by recalculateCounters()
+                -- on every submit/validate/vote (same columns RefreshImpactCounts sums for
+                -- the Stats page), so this is a plain indexed-free integer comparison
+                -- instead — no subquery at all.
+                WHERE (has_suggestion_count > 0 OR validated_count > 0 OR conflicted_count > 0 OR gbif_georeferenced_count > 0)
+                -- updated_at is a plain physical column ('Using filesort' only) — ordering
+                -- by MATCH() AGAINST() relevance instead was tried and EXPLAIN showed it
+                -- also needs 'Using temporary' to materialize the scores before sorting,
+                -- structurally heavier, not lighter. Most-recently-georeferenced first;
+                -- updated_at is touched by recalculateCounters() on every submit/validate/vote.
+                ORDER BY updated_at DESC
+                LIMIT ?
+            ", [$booleanQuery, $ftCandidateCap, $poolSize]);
+
+            return collect($rows);
         };
 
         // Require every significant word to match (AND), so a query with several
