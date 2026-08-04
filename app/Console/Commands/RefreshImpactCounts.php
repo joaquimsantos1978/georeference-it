@@ -47,14 +47,22 @@ class RefreshImpactCounts extends Command
         // country-scoped /georef/next request was observed taking 10-35s purely from
         // this (confirmed via EXPLAIN/timing — down to ~0.4-0.6s once replaced with a
         // plain whereNotIn against this cached ID list).
+        // whereNull('deleted_at') matters here — without it this also matches groups
+        // already soft-deleted for any unrelated reason whose frozen verbatim_locality/
+        // country_code happens to fit the pattern, which is how this list drifted to
+        // 10,000+ stale entries (a group already excluded via deleted_at everywhere else
+        // gains nothing from also being on this list, but the giant whereNotIn() built
+        // from it below gets slower for every one that's on it for no reason).
         $corruptedGroupIds = DB::table('locality_groups')
+            ->whereNull('deleted_at')
             ->where(function ($q) {
-                $q->whereNotNull('verbatim_locality')
-                  ->whereRaw("verbatim_locality REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
-            })
-            ->orWhere(function ($q) {
-                $q->whereNotNull('country_code')
-                  ->whereRaw("country_code REGEXP BINARY '[a-z]'");
+                $q->where(function ($q2) {
+                    $q2->whereNotNull('verbatim_locality')
+                       ->whereRaw("verbatim_locality REGEXP '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'");
+                })->orWhere(function ($q2) {
+                    $q2->whereNotNull('country_code')
+                       ->whereRaw("country_code REGEXP BINARY '[a-z]'");
+                });
             })
             ->pluck('id');
         Cache::forever('georef:corrupted_group_ids', $corruptedGroupIds->all());
