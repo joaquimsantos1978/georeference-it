@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\LocalityGroup;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -22,14 +23,13 @@ class GbifBackfillUngeoreferencedCount extends Command
             $this->info("Backfilling ungeoreferenced_count for country: {$country}");
             $this->backfillCountry($country, $chunk);
         } else {
-            // Process country by country to keep each UPDATE small
-            $countries = DB::table('locality_groups')
-                ->select('country_code')
-                ->whereNull('deleted_at')
-                ->whereNotNull('country_code')
-                ->distinct()
-                ->orderBy('country_code')
-                ->pluck('country_code');
+            // Process country by country to keep each UPDATE small. A plain
+            // ->distinct()->whereNull('deleted_at') here forces a full scan of
+            // locality_groups (118M+ rows) — the same "any extra WHERE breaks the loose
+            // index scan" cost already documented on LocalityGroup::activeCountryCodes(),
+            // which solves it (cached, index-only scan + cheap per-code existence check)
+            // — reuse it instead of re-paying that cost here.
+            $countries = LocalityGroup::activeCountryCodes();
 
             $this->info("Backfilling " . $countries->count() . " countries...");
 
