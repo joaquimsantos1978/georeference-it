@@ -9,7 +9,7 @@ class GbifBackfillUngeoreferencedCount extends Command
 {
     protected $signature = 'gbif:backfill-ungeoreferenced
                             {--country= : Limit to a specific country code}
-                            {--chunk=50000 : Occurrences rows per UPDATE chunk}';
+                            {--chunk=3000 : Locality groups per batch (drives an IN() list against occurrences — kept small on purpose, see below)}';
 
     protected $description = 'Backfill ungeoreferenced_count on locality_groups from occurrences table';
 
@@ -67,7 +67,11 @@ class GbifBackfillUngeoreferencedCount extends Command
 
             $lastId = $groupIds->last();
 
-            // Aggregate counts for this batch
+            // Aggregate counts for this batch. The default chunk (3000) is deliberately
+            // small: this WHERE IN() list is matched against occurrences (225M+ rows), and
+            // the previous default of 50000 produced an IN() list large enough to leave a
+            // single batch running for 5+ hours in production before anyone noticed it was
+            // stuck rather than just slow.
             $counts = DB::table('occurrences')
                 ->select('locality_group_id', DB::raw('COUNT(*) as cnt'))
                 ->whereNull('deleted_at')
