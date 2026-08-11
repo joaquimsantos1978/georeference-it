@@ -50,17 +50,25 @@ class ProjectCriteriaEvaluator
                 continue;
             }
 
+            // No LOWER() here — the connection's default collation (utf8mb4_unicode_ci,
+            // see config/database.php) is already case-insensitive, so wrapping either
+            // side in LOWER() bought nothing semantically but turned `column = ?` into a
+            // non-sargable functional expression, making the plain index on e.g.
+            // country_code unusable and forcing a full scan of occurrences (273M+ rows) —
+            // this is exactly what produced a 140+ minute runaway SELECT in production
+            // for a plain "country_code equals AO" project, which in turn blocked a
+            // concurrent pt-online-schema-change from creating its triggers.
             match ($operator) {
                 'equals' => [
-                    $clauses[]  = "LOWER({$column}) = LOWER(?)",
+                    $clauses[]  = "{$column} = ?",
                     $bindings[] = (string) $value,
                 ],
                 'contains' => [
-                    $clauses[]  = "LOWER({$column}) LIKE LOWER(?)",
+                    $clauses[]  = "{$column} LIKE ?",
                     $bindings[] = '%' . $value . '%',
                 ],
                 'starts_with' => [
-                    $clauses[]  = "LOWER({$column}) LIKE LOWER(?)",
+                    $clauses[]  = "{$column} LIKE ?",
                     $bindings[] = $value . '%',
                 ],
             };
