@@ -46,16 +46,25 @@ trait CountsWithStaleWhileRevalidate
         if ($isStale) {
             $lock = Cache::lock($cacheKey . ':lock', 300);
             if ($lock->get()) {
-                dispatch(function () use ($compute, $dataKey, $cacheKey, $lock) {
+                // app()->terminating(), not dispatch(Closure)->afterResponse() — dispatch()
+                // always routes through the Bus/Queue system, which serializes the job even
+                // on the 'sync' driver, and $lock holds a live PDO connection that can't be
+                // serialized ("Serialization of 'PDO' is not allowed", thrown before
+                // $compute() ever runs, silently swallowed since dispatch() failures here
+                // aren't awaited) — meaning this refresh path silently never ran, and a key
+                // stayed stuck at whatever its first inline computation produced. terminating()
+                // callbacks fire at the same point in the request lifecycle but stay
+                // in-process, so nothing is ever serialized and capturing $lock is safe.
+                app()->terminating(function () use ($compute, $dataKey, $cacheKey, $lock) {
                     try {
                         Cache::forever($dataKey, $compute());
                         Cache::forever($cacheKey . ':computed_at', now()->timestamp);
                     } finally {
                         $lock->release();
                     }
-                })->afterResponse();
+                });
             }
-            // Lock already held (another request's afterResponse() job is mid-flight,
+            // Lock already held (another request's terminating() callback is mid-flight,
             // or hasn't run yet) — nothing to do here either way, this request still
             // just returns the stale value below like normal.
         }

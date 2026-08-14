@@ -253,25 +253,29 @@ class ProjectController extends Controller
             // computing that synchronously in the request that renders /projects is
             // exactly what produced a 504 in practice. Same "never compute on the page
             // request" rule as the stale-refresh branch below (and as Stats/Activity/
-            // Impact elsewhere) — return the default immediately and let the background
-            // job populate the real numbers whenever it finishes.
+            // Impact elsewhere) — return the default immediately and let a background
+            // callback populate the real numbers whenever it finishes.
             $lock = Cache::lock($cacheKeyBase . ':lock', self::COMPUTE_LOCK_SECONDS);
             if ($lock->get()) {
-                // Not $lock->release() in the closure — dispatch(Closure) always wraps it
-                // in a serializable job (CallQueuedClosure) regardless of ->afterResponse(),
-                // and this app's cache/queue driver is DB-backed, so a captured Lock object
-                // holds a live PDO connection that can't be serialized ("Serialization of
-                // 'PDO' is not allowed" — confirmed in the log, silently swallowed since
-                // dispatch() failures here aren't awaited). A fresh forceRelease() call only
-                // needs the cache key string, which serializes fine.
-                dispatch(function () use ($compute, $dataKey, $cacheKeyBase) {
+                // app()->terminating(), not dispatch(Closure)->afterResponse() — dispatch()
+                // always routes through the Bus/Queue system, which serializes the job even
+                // on the 'sync' driver (CallQueuedClosure round-trips through serialize()/
+                // unserialize() regardless of ->afterResponse() only changing *when* it
+                // fires). $compute captures $project/$this, and something reachable from
+                // there drags a live PDO handle into that serialization — "Serialization of
+                // 'PDO' is not allowed", thrown before $compute() ever runs, silently
+                // swallowed since dispatch() failures here aren't awaited. This is why
+                // project stats could get stuck on the default forever. terminating()
+                // callbacks run at the exact same point in the request lifecycle
+                // (Kernel::terminate()) but stay in-process — nothing is ever serialized.
+                app()->terminating(function () use ($compute, $dataKey, $cacheKeyBase) {
                     try {
                         Cache::forever($dataKey, $compute());
                         Cache::forever($cacheKeyBase . ':computed_at', now()->timestamp);
                     } finally {
                         Cache::lock($cacheKeyBase . ':lock')->forceRelease();
                     }
-                })->afterResponse();
+                });
             }
 
             return $default;
@@ -281,14 +285,14 @@ class ProjectController extends Controller
         if ($isStale) {
             $lock = Cache::lock($cacheKeyBase . ':lock', self::COMPUTE_LOCK_SECONDS);
             if ($lock->get()) {
-                dispatch(function () use ($compute, $dataKey, $cacheKeyBase) {
+                app()->terminating(function () use ($compute, $dataKey, $cacheKeyBase) {
                     try {
                         Cache::forever($dataKey, $compute());
                         Cache::forever($cacheKeyBase . ':computed_at', now()->timestamp);
                     } finally {
                         Cache::lock($cacheKeyBase . ':lock')->forceRelease();
                     }
-                })->afterResponse();
+                });
             }
         }
 
