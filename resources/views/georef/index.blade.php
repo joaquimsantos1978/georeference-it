@@ -1884,9 +1884,16 @@ function advancedSearch() {
         dataset: window._georefDataset || '',
         conditions: [{field: '', operator: 'equals', value: ''}],
         countryOptions: [],
-        numericFields: {{ json_encode(\App\Models\Project::NUMERIC_CRITERIA_FIELDS) }},
-        textOperators: {{ json_encode(\App\Models\Project::TEXT_OPERATORS) }},
-        numericOperators: {{ json_encode(\App\Models\Project::NUMERIC_OPERATORS) }},
+        // {!! !!} (raw), not {{ }} — this sits inside a <script> tag's text content, not an
+        // HTML attribute. {{ }} runs json_encode()'s output through htmlspecialchars(),
+        // turning every " into &quot;; the browser's HTML parser does NOT decode entities
+        // inside <script> content (unlike attribute values, where it does), so the JS
+        // engine saw a literal &quot; token and threw "Unexpected token '&'", which broke
+        // this entire script block — advancedSearch() undefined, map never initialized,
+        // page stuck on "Loading occurrences...".
+        numericFields: {!! json_encode(\App\Models\Project::NUMERIC_CRITERIA_FIELDS) !!},
+        textOperators: {!! json_encode(\App\Models\Project::TEXT_OPERATORS) !!},
+        numericOperators: {!! json_encode(\App\Models\Project::NUMERIC_OPERATORS) !!},
         operatorLabels: {
             equals: '=', contains: '{{ __('contains') }}', starts_with: '{{ __('starts with') }}',
             gt: '>', lt: '<', gte: '≥', lte: '≤',
