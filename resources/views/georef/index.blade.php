@@ -88,9 +88,9 @@
                                             <option value="{{ $field }}">{{ $field }}</option>
                                             @endforeach
                                         </select>
-                                        <select x-model="cond.operator" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1">
+                                        <select @change="cond.operator = $event.target.value" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1">
                                             <template x-for="op in operatorsFor(cond.field)" :key="op">
-                                                <option :value="op" x-text="operatorLabels[op]"></option>
+                                                <option :value="op" :selected="cond.operator === op" x-text="operatorLabels[op]"></option>
                                             </template>
                                         </select>
                                         <input type="text" x-model="cond.value" placeholder="{{ __('Value') }}"

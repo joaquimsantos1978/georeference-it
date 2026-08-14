@@ -116,10 +116,10 @@
                             <option value="{{ $field }}">{{ $field }}</option>
                             @endforeach
                         </select>
-                        <select :name="'conditions['+i+'][operator]'" x-model="cond.operator"
+                        <select :name="'conditions['+i+'][operator]'" @change="cond.operator = $event.target.value"
                                 class="text-xs border border-gray-300 rounded px-2 py-1.5">
                             <template x-for="op in operatorsFor(cond.field)" :key="op">
-                                <option :value="op" x-text="operatorLabels[op]"></option>
+                                <option :value="op" :selected="cond.operator === op" x-text="operatorLabels[op]"></option>
                             </template>
                         </select>
                         <input type="text" :name="'conditions['+i+'][value]'" x-model="cond.value" placeholder="{{ __('Value') }}"
