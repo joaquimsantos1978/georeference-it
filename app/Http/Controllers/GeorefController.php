@@ -283,6 +283,39 @@ private function candidateGroupIds(\Closure $scope, array $statuses, array $seen
         ->all();
 }
 
+// Same contract as candidateGroupIds() ($statuses collapsed to a bucket name — 'georef'
+// for ['ungeoreferenced'], 'validate' for ['has_suggestion','conflicted']) but reads from
+// project_candidate_groups instead of scanning occurrences live — see
+// ProjectsRefreshCandidates. country/seenIds/userId are still applied live here (they're
+// per-request/per-session, not something a periodic background refresh can precompute),
+// but against the small materialized pool instead of the full occurrences table, so this
+// stays index-only regardless of how expensive the project's underlying criteria are to
+// evaluate.
+private function candidateGroupIdsFromCache(int $projectId, string $bucket, array $seenIdsForAttempt, ?string $country, ?int $userId = null): array
+{
+    return DB::table('project_candidate_groups as pcg')
+        ->join('locality_groups as lg', 'lg.id', '=', 'pcg.locality_group_id')
+        ->where('pcg.project_id', $projectId)
+        ->where('pcg.status_bucket', $bucket)
+        ->whereNull('lg.deleted_at')
+        ->when($country, fn($q) => $q->where('lg.country_code', $country))
+        ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('pcg.locality_group_id', $seenIdsForAttempt))
+        ->when($userId, fn($q) => $q
+            ->whereNotExists(fn($sub) => $sub->select(DB::raw(1))
+                ->from('georef_suggestions')
+                ->whereColumn('georef_suggestions.locality_group_id', 'pcg.locality_group_id')
+                ->where('georef_suggestions.user_id', $userId))
+            ->whereNotExists(fn($sub) => $sub->select(DB::raw(1))
+                ->from('georef_validations')
+                ->join('georef_suggestions', 'georef_suggestions.id', '=', 'georef_validations.suggestion_id')
+                ->whereColumn('georef_suggestions.locality_group_id', 'pcg.locality_group_id')
+                ->where('georef_validations.user_id', $userId)))
+        ->limit(500)
+        ->pluck('pcg.locality_group_id')
+        ->unique()
+        ->all();
+}
+
 public function next(Request $request)
 {
     session()->save(); // release session lock before heavy DB work
@@ -440,12 +473,15 @@ public function next(Request $request)
     };
 
     // Same shape as $datasetRestrictions, different source: a project's membership is
-    // either a pasted list of GBIF occurrence keys (indexed, cheap whereIn) or AND-only
-    // criteria evaluated live via ProjectCriteriaEvaluator (see there for why this is a live
-    // query rather than a materialized table — most criteria fields have no index, so this
-    // can be slow for a large/rare criteria project at production scale; acceptable for v1
-    // since project-scoped sessions are low-traffic compared to the default anonymous flow,
-    // revisit with a targeted index if a specific field proves to be a real bottleneck).
+    // either a pasted list of GBIF occurrence keys (id_list — indexed, cheap whereIn, stays
+    // live) or AND-only criteria evaluated by ProjectsRefreshCandidates into
+    // project_candidate_groups (criteria — reads from that materialized pool via
+    // candidateGroupIdsFromCache() instead of scanning occurrences live). Criteria fields
+    // aren't all indexed (a leading-wildcard 'contains' on a field with no FULLTEXT index
+    // falls back to LIKE, i.e. a real full scan — see ProjectCriteriaEvaluator), which made
+    // this a 100+ second live query for a project combining an indexed field with one of
+    // those, blocking a user request outright. Paying that cost once per background refresh
+    // cycle instead of once per request is the whole point.
     $projectRestrictions = function (array $seenIdsForAttempt) use ($project, $country) {
         if (!$project) {
             $noop = fn($q) => $q;
@@ -453,12 +489,12 @@ public function next(Request $request)
         }
         if ($project->mode === 'id_list') {
             $scope = fn($q) => $q->whereIn('occurrences.gbif_occurrence_key', $project->submitted_keys ?? []);
+            $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country, auth()->id());
+            $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country, auth()->id());
         } else {
-            [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($project->criteria ?? []);
-            $scope = $where !== '' ? fn($q) => $q->whereRaw($where, $bindings) : fn($q) => $q;
+            $georefIds  = $this->candidateGroupIdsFromCache($project->id, 'georef', $seenIdsForAttempt, $country, auth()->id());
+            $pendingIds = $this->candidateGroupIdsFromCache($project->id, 'validate', $seenIdsForAttempt, $country, auth()->id());
         }
-        $georefIds  = $this->candidateGroupIds($scope, ['ungeoreferenced'], $seenIdsForAttempt, $country, auth()->id());
-        $pendingIds = $this->candidateGroupIds($scope, ['has_suggestion', 'conflicted'], $seenIdsForAttempt, $country, auth()->id());
         return [fn($q) => $q->whereIn('id', $georefIds), fn($q) => $q->whereIn('id', $pendingIds)];
     };
 

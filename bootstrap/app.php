@@ -6,6 +6,7 @@ use App\Console\Commands\GbifMonthlyRefresh;
 use App\Console\Commands\GbifRefreshHeartbeat;
 use App\Console\Commands\GbifWatchdog;
 use App\Console\Commands\GbifSyncDatasets;
+use App\Console\Commands\ProjectsRefreshCandidates;
 use App\Console\Commands\RefreshImpactCounts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -109,6 +110,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // Only scans users active in the last 24h (see AwardBadges), so this stays cheap
         // even hourly.
         $schedule->command(AwardBadges::class)->hourly()->withoutOverlapping();
+
+        // Rebuilds project_candidate_groups (see ProjectsRefreshCandidates) — moves the
+        // cost of evaluating a criteria-mode project's (possibly unindexed) criteria out of
+        // the live /georef/next request path. Same competes-for-I/O-with-the-import
+        // reasoning as GbifSyncDatasets above; withoutOverlapping guards against a slow
+        // project (e.g. a LIKE fallback scan) still running when the next tick fires.
+        $schedule->command(ProjectsRefreshCandidates::class)
+            ->everyFifteenMinutes()
+            ->withoutOverlapping(30)
+            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
