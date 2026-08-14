@@ -73,9 +73,11 @@ class ProjectController extends Controller
     public function create(): View
     {
         return view('projects.create', [
-            'project'  => new Project(['visibility' => 'private', 'mode' => 'criteria']),
-            'fields'   => Project::ALLOWED_CRITERIA_FIELDS,
-            'operators' => Project::ALLOWED_OPERATORS,
+            'project'       => new Project(['visibility' => 'private', 'mode' => 'criteria']),
+            'fields'        => Project::ALLOWED_CRITERIA_FIELDS,
+            'numericFields' => Project::NUMERIC_CRITERIA_FIELDS,
+            'textOperators'    => Project::TEXT_OPERATORS,
+            'numericOperators' => Project::NUMERIC_OPERATORS,
         ]);
     }
 
@@ -96,9 +98,11 @@ class ProjectController extends Controller
         abort_unless($project->isOwnedBy(auth()->user()), 403);
 
         return view('projects.create', [
-            'project'   => $project,
-            'fields'    => Project::ALLOWED_CRITERIA_FIELDS,
-            'operators' => Project::ALLOWED_OPERATORS,
+            'project'       => $project,
+            'fields'        => Project::ALLOWED_CRITERIA_FIELDS,
+            'numericFields' => Project::NUMERIC_CRITERIA_FIELDS,
+            'textOperators'    => Project::TEXT_OPERATORS,
+            'numericOperators' => Project::NUMERIC_OPERATORS,
         ]);
     }
 
@@ -173,6 +177,23 @@ class ProjectController extends Controller
             $validated['submitted_keys'] = $keys;
             $validated['criteria'] = null;
         } else {
+            // ALLOWED_OPERATORS above only checks an operator is valid for *some* field
+            // (e.g. 'gt' is allowed in general) — this catches the field-specific mismatch
+            // (e.g. 'gt' on 'family', or 'contains' on 'year') the same way
+            // ProjectCriteriaEvaluator would reject it later when the project's stats/
+            // candidates actually get computed, just with a normal validation error here
+            // instead of a background job failing silently.
+            foreach ($validated['conditions'] as $condition) {
+                $isNumericField  = in_array($condition['field'], Project::NUMERIC_CRITERIA_FIELDS, true);
+                $allowedForField = $isNumericField ? Project::NUMERIC_OPERATORS : Project::TEXT_OPERATORS;
+                if (!in_array($condition['operator'], $allowedForField, true)) {
+                    abort(422, __("Operator ':operator' is not valid for field ':field'.", [
+                        'operator' => $condition['operator'],
+                        'field'    => $condition['field'],
+                    ]));
+                }
+            }
+
             $validated['criteria'] = $validated['conditions'];
             $validated['submitted_keys'] = null;
         }
@@ -402,12 +423,17 @@ class ProjectController extends Controller
         $query = DB::table('occurrences')->whereNull('deleted_at');
 
         if ($project->mode === 'id_list') {
+            // whereIn('col', []) already compiles to an always-false condition on its own —
+            // an empty submitted_keys list correctly yields nothing here, no extra guard needed.
             $query->whereIn('gbif_occurrence_key', $project->submitted_keys ?? []);
         } else {
             [$where, $bindings] = ProjectCriteriaEvaluator::toSqlWhere($project->criteria ?? []);
-            if ($where !== '') {
-                $query->whereRaw($where, $bindings);
-            }
+            // Empty criteria must never mean "no restriction" — skipping whereRaw() entirely
+            // here would turn an empty/misconfigured criteria project into an unrestricted
+            // scan of the full occurrences table (273M+ rows), which is exactly what produced
+            // two 1+ hour stuck queries in production. '1 = 0' keeps this always-false instead,
+            // matching whereIn('col', [])'s behavior above for the id_list branch.
+            $query->whereRaw($where !== '' ? $where : '1 = 0', $where !== '' ? $bindings : []);
         }
 
         return $query;

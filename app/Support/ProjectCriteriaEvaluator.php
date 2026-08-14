@@ -39,6 +39,31 @@ class ProjectCriteriaEvaluator
             // allowlist, never taken from raw user input otherwise.
             $column = "occurrences.{$field}";
 
+            $isNumericField = in_array($field, Project::NUMERIC_CRITERIA_FIELDS, true);
+
+            // Operators are validated per field type, not just against the combined
+            // ALLOWED_OPERATORS list above — gt/lt/gte/lte on a text field (or
+            // contains/starts_with on a numeric one) would either error at the SQL level or
+            // silently do something nobody intended (LIKE against an integer column casts
+            // to string and can never use that column's index — see NUMERIC_CRITERIA_FIELDS).
+            $allowedForField = $isNumericField ? Project::NUMERIC_OPERATORS : Project::TEXT_OPERATORS;
+            if (!in_array($operator, $allowedForField, true)) {
+                throw new InvalidArgumentException("Operator '{$operator}' is not valid for field '{$field}'");
+            }
+
+            if ($isNumericField) {
+                $sqlOperator = match ($operator) {
+                    'equals' => '=',
+                    'gt'     => '>',
+                    'lt'     => '<',
+                    'gte'    => '>=',
+                    'lte'    => '<=',
+                };
+                $clauses[]  = "{$column} {$sqlOperator} ?";
+                $bindings[] = (int) $value;
+                continue;
+            }
+
             // A plain B-tree index can't be used for a leading-wildcard LIKE '%value%' at
             // all — MySQL scans every row regardless. Fields in FULLTEXT_CRITERIA_FIELDS are
             // *meant* to carry a FULLTEXT index, so route 'contains' through MATCH()/AGAINST()

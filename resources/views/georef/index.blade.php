@@ -82,16 +82,16 @@
                                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Criteria (all must match)') }}</label>
                                 <template x-for="(cond, i) in conditions" :key="i">
                                     <div class="flex gap-1 items-center mb-1">
-                                        <select x-model="cond.field" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
+                                        <select x-model="cond.field" @change="onFieldChange(cond)" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
                                             <option value="">{{ __('Field...') }}</option>
                                             @foreach(\App\Models\Project::ALLOWED_CRITERIA_FIELDS as $field)
                                             <option value="{{ $field }}">{{ $field }}</option>
                                             @endforeach
                                         </select>
                                         <select x-model="cond.operator" class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1">
-                                            @foreach(\App\Models\Project::ALLOWED_OPERATORS as $operator)
-                                            <option value="{{ $operator }}">{{ $operator }}</option>
-                                            @endforeach
+                                            <template x-for="op in operatorsFor(cond.field)" :key="op">
+                                                <option :value="op" x-text="operatorLabels[op]"></option>
+                                            </template>
                                         </select>
                                         <input type="text" x-model="cond.value" placeholder="{{ __('Value') }}"
                                                class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
@@ -1884,6 +1884,19 @@ function advancedSearch() {
         dataset: window._georefDataset || '',
         conditions: [{field: '', operator: 'equals', value: ''}],
         countryOptions: [],
+        numericFields: {{ json_encode(\App\Models\Project::NUMERIC_CRITERIA_FIELDS) }},
+        textOperators: {{ json_encode(\App\Models\Project::TEXT_OPERATORS) }},
+        numericOperators: {{ json_encode(\App\Models\Project::NUMERIC_OPERATORS) }},
+        operatorLabels: {
+            equals: '=', contains: '{{ __('contains') }}', starts_with: '{{ __('starts with') }}',
+            gt: '>', lt: '<', gte: '≥', lte: '≤',
+        },
+        operatorsFor(field) { return this.numericFields.includes(field) ? this.numericOperators : this.textOperators; },
+        onFieldChange(cond) {
+            if (!this.operatorsFor(cond.field).includes(cond.operator)) {
+                cond.operator = 'equals';
+            }
+        },
         init() {
             var sel = document.getElementById('country-select');
             if (sel) {

@@ -21,7 +21,18 @@ class Project extends Model
         'year', 'month', 'day',
     ];
 
-    public const ALLOWED_OPERATORS = ['equals', 'contains', 'starts_with'];
+    // year/month/day are stored as integers — 'contains'/'starts_with' route through LIKE,
+    // which can't use a numeric column's B-tree index at all (not "isn't indexed yet", but
+    // structurally can't, regardless of indexing), and were the mechanism behind a
+    // 'year starts_with "17"' project ("Before 1800") producing a 1+ hour unindexed scan in
+    // production. Comparison operators below are the actually-correct tool for these fields.
+    public const NUMERIC_CRITERIA_FIELDS = ['year', 'month', 'day'];
+
+    public const TEXT_OPERATORS = ['equals', 'contains', 'starts_with'];
+
+    public const NUMERIC_OPERATORS = ['equals', 'gt', 'lt', 'gte', 'lte'];
+
+    public const ALLOWED_OPERATORS = ['equals', 'contains', 'starts_with', 'gt', 'lt', 'gte', 'lte'];
 
     // Fields carrying a FULLTEXT index in addition to a plain one — ProjectCriteriaEvaluator
     // uses MATCH()/AGAINST() instead of LIKE '%value%' for these when the operator is

@@ -28,8 +28,24 @@
           x-data="{
               mode: '{{ old('mode', $project->mode ?? 'criteria') }}',
               conditions: {{ json_encode(old('conditions', $project->criteria ?: [['field' => '', 'operator' => 'equals', 'value' => '']])) }},
+              numericFields: {{ json_encode($numericFields) }},
+              textOperators: {{ json_encode($textOperators) }},
+              numericOperators: {{ json_encode($numericOperators) }},
+              operatorLabels: {
+                  equals: '=', contains: '{{ __('contains') }}', starts_with: '{{ __('starts with') }}',
+                  gt: '>', lt: '<', gte: '≥', lte: '≤',
+              },
               addCondition() { this.conditions.push({field: '', operator: 'equals', value: ''}); },
-              removeCondition(i) { this.conditions.splice(i, 1); }
+              removeCondition(i) { this.conditions.splice(i, 1); },
+              // year/month/day switch to comparison operators — reset away from a
+              // text-only operator (contains/starts_with) that would no longer be valid,
+              // same restriction ProjectCriteriaEvaluator enforces server-side.
+              operatorsFor(field) { return this.numericFields.includes(field) ? this.numericOperators : this.textOperators; },
+              onFieldChange(cond) {
+                  if (!this.operatorsFor(cond.field).includes(cond.operator)) {
+                      cond.operator = 'equals';
+                  }
+              }
           }">
         @csrf
         @if($project->exists) @method('PUT') @endif
@@ -93,7 +109,7 @@
                 <p class="text-xs text-gray-500">{{ __('All conditions must match (AND only).') }}</p>
                 <template x-for="(cond, i) in conditions" :key="i">
                     <div class="flex gap-2 items-center">
-                        <select :name="'conditions['+i+'][field]'" x-model="cond.field"
+                        <select :name="'conditions['+i+'][field]'" x-model="cond.field" @change="onFieldChange(cond)"
                                 class="text-xs border border-gray-300 rounded px-2 py-1.5 flex-1">
                             <option value="">{{ __('Field...') }}</option>
                             @foreach($fields as $field)
@@ -102,9 +118,9 @@
                         </select>
                         <select :name="'conditions['+i+'][operator]'" x-model="cond.operator"
                                 class="text-xs border border-gray-300 rounded px-2 py-1.5">
-                            @foreach($operators as $operator)
-                            <option value="{{ $operator }}">{{ $operator }}</option>
-                            @endforeach
+                            <template x-for="op in operatorsFor(cond.field)" :key="op">
+                                <option :value="op" x-text="operatorLabels[op]"></option>
+                            </template>
                         </select>
                         <input type="text" :name="'conditions['+i+'][value]'" x-model="cond.value" placeholder="{{ __('Value') }}"
                                class="text-xs border border-gray-300 rounded px-2 py-1.5 flex-1">

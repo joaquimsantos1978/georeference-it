@@ -119,7 +119,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command(ProjectsRefreshCandidates::class)
             ->everyFifteenMinutes()
             ->withoutOverlapping(30)
-            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
+            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false))
+            ->appendOutputTo(storage_path('logs/projects-refresh-candidates.log'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
