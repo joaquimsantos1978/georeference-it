@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\Project;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 // Turns a project's stored criteria (AND-only field/operator/value conditions) into a raw
@@ -38,13 +40,21 @@ class ProjectCriteriaEvaluator
             $column = "occurrences.{$field}";
 
             // A plain B-tree index can't be used for a leading-wildcard LIKE '%value%' at
-            // all — MySQL scans every row regardless. Fields in FULLTEXT_CRITERIA_FIELDS
-            // carry a FULLTEXT index instead, so route 'contains' through MATCH()/AGAINST()
-            // for those: word-based matching, not arbitrary substring (a search for
-            // "arriss" won't match inside "Carrisso" the way LIKE would), but that's the
-            // tradeoff that makes "contains" on a free-text field fast instead of a
-            // full-table scan over 280M+ rows.
-            if ($operator === 'contains' && in_array($field, Project::FULLTEXT_CRITERIA_FIELDS, true)) {
+            // all — MySQL scans every row regardless. Fields in FULLTEXT_CRITERIA_FIELDS are
+            // *meant* to carry a FULLTEXT index, so route 'contains' through MATCH()/AGAINST()
+            // for those: word-based matching, not arbitrary substring (a search for "arriss"
+            // won't match inside "Carrisso" the way LIKE would), but that's the tradeoff that
+            // makes "contains" on a free-text field fast instead of a full-table scan over
+            // 280M+ rows. Checked against the live schema, not just the static allowlist —
+            // MATCH() against a column with no FULLTEXT index throws "Error 1191: Can't find
+            // FULLTEXT index matching the column list" outright, and the FULLTEXT batch for
+            // occurrences can be built and rolled out one field at a time (it already was,
+            // see the LOCK=SHARED writes-blocking discussion), so a field can spend real time
+            // in FULLTEXT_CRITERIA_FIELDS before its index actually exists. Falls back to the
+            // plain LIKE path below when it doesn't — slower (real full scan), but correct —
+            // and switches itself back to MATCH() automatically the moment the index lands,
+            // no code change needed.
+            if ($operator === 'contains' && in_array($field, Project::FULLTEXT_CRITERIA_FIELDS, true) && self::hasFulltextIndex($field)) {
                 $clauses[]  = "MATCH({$column}) AGAINST(? IN BOOLEAN MODE)";
                 $bindings[] = self::fulltextBooleanQuery((string) $value);
                 continue;
@@ -85,5 +95,23 @@ class ProjectCriteriaEvaluator
     {
         $words = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
         return implode(' ', array_map(fn($w) => '+' . $w . '*', $words));
+    }
+
+    // Cached for an hour, not forever — self-corrects on its own shortly after a FULLTEXT
+    // index is added in production, with no cache-bust step to remember as part of that
+    // deploy. A live schema check per call would also be cheap (single indexed
+    // information_schema lookup), but this avoids paying it on every request.
+    private static function hasFulltextIndex(string $column): bool
+    {
+        return Cache::remember("occurrences_fulltext_index:{$column}", 3600, function () use ($column) {
+            return DB::selectOne("
+                SELECT 1 FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'occurrences'
+                  AND column_name = ?
+                  AND index_type = 'FULLTEXT'
+                LIMIT 1
+            ", [$column]) !== null;
+        });
     }
 }
