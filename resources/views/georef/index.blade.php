@@ -1884,13 +1884,13 @@ function advancedSearch() {
         dataset: window._georefDataset || '',
         conditions: [{field: '', operator: 'equals', value: ''}],
         countryOptions: [],
-        // {!! !!} (raw), not {{ }} — this sits inside a <script> tag's text content, not an
-        // HTML attribute. {{ }} runs json_encode()'s output through htmlspecialchars(),
-        // turning every " into &quot;; the browser's HTML parser does NOT decode entities
-        // inside <script> content (unlike attribute values, where it does), so the JS
-        // engine saw a literal &quot; token and threw "Unexpected token '&'", which broke
-        // this entire script block — advancedSearch() undefined, map never initialized,
-        // page stuck on "Loading occurrences...".
+        // Raw Blade echo here, not the escaped one — this sits inside a script tag's text
+        // content, not an HTML attribute. The escaped echo runs json_encode()'s output
+        // through htmlspecialchars(), turning every double-quote character into an HTML
+        // entity; browsers don't decode HTML entities inside script content (unlike
+        // attribute values, where they do), so the JS engine saw a literal entity token and
+        // threw a syntax error that broke this entire script block — advancedSearch()
+        // undefined, map never initialized, page stuck loading.
         numericFields: {!! json_encode(\App\Models\Project::NUMERIC_CRITERIA_FIELDS) !!},
         textOperators: {!! json_encode(\App\Models\Project::TEXT_OPERATORS) !!},
         numericOperators: {!! json_encode(\App\Models\Project::NUMERIC_OPERATORS) !!},
