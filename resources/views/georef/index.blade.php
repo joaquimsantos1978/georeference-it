@@ -2121,6 +2121,10 @@ function updateHistoryNav() {
             }) || o.media[0];
         }
         var badge='<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+badgeColor+'20;color:'+badgeColor+';border:1px solid '+badgeColor+'40;white-space:nowrap">'+badgeLabel+'</span>';
+        // Red-outlined pill, only when set — most specimens carry no typeStatus, so this
+        // stays absent for the common case and only draws attention (holotype, isotype,
+        // etc. are nomenclaturally significant) when GBIF actually published one.
+        var typeStatusPill = o.type_status ? '<span style="flex-shrink:0;font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#dc2626;border:1px solid #dc2626;white-space:nowrap">'+escHtml(o.type_status)+'</span>' : '';
         var imgBtn='';
         if(media){
             var isDirectImg = media.identifier && !media.identifier.includes('manifest') &&
@@ -2139,7 +2143,7 @@ function updateHistoryNav() {
             (taxon?'<div class="dark-text" style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
             '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
             (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-            '</div>'+badge+
+            '</div>'+badge+typeStatusPill+
             '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
             imgBtn+'</div></div>';
     }

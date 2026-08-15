@@ -45,7 +45,7 @@ class GeorefController extends Controller
         'id', 'gbif_occurrence_key', 'catalog_number', 'institution_code',
         'collection_code', 'scientific_name', 'georef_status', 'media',
         'gbif_decimal_latitude', 'gbif_decimal_longitude',
-        'recorded_by', 'event_date', 'dataset_key', 'basis_of_record',
+        'recorded_by', 'event_date', 'dataset_key', 'basis_of_record', 'type_status',
     ];
 
     private function groupData(LocalityGroup $group, int $ungeorefOffset = 0): array
