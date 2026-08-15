@@ -2143,7 +2143,8 @@ function updateHistoryNav() {
             (taxon?'<div class="dark-text" style="font-style:italic;word-break:break-word;line-height:1.2">'+taxon+'</div>':'')+
             '<div style="color:#9ca3af;word-break:break-word">'+label+'</div>'+
             (meta?'<div style="color:#9ca3af">'+meta+'</div>':'')+
-            '</div>'+badge+typeStatusPill+
+            (typeStatusPill?'<div style="margin-top:2px">'+typeStatusPill+'</div>':'')+
+            '</div>'+badge+
             '<a href="https://www.gbif.org/occurrence/'+o.gbif_occurrence_key+'" target="_blank" style="color:#16a34a;flex-shrink:0;text-decoration:none;font-size:10px;white-space:nowrap">GBIF ↗</a>'+
             imgBtn+'</div></div>';
     }
