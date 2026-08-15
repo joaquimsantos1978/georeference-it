@@ -2073,7 +2073,16 @@ function buildGroupLabel(group) {
 }
 
 function updateUrl(groupId) {
-    var url = window.location.pathname + '?group=' + groupId;
+    // Preserve the active scope (project/dataset/country/ad-hoc criteria) alongside the
+    // group id — this used to just replace the whole query string with "?group=X" on every
+    // navigation, silently dropping project= (and dataset=/country=/criteria=) from the URL.
+    // A reload afterward read the now-bare URL on boot and lost the project context entirely.
+    var parts = ['group=' + groupId];
+    if (window._georefCountry) parts.push('country=' + encodeURIComponent(window._georefCountry));
+    if (window._georefDataset) parts.push('dataset=' + encodeURIComponent(window._georefDataset));
+    if (window._georefProject) parts.push('project=' + encodeURIComponent(window._georefProject));
+    if (window._georefAdhocCriteria) parts.push('criteria=' + encodeURIComponent(window._georefAdhocCriteria));
+    var url = window.location.pathname + '?' + parts.join('&');
     history.pushState({ groupId: groupId }, '', url);
 }
 
