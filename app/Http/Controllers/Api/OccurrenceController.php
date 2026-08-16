@@ -178,6 +178,11 @@ class OccurrenceController extends Controller
             ->where('gbif_occurrence_key', $occurrenceID)
             ->firstOrFail();
 
+        // index() calls this before format()-ing its page of results; show() never did,
+        // so resolveGeoref() always found an empty $suggestionCache here and silently fell
+        // through to GBIF's own coordinates (or null) even when a pending, not-yet-validated
+        // suggestion existed for this occurrence's group.
+        $this->preloadSuggestions([$occurrence]);
         $record = $this->format($occurrence);
 
         if ($this->wantsJsonLd($request)) {
