@@ -72,13 +72,16 @@ class ProjectController extends Controller
 
     public function create(): View
     {
-        return view('projects.create', [
-            'project'       => new Project(['visibility' => 'private', 'mode' => 'criteria']),
-            'fields'        => Project::ALLOWED_CRITERIA_FIELDS,
-            'numericFields' => Project::NUMERIC_CRITERIA_FIELDS,
-            'textOperators'    => Project::TEXT_OPERATORS,
-            'numericOperators' => Project::NUMERIC_OPERATORS,
-        ]);
+        return view('projects.create', array_merge(
+            [
+                'project'       => new Project(['visibility' => 'private', 'mode' => 'criteria']),
+                'fields'        => Project::ALLOWED_CRITERIA_FIELDS,
+                'numericFields' => Project::NUMERIC_CRITERIA_FIELDS,
+                'textOperators'    => Project::TEXT_OPERATORS,
+                'numericOperators' => Project::NUMERIC_OPERATORS,
+            ],
+            $this->criteriaFieldMeta()
+        ));
     }
 
     public function store(Request $request): RedirectResponse
@@ -97,13 +100,32 @@ class ProjectController extends Controller
         $project = Project::findOrFail($project);
         abort_unless($project->isOwnedBy(auth()->user()), 403);
 
-        return view('projects.create', [
-            'project'       => $project,
-            'fields'        => Project::ALLOWED_CRITERIA_FIELDS,
-            'numericFields' => Project::NUMERIC_CRITERIA_FIELDS,
-            'textOperators'    => Project::TEXT_OPERATORS,
-            'numericOperators' => Project::NUMERIC_OPERATORS,
-        ]);
+        return view('projects.create', array_merge(
+            [
+                'project'       => $project,
+                'fields'        => Project::ALLOWED_CRITERIA_FIELDS,
+                'numericFields' => Project::NUMERIC_CRITERIA_FIELDS,
+                'textOperators'    => Project::TEXT_OPERATORS,
+                'numericOperators' => Project::NUMERIC_OPERATORS,
+            ],
+            $this->criteriaFieldMeta()
+        ));
+    }
+
+    // Shared by create()/edit() — which fields require a FULLTEXT index for contains/
+    // not_contains (drives operator filtering) and which fields render as a <select> of the
+    // values actually present in `occurrences` right now instead of a free-text <input>
+    // (drives value-input switching). See Project::operatorsForField() and
+    // ProjectCriteriaEvaluator::dropdownOptions().
+    private function criteriaFieldMeta(): array
+    {
+        return [
+            'fulltextFields'  => Project::FULLTEXT_CRITERIA_FIELDS,
+            'dropdownFields'  => Project::DROPDOWN_CRITERIA_FIELDS,
+            'dropdownOptions' => collect(Project::DROPDOWN_CRITERIA_FIELDS)
+                ->mapWithKeys(fn($f) => [$f => ProjectCriteriaEvaluator::dropdownOptions($f)])
+                ->all(),
+        ];
     }
 
     public function update(Request $request, int $project): RedirectResponse
@@ -184,9 +206,7 @@ class ProjectController extends Controller
             // candidates actually get computed, just with a normal validation error here
             // instead of a background job failing silently.
             foreach ($validated['conditions'] as $condition) {
-                $isNumericField  = in_array($condition['field'], Project::NUMERIC_CRITERIA_FIELDS, true);
-                $allowedForField = $isNumericField ? Project::NUMERIC_OPERATORS : Project::TEXT_OPERATORS;
-                if (!in_array($condition['operator'], $allowedForField, true)) {
+                if (!in_array($condition['operator'], Project::operatorsForField($condition['field']), true)) {
                     abort(422, __("Operator ':operator' is not valid for field ':field'.", [
                         'operator' => $condition['operator'],
                         'field'    => $condition['field'],

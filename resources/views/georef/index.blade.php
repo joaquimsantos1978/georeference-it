@@ -93,7 +93,14 @@
                                                 <option :value="op" :selected="cond.operator === op" x-text="operatorLabels[op]"></option>
                                             </template>
                                         </select>
-                                        <input type="text" x-model="cond.value" placeholder="{{ __('Value') }}"
+                                        <select x-model="cond.value" x-show="dropdownFields.includes(cond.field)"
+                                                class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
+                                            <option value="">{{ __('Select...') }}</option>
+                                            <template x-for="opt in (dropdownOptions[cond.field] || [])" :key="opt">
+                                                <option :value="opt" x-text="opt"></option>
+                                            </template>
+                                        </select>
+                                        <input type="text" x-model="cond.value" x-show="!dropdownFields.includes(cond.field)" placeholder="{{ __('Value') }}"
                                                class="text-xs border border-gray-200 dark:border-gray-700 rounded px-1 py-1 flex-1">
                                         <button type="button" @click="conditions.splice(i, 1)" x-show="conditions.length > 1"
                                                 class="text-gray-400 hover:text-red-500 text-sm px-1">×</button>
@@ -1894,15 +1901,27 @@ function advancedSearch() {
         numericFields: {!! json_encode(\App\Models\Project::NUMERIC_CRITERIA_FIELDS) !!},
         textOperators: {!! json_encode(\App\Models\Project::TEXT_OPERATORS) !!},
         numericOperators: {!! json_encode(\App\Models\Project::NUMERIC_OPERATORS) !!},
+        fulltextFields: {!! json_encode(\App\Models\Project::FULLTEXT_CRITERIA_FIELDS) !!},
+        dropdownFields: {!! json_encode(\App\Models\Project::DROPDOWN_CRITERIA_FIELDS) !!},
+        dropdownOptions: {!! json_encode($dropdownOptions ?? []) !!},
         operatorLabels: {
-            equals: '=', contains: '{{ __('contains') }}', starts_with: '{{ __('starts with') }}',
+            equals: '=', not_equals: '{{ __('is not') }}',
+            contains: '{{ __('contains') }}', not_contains: '{{ __('does not contain') }}',
+            starts_with: '{{ __('starts with') }}', not_starts_with: '{{ __('does not start with') }}',
             gt: '>', lt: '<', gte: '≥', lte: '≤',
         },
-        operatorsFor(field) { return this.numericFields.includes(field) ? this.numericOperators : this.textOperators; },
+        // Mirrors Project::operatorsForField() server-side — see create.blade.php's copy of
+        // this same logic for the full rationale.
+        operatorsFor(field) {
+            if (this.numericFields.includes(field)) return this.numericOperators;
+            if (this.fulltextFields.includes(field)) return this.textOperators;
+            return this.textOperators.filter(function(op) { return op !== 'contains' && op !== 'not_contains'; });
+        },
         onFieldChange(cond) {
             if (!this.operatorsFor(cond.field).includes(cond.operator)) {
                 cond.operator = 'equals';
             }
+            cond.value = '';
         },
         init() {
             var sel = document.getElementById('country-select');

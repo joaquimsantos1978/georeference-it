@@ -28,18 +28,48 @@ class Project extends Model
     // production. Comparison operators below are the actually-correct tool for these fields.
     public const NUMERIC_CRITERIA_FIELDS = ['year', 'month', 'day'];
 
-    public const TEXT_OPERATORS = ['equals', 'contains', 'starts_with'];
+    public const TEXT_OPERATORS = ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'not_starts_with'];
 
-    public const NUMERIC_OPERATORS = ['equals', 'gt', 'lt', 'gte', 'lte'];
+    public const NUMERIC_OPERATORS = ['equals', 'not_equals', 'gt', 'lt', 'gte', 'lte'];
 
-    public const ALLOWED_OPERATORS = ['equals', 'contains', 'starts_with', 'gt', 'lt', 'gte', 'lte'];
+    public const ALLOWED_OPERATORS = [
+        'equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'not_starts_with',
+        'gt', 'lt', 'gte', 'lte',
+    ];
 
     // Fields carrying a FULLTEXT index in addition to a plain one — ProjectCriteriaEvaluator
     // uses MATCH()/AGAINST() instead of LIKE '%value%' for these when the operator is
-    // 'contains', since a plain B-tree index can't be used for a leading-wildcard LIKE at
-    // all. Word-based matching, not arbitrary substring — the tradeoff that makes "contains"
-    // on a free-text field fast instead of a full-table scan over 280M+ rows.
-    public const FULLTEXT_CRITERIA_FIELDS = ['recorded_by', 'scientific_name', 'catalog_number'];
+    // 'contains'/'not_contains', since a plain B-tree index can't be used for a
+    // leading-wildcard LIKE at all. Word-based matching, not arbitrary substring — the
+    // tradeoff that makes "contains" on a free-text field fast instead of a full-table scan
+    // over 300M+ rows.
+    public const FULLTEXT_CRITERIA_FIELDS = [
+        'recorded_by', 'scientific_name', 'catalog_number', 'verbatim_locality', 'location_remarks',
+    ];
+
+    // Fields where free-text entry invites typing a value that will never match anything —
+    // the criteria builder shows these as a <select> populated from what's actually present
+    // in `occurrences` right now (ProjectCriteriaEvaluator::dropdownOptions()), not a
+    // hardcoded enum list that could drift from the live GBIF data.
+    public const DROPDOWN_CRITERIA_FIELDS = ['country_code', 'country', 'continent', 'basis_of_record', 'taxon_rank'];
+
+    // Single source of truth for "which operators make sense for this field" — narrower than
+    // TEXT_OPERATORS/NUMERIC_OPERATORS alone: contains/not_contains additionally require a
+    // FULLTEXT index (see FULLTEXT_CRITERIA_FIELDS above), so they're only offered for those
+    // fields. Used both server-side (ProjectController validation, ProjectCriteriaEvaluator)
+    // and by the frontend (via $fulltextFields passed to the criteria builder), so the UI
+    // never offers an operator the backend would reject — the exact gap that let someone pick
+    // 'contains' on an unindexed field and hang for hours.
+    public static function operatorsForField(string $field): array
+    {
+        if (in_array($field, self::NUMERIC_CRITERIA_FIELDS, true)) {
+            return self::NUMERIC_OPERATORS;
+        }
+        if (in_array($field, self::FULLTEXT_CRITERIA_FIELDS, true)) {
+            return self::TEXT_OPERATORS;
+        }
+        return array_values(array_diff(self::TEXT_OPERATORS, ['contains', 'not_contains']));
+    }
 
     protected $fillable = [
         'user_id', 'title', 'description', 'tags', 'image', 'visibility', 'mode',

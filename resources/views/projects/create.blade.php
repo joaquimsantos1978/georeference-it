@@ -31,20 +31,33 @@
               numericFields: {{ json_encode($numericFields) }},
               textOperators: {{ json_encode($textOperators) }},
               numericOperators: {{ json_encode($numericOperators) }},
+              fulltextFields: {{ json_encode($fulltextFields) }},
+              dropdownFields: {{ json_encode($dropdownFields) }},
+              dropdownOptions: {{ json_encode($dropdownOptions) }},
               operatorLabels: {
-                  equals: '=', contains: '{{ __('contains') }}', starts_with: '{{ __('starts with') }}',
+                  equals: '=', not_equals: '{{ __('is not') }}',
+                  contains: '{{ __('contains') }}', not_contains: '{{ __('does not contain') }}',
+                  starts_with: '{{ __('starts with') }}', not_starts_with: '{{ __('does not start with') }}',
                   gt: '>', lt: '<', gte: '≥', lte: '≤',
               },
               addCondition() { this.conditions.push({field: '', operator: 'equals', value: ''}); },
               removeCondition(i) { this.conditions.splice(i, 1); },
-              // year/month/day switch to comparison operators — reset away from a
-              // text-only operator (contains/starts_with) that would no longer be valid,
-              // same restriction ProjectCriteriaEvaluator enforces server-side.
-              operatorsFor(field) { return this.numericFields.includes(field) ? this.numericOperators : this.textOperators; },
+              // Mirrors Project::operatorsForField() server-side — numeric fields get
+              // comparison operators; contains/not_contains are only offered for fields
+              // carrying a FULLTEXT index (a plain B-tree can't serve a leading-wildcard LIKE
+              // at all), everything else gets equals/not_equals/starts_with/not_starts_with.
+              operatorsFor(field) {
+                  if (this.numericFields.includes(field)) return this.numericOperators;
+                  if (this.fulltextFields.includes(field)) return this.textOperators;
+                  return this.textOperators.filter(function(op) { return op !== 'contains' && op !== 'not_contains'; });
+              },
               onFieldChange(cond) {
                   if (!this.operatorsFor(cond.field).includes(cond.operator)) {
                       cond.operator = 'equals';
                   }
+                  // Switching into/out of a dropdown field — a stale free-text value
+                  // wouldn't match any <option>, so start it clean.
+                  cond.value = '';
               }
           }">
         @csrf
@@ -122,7 +135,16 @@
                                 <option :value="op" :selected="cond.operator === op" x-text="operatorLabels[op]"></option>
                             </template>
                         </select>
-                        <input type="text" :name="'conditions['+i+'][value]'" x-model="cond.value" placeholder="{{ __('Value') }}"
+                        <select :name="'conditions['+i+'][value]'" x-model="cond.value"
+                                x-show="dropdownFields.includes(cond.field)" :disabled="!dropdownFields.includes(cond.field)"
+                                class="text-xs border border-gray-300 rounded px-2 py-1.5 flex-1">
+                            <option value="">{{ __('Select...') }}</option>
+                            <template x-for="opt in (dropdownOptions[cond.field] || [])" :key="opt">
+                                <option :value="opt" x-text="opt"></option>
+                            </template>
+                        </select>
+                        <input type="text" :name="'conditions['+i+'][value]'" x-model="cond.value"
+                               x-show="!dropdownFields.includes(cond.field)" :disabled="dropdownFields.includes(cond.field)" placeholder="{{ __('Value') }}"
                                class="text-xs border border-gray-300 rounded px-2 py-1.5 flex-1">
                         <button type="button" @click="removeCondition(i)" x-show="conditions.length > 1"
                                 class="text-gray-400 hover:text-red-500 text-sm px-1">×</button>

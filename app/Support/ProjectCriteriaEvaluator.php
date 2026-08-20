@@ -31,9 +31,6 @@ class ProjectCriteriaEvaluator
             if (!in_array($field, Project::ALLOWED_CRITERIA_FIELDS, true)) {
                 throw new InvalidArgumentException("Disallowed criteria field: {$field}");
             }
-            if (!in_array($operator, Project::ALLOWED_OPERATORS, true)) {
-                throw new InvalidArgumentException("Disallowed criteria operator: {$operator}");
-            }
 
             // $field is safe to interpolate directly — validated above against a fixed
             // allowlist, never taken from raw user input otherwise.
@@ -41,23 +38,23 @@ class ProjectCriteriaEvaluator
 
             $isNumericField = in_array($field, Project::NUMERIC_CRITERIA_FIELDS, true);
 
-            // Operators are validated per field type, not just against the combined
-            // ALLOWED_OPERATORS list above — gt/lt/gte/lte on a text field (or
-            // contains/starts_with on a numeric one) would either error at the SQL level or
-            // silently do something nobody intended (LIKE against an integer column casts
-            // to string and can never use that column's index — see NUMERIC_CRITERIA_FIELDS).
-            $allowedForField = $isNumericField ? Project::NUMERIC_OPERATORS : Project::TEXT_OPERATORS;
-            if (!in_array($operator, $allowedForField, true)) {
+            // Per-field, not just per-type — Project::operatorsForField() additionally gates
+            // contains/not_contains to FULLTEXT_CRITERIA_FIELDS (a plain B-tree can't serve a
+            // leading-wildcard LIKE at all, see below), on top of the numeric/text split
+            // (gt/lt/gte/lte on a text field would either error at the SQL level or silently
+            // do something nobody intended).
+            if (!in_array($operator, Project::operatorsForField($field), true)) {
                 throw new InvalidArgumentException("Operator '{$operator}' is not valid for field '{$field}'");
             }
 
             if ($isNumericField) {
                 $sqlOperator = match ($operator) {
-                    'equals' => '=',
-                    'gt'     => '>',
-                    'lt'     => '<',
-                    'gte'    => '>=',
-                    'lte'    => '<=',
+                    'equals'     => '=',
+                    'not_equals' => '!=',
+                    'gt'         => '>',
+                    'lt'         => '<',
+                    'gte'        => '>=',
+                    'lte'        => '<=',
                 };
                 $clauses[]  = "{$column} {$sqlOperator} ?";
                 $bindings[] = (int) $value;
@@ -66,21 +63,25 @@ class ProjectCriteriaEvaluator
 
             // A plain B-tree index can't be used for a leading-wildcard LIKE '%value%' at
             // all — MySQL scans every row regardless. Fields in FULLTEXT_CRITERIA_FIELDS are
-            // *meant* to carry a FULLTEXT index, so route 'contains' through MATCH()/AGAINST()
-            // for those: word-based matching, not arbitrary substring (a search for "arriss"
-            // won't match inside "Carrisso" the way LIKE would), but that's the tradeoff that
-            // makes "contains" on a free-text field fast instead of a full-table scan over
-            // 280M+ rows. Checked against the live schema, not just the static allowlist —
-            // MATCH() against a column with no FULLTEXT index throws "Error 1191: Can't find
-            // FULLTEXT index matching the column list" outright, and the FULLTEXT batch for
-            // occurrences can be built and rolled out one field at a time (it already was,
-            // see the LOCK=SHARED writes-blocking discussion), so a field can spend real time
-            // in FULLTEXT_CRITERIA_FIELDS before its index actually exists. Falls back to the
-            // plain LIKE path below when it doesn't — slower (real full scan), but correct —
-            // and switches itself back to MATCH() automatically the moment the index lands,
-            // no code change needed.
-            if ($operator === 'contains' && in_array($field, Project::FULLTEXT_CRITERIA_FIELDS, true) && self::hasFulltextIndex($field)) {
-                $clauses[]  = "MATCH({$column}) AGAINST(? IN BOOLEAN MODE)";
+            // *meant* to carry a FULLTEXT index, so route contains/not_contains through
+            // MATCH()/AGAINST() for those: word-based matching, not arbitrary substring (a
+            // search for "arriss" won't match inside "Carrisso" the way LIKE would), but
+            // that's the tradeoff that makes "contains" on a free-text field fast instead of
+            // a full-table scan over 300M+ rows.
+            if (in_array($operator, ['contains', 'not_contains'], true)) {
+                // Checked against the live schema, not just the static allowlist — a field
+                // can spend real time in FULLTEXT_CRITERIA_FIELDS before its index build
+                // actually finishes (they're built one at a time, InnoDB allows only one
+                // FULLTEXT per ALTER TABLE). Deliberately no LIKE fallback here: that used to
+                // silently turn "should be fast" into a quiet 300M-row scan the moment
+                // someone picked 'contains' in the UI before the index landed — exactly the
+                // failure mode this whole per-field operator gate exists to prevent. An error
+                // here is loud and temporary; a silent scan was neither.
+                if (!self::hasFulltextIndex($field)) {
+                    throw new InvalidArgumentException("FULLTEXT index for field '{$field}' is not ready yet");
+                }
+                $match      = "MATCH({$column}) AGAINST(? IN BOOLEAN MODE)";
+                $clauses[]  = $operator === 'contains' ? $match : "NOT {$match}";
                 $bindings[] = self::fulltextBooleanQuery((string) $value);
                 continue;
             }
@@ -98,12 +99,16 @@ class ProjectCriteriaEvaluator
                     $clauses[]  = "{$column} = ?",
                     $bindings[] = (string) $value,
                 ],
-                'contains' => [
-                    $clauses[]  = "{$column} LIKE ?",
-                    $bindings[] = '%' . $value . '%',
+                'not_equals' => [
+                    $clauses[]  = "{$column} != ?",
+                    $bindings[] = (string) $value,
                 ],
                 'starts_with' => [
                     $clauses[]  = "{$column} LIKE ?",
+                    $bindings[] = $value . '%',
+                ],
+                'not_starts_with' => [
+                    $clauses[]  = "{$column} NOT LIKE ?",
                     $bindings[] = $value . '%',
                 ],
             };
@@ -137,6 +142,31 @@ class ProjectCriteriaEvaluator
                   AND index_type = 'FULLTEXT'
                 LIMIT 1
             ", [$column]) !== null;
+        });
+    }
+
+    private const DROPDOWN_CACHE_TTL   = 86400; // 24h — values only change via the monthly GBIF refresh.
+    private const DROPDOWN_MAX_OPTIONS = 500;
+
+    // The actual values a DROPDOWN_CRITERIA_FIELDS column holds right now, not a maintained
+    // enum list that could drift from what GBIF data actually contains. $field is only ever
+    // called with a member of Project::DROPDOWN_CRITERIA_FIELDS (checked below), so it's safe
+    // to use as a column identifier via the query builder's whereNotNull/orderBy/pluck.
+    public static function dropdownOptions(string $field): array
+    {
+        if (!in_array($field, Project::DROPDOWN_CRITERIA_FIELDS, true)) {
+            return [];
+        }
+
+        return Cache::remember("occurrences_distinct_values:{$field}", self::DROPDOWN_CACHE_TTL, function () use ($field) {
+            return DB::table('occurrences')
+                ->whereNotNull($field)
+                ->where($field, '!=', '')
+                ->distinct()
+                ->orderBy($field)
+                ->limit(self::DROPDOWN_MAX_OPTIONS)
+                ->pluck($field)
+                ->all();
         });
     }
 }

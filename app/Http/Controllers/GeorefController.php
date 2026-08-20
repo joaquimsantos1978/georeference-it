@@ -34,7 +34,14 @@ class GeorefController extends Controller
             }
         }
 
-        return view('georef.index', compact('projectTitle'));
+        // See Project::operatorsForField()/ProjectCriteriaEvaluator::dropdownOptions() —
+        // same field metadata the /projects create/edit form uses, so the advanced-search
+        // popup never offers an operator or free-text value the backend would reject.
+        $dropdownOptions = collect(Project::DROPDOWN_CRITERIA_FIELDS)
+            ->mapWithKeys(fn($f) => [$f => ProjectCriteriaEvaluator::dropdownOptions($f)])
+            ->all();
+
+        return view('georef.index', compact('projectTitle', 'dropdownOptions'));
     }
 
     // Kept identical to Api\OccurrenceController::GEOREFERENCE_PROTOCOL so the API's
