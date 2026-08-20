@@ -152,9 +152,17 @@ class ProjectCriteriaEvaluator
     // enum list that could drift from what GBIF data actually contains. $field is only ever
     // called with a member of Project::DROPDOWN_CRITERIA_FIELDS (checked below), so it's safe
     // to use as a column identifier via the query builder's whereNotNull/orderBy/pluck.
+    //
+    // Guarded by hasIndex(), same self-correcting pattern as hasFulltextIndex() below —
+    // "SELECT DISTINCT col" without an index is a real full scan (sort/temp-table over
+    // 300M+ rows) that can't finish quickly, and every uncached page load (this is called
+    // from the /georef landing page on every cache miss) would fire it again in parallel.
+    // Returns [] — not an error — when the index isn't there yet, so the field just renders
+    // as free text until it is; this ran once in production against `country` before its
+    // index finished building and stacked four of these scans concurrently.
     public static function dropdownOptions(string $field): array
     {
-        if (!in_array($field, Project::DROPDOWN_CRITERIA_FIELDS, true)) {
+        if (!in_array($field, Project::DROPDOWN_CRITERIA_FIELDS, true) || !self::hasIndex($field)) {
             return [];
         }
 
@@ -167,6 +175,19 @@ class ProjectCriteriaEvaluator
                 ->limit(self::DROPDOWN_MAX_OPTIONS)
                 ->pluck($field)
                 ->all();
+        });
+    }
+
+    private static function hasIndex(string $column): bool
+    {
+        return Cache::remember("occurrences_has_index:{$column}", 3600, function () use ($column) {
+            return DB::selectOne("
+                SELECT 1 FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'occurrences'
+                  AND column_name = ?
+                LIMIT 1
+            ", [$column]) !== null;
         });
     }
 }
