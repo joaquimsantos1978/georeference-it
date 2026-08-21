@@ -39,25 +39,29 @@
             line-height: 1.5;
             margin: 0 0 0.25rem;
         }
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #d1fae5;
-            border-top-color: #16a34a;
-            border-radius: 50%;
-            margin: 1.5rem auto 0;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="card">
         <img src="/images/logo.png" alt="georeference.it" class="logo">
-        <h1>We'll be right back</h1>
-        <p>georeference.it is undergoing brief scheduled maintenance.</p>
-        <p>Estamos a fazer manutenção programada — voltamos em breve.</p>
-        <div class="spinner"></div>
+        <h1 data-en="Under maintenance" data-pt="Em manutenção">Under maintenance</h1>
+        <p data-en="georeference.it is currently undergoing maintenance. This may take a while — thanks for your patience."
+           data-pt="O georeference.it está de momento em manutenção. Pode demorar algum tempo — obrigado pela paciência.">
+            georeference.it is currently undergoing maintenance. This may take a while — thanks for your patience.
+        </p>
     </div>
+    <script>
+        // Pre-rendered once when maintenance mode starts (see the artisan down --render
+        // call), served as static HTML for every visitor regardless of app/DB state — so
+        // language can't be resolved server-side per request the way __() normally would.
+        // Browser language is the only signal available at that point.
+        (function() {
+            var pt = (navigator.language || '').toLowerCase().indexOf('pt') === 0;
+            if (!pt) return;
+            document.querySelectorAll('[data-pt]').forEach(function(el) {
+                el.textContent = el.getAttribute('data-pt');
+            });
+        })();
+    </script>
 </body>
 </html>
