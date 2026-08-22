@@ -2238,7 +2238,11 @@ function updateHistoryNav() {
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (d.success) {
-                    loadGroup(currentGroup.id);
+                    // Marking as not-georeferenceable is a completed action, like a submit —
+                    // advance, same as everywhere else. Undoing it is the opposite intent
+                    // (the user changed their mind and wants to work on this group after
+                    // all), so it reloads the same group instead of skipping past it.
+                    if (mode === 'undo') { loadGroup(currentGroup.id); } else { loadNextGroup(); }
                 } else {
                     btn.disabled = false;
                     btn.dataset.confirming = '0';
