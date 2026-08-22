@@ -20,7 +20,15 @@ class SendWeeklySummary extends Command
     {
         $since = now()->subWeek();
 
-        $totalGeoreferenced = GeorefSuggestion::where('created_at', '>=', $since)->count();
+        // Same definition as the per-user $specimens figure below — a sum of activity_log's
+        // occ_count, not a count of georef_suggestions rows. One suggestion applies to a
+        // whole locality group, which can span many individual occurrences, so counting
+        // suggestion rows understated the actual "specimens georeferenced" figure the label
+        // promises (and could read lower than a single active user's own specimen count).
+        $totalGeoreferenced = DB::table('activity_log')
+            ->where('type', 'georef')
+            ->where('created_at', '>=', $since)
+            ->sum('occ_count');
 
         $totalContributors = User::whereHas('suggestions', fn($q) => $q->where('created_at', '>=', $since))
             ->orWhereHas('validations', fn($q) => $q->where('created_at', '>=', $since))
