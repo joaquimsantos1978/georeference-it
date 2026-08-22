@@ -37,7 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->throttleApi('300,1');  // 300 requests/minute per IP
     })
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command(SendWeeklySummary::class)->weeklyOn(1, '8:00'); // Monday 8am
+        $schedule->command(SendWeeklySummary::class)->weeklyOn(0, '8:00'); // Sunday 8am
 
         // First Saturday of every month, 00:00 UTC. Cron has no native "nth weekday of
         // month" field, so this runs the check daily at midnight and gates the actual
