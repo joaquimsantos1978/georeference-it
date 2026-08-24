@@ -102,15 +102,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // remembered to invoke `gbif:sync-datasets --stats-only` by hand, so the
         // Datasets page could silently go stale for weeks. Same GBIF-import guard as
         // above, same reasoning (competes for I/O with the import's own batches).
-        // TEMPORARILY DISABLED (2026-08-24) — this run has twice left long-running/orphaned
-        // `INSERT INTO datasets` connections behind that starve unrelated writes (georef
-        // submissions started failing with "Lock wait timeout exceeded" both times), including
-        // the 03:00 run today, which also exited with code 1. Re-enable once the root cause
-        // is fixed — see conversation/investigation notes.
-        // $schedule->command(GbifSyncDatasets::class, ['--stats-only' => true])
-        //     ->dailyAt('03:00')
-        //     ->withoutOverlapping(240)
-        //     ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
+        // Re-enabled 2026-08-24 — root cause fixed in GbifSyncDatasets::computeStats() (was a
+        // single INSERT...SELECT holding shared locks on `occurrences` for the whole scan,
+        // starving unrelated writes; now a lock-free SELECT followed by a per-dataset upsert
+        // loop). Verified with a live manual run: ~3h end to end, zero lock timeouts
+        // throughout, real traffic unaffected. withoutOverlapping(240) is now too short for a
+        // ~3h run — raised so a slow run can't overlap the next day's trigger.
+        $schedule->command(GbifSyncDatasets::class, ['--stats-only' => true])
+            ->dailyAt('03:00')
+            ->withoutOverlapping(600)
+            ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
 
         // Only scans users active in the last 24h (see AwardBadges), so this stays cheap
         // even hourly.
