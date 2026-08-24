@@ -80,37 +80,49 @@ class GbifSyncDatasets extends Command
     {
         $this->info('Computing occurrence stats per dataset...');
 
-        // Single aggregation query over occurrences — result written to datasets table
-        DB::statement("
-            INSERT INTO datasets (
-                `key`, institution_code, collection_code,
-                total, georeferenced, validated, ungeoreferenced,
-                stats_updated_at, created_at, updated_at
-            )
+        // Two separate steps on purpose — NOT `INSERT INTO datasets SELECT ... FROM
+        // occurrences GROUP BY ...` in one statement. InnoDB takes shared locks on every row
+        // an INSERT...SELECT reads from its source table (unlike a standalone SELECT, which
+        // gets a lock-free consistent read) — for a GROUP BY over the full 300M+-row
+        // `occurrences` table, that meant holding locks across a huge swath of the table for
+        // as long as the scan took, which is exactly what produced "Lock wait timeout
+        // exceeded" on unrelated georef submissions (an UPDATE on any row still read-locked
+        // by the scan has to wait) both times this ran. A plain SELECT here takes no locks at
+        // all; the per-dataset upsert loop below only ever locks one row at a time, briefly.
+        $rows = DB::select("
             SELECT
-                dataset_key,
-                MAX(institution_code),
-                MAX(collection_code),
-                COUNT(*),
-                SUM(georef_status != 'ungeoreferenced'),
-                SUM(georef_status = 'validated'),
-                SUM(georef_status = 'ungeoreferenced'),
-                NOW(), NOW(), NOW()
+                dataset_key AS `key`,
+                MAX(institution_code) AS institution_code,
+                MAX(collection_code) AS collection_code,
+                COUNT(*) AS total,
+                SUM(georef_status != 'ungeoreferenced') AS georeferenced,
+                SUM(georef_status = 'validated') AS validated,
+                SUM(georef_status = 'ungeoreferenced') AS ungeoreferenced
             FROM occurrences
             WHERE dataset_key IS NOT NULL
               AND deleted_at IS NULL
             GROUP BY dataset_key
-            ON DUPLICATE KEY UPDATE
-                institution_code  = VALUES(institution_code),
-                collection_code   = VALUES(collection_code),
-                total             = VALUES(total),
-                georeferenced     = VALUES(georeferenced),
-                validated         = VALUES(validated),
-                ungeoreferenced   = VALUES(ungeoreferenced),
-                stats_updated_at  = NOW(),
-                updated_at        = NOW()
         ");
 
-        $this->info('Stats updated for ' . DB::table('datasets')->count() . ' datasets.');
+        $now = now();
+        foreach ($rows as $row) {
+            DB::table('datasets')->upsert([
+                'key'              => $row->key,
+                'institution_code' => $row->institution_code,
+                'collection_code'  => $row->collection_code,
+                'total'            => $row->total,
+                'georeferenced'    => $row->georeferenced,
+                'validated'        => $row->validated,
+                'ungeoreferenced'  => $row->ungeoreferenced,
+                'stats_updated_at' => $now,
+                'created_at'       => $now,
+                'updated_at'       => $now,
+            ], ['key'], [
+                'institution_code', 'collection_code', 'total', 'georeferenced',
+                'validated', 'ungeoreferenced', 'stats_updated_at', 'updated_at',
+            ]);
+        }
+
+        $this->info('Stats updated for ' . count($rows) . ' datasets.');
     }
 }
