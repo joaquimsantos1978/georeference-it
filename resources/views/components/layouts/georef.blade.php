@@ -32,6 +32,13 @@
     <link rel="manifest" href="/site.webmanifest">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    {{-- Vector basemap (OpenFreeMap "liberty" style) bridged into Leaflet — see the Carto
+         Voyager replacement in georef/index.blade.php. Free, no API key, no request limits;
+         renders OSM's name/name:en/name:latin fields with a Latin-preferring label style
+         instead of the CARTO raster basemap layer that started requiring a paid API key. --}}
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css"/>
+    <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
     <style>

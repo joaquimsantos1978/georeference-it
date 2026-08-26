@@ -988,14 +988,20 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     var _currentSuggestions = [];
     map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
     const osm           = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 });
-    const cartoVoyager  = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap contributors © CARTO', maxZoom: 19, subdomains: 'abcd' });
+    // Vector basemap via the maplibre-gl-leaflet bridge (script tags in the georef layout),
+    // not a plain L.tileLayer — CARTO's raster Voyager tiles started requiring a paid API
+    // key (2026-08, unrelated to this platform, affected many unrelated sites at once).
+    // OpenFreeMap's "liberty" style is free with no key/request limit and its label layers
+    // reference name:latin/name:nonlatin (verified directly in the style JSON), giving the
+    // same Latin-preferring place names Voyager did.
+    const latinLabels  = L.maplibreGL({ style: 'https://tiles.openfreemap.org/styles/liberty', attribution: '© OpenFreeMap © OpenMapTiles Data from OpenStreetMap' });
     const esriSat       = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 19 });
     const esriLabels    = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, pane: 'overlayPane' });
     const esriSatLabels = L.layerGroup([esriSat, esriLabels]);
     const esriStreet    = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 19 });
     const esriTopo      = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 19 });
     osm.addTo(map);
-    L.control.layers({ 'OpenStreetMap': osm, 'Carto Voyager (English)': cartoVoyager, 'ESRI Satellite': esriSat, 'ESRI Satellite + Labels': esriSatLabels, 'ESRI Street Map': esriStreet, 'ESRI Topo': esriTopo }, {}, { position: 'bottomleft' }).addTo(map);
+    L.control.layers({ 'OpenStreetMap': osm, 'OpenFreeMap (Latin labels)': latinLabels, 'ESRI Satellite': esriSat, 'ESRI Satellite + Labels': esriSatLabels, 'ESRI Street Map': esriStreet, 'ESRI Topo': esriTopo }, {}, { position: 'bottomleft' }).addTo(map);
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
     // Measure button as a Leaflet control (bottomleft, above layers)
