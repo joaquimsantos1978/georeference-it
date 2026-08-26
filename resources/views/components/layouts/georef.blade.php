@@ -38,7 +38,7 @@
          instead of the CARTO raster basemap layer that started requiring a paid API key. --}}
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css"/>
     <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
     <style>
