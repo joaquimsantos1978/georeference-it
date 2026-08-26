@@ -417,7 +417,15 @@
                             <div id="osm-results-list" class="space-y-1"></div>
                         </div>
                         <div id="sys-sugg-section" style="display:none;padding:4px 6px 6px;flex:1 1 260px;min-width:240px;max-width:100%;">
-                            <div style="font-size:10px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:.03em;padding:2px 2px 4px;">{{ __('Already georeferenced') }}</div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 2px 4px;">
+                                <div style="font-size:10px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:.03em;">{{ __('Already georeferenced') }}</div>
+                                @auth
+                                <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:#6b7280;cursor:pointer;white-space:nowrap;">
+                                    <input type="checkbox" id="sys-sugg-mine" onchange="onSysSuggMineChange()" style="width:11px;height:11px;">
+                                    {{ __('Only mine') }}
+                                </label>
+                                @endauth
+                            </div>
                             <div id="sys-sugg-list" style="font-size:11px;"></div>
                         </div>
                     </div>
@@ -1322,6 +1330,9 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     // ── System suggestions (already-georeferenced matches) ──────────────────────
     let _sysSuggResults = [];
     let _sysSuggQuery = '';
+    function onSysSuggMineChange() {
+        if (_sysSuggQuery) loadSystemSuggestions(_sysSuggQuery);
+    }
     function renderSystemSuggestionCard(r, i) {
         const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
         const uncM = r.uncertainty_m ? Math.round(r.uncertainty_m) : 0;
@@ -1400,7 +1411,9 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         }
         try {
             const excludeId = currentGroup ? currentGroup.id : '';
-            const data = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(query)+'&exclude_group_id='+excludeId)).json();
+            const mineEl = document.getElementById('sys-sugg-mine');
+            const mine = mineEl && mineEl.checked ? '&mine=1' : '';
+            const data = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(query)+'&exclude_group_id='+excludeId+mine)).json();
             if (token !== _localitySearchToken) return; // a newer search/close superseded this one
             _sysSuggResults = data.results;
             if (!data.results.length) {
@@ -1420,7 +1433,9 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         const token = _localitySearchToken;
         try {
             const excludeId = currentGroup ? currentGroup.id : '';
-            const data = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(_sysSuggQuery)+'&exclude_group_id='+excludeId+'&offset='+_sysSuggResults.length)).json();
+            const mineEl = document.getElementById('sys-sugg-mine');
+            const mine = mineEl && mineEl.checked ? '&mine=1' : '';
+            const data = await (await fetch(APP_URL+'/georef/search-georeferenced-localities?q='+encodeURIComponent(_sysSuggQuery)+'&exclude_group_id='+excludeId+'&offset='+_sysSuggResults.length+mine)).json();
             if (token !== _localitySearchToken) return;
             _sysSuggResults = _sysSuggResults.concat(data.results);
             renderSystemSuggestionList(data.has_more);

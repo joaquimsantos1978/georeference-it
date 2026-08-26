@@ -1530,6 +1530,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
     $excludeGroupId = $request->integer('exclude_group_id') ?: null;
     $offset = max(0, $request->integer('offset', 0));
     $perPage = 8;
+    $mine = $request->boolean('mine') && auth()->check();
 
     if (strlen($q) < 3) {
         return response()->json(['results' => [], 'has_more' => false]);
@@ -1554,8 +1555,9 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
     // with fulltext relevance ordering are expensive over the full corpus. A 60s window
     // is short enough that a locality georeferenced moments ago still shows up almost
     // immediately, while absorbing repeat hits on the same term.
-    $cacheKey = 'georef:search-geo-loc:' . md5(mb_strtolower($ftQuery) . ':' . $poolSize);
-    $candidates = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($ftQuery, $poolSize) {
+    $cacheKey = 'georef:search-geo-loc:' . md5(mb_strtolower($ftQuery) . ':' . $poolSize)
+        . ($mine ? ':mine:' . auth()->id() : '');
+    $candidates = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($ftQuery, $poolSize, $mine) {
         $fetchGroups = function (string $booleanQuery) use ($poolSize) {
             // The FTS index (type: fulltext in EXPLAIN) is organized by search term, not by
             // row order, so MySQL always has to collect every matching row before it can
@@ -1621,6 +1623,7 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
         // exactly what "inconsistent" groups are). Prefer validated, then highest vote total.
         $suggestionsByGroup = GeorefSuggestion::whereIn('locality_group_id', $groups->pluck('id'))
             ->where('status', '!=', 'rejected')
+            ->when($mine, fn($q) => $q->where('user_id', auth()->id()))
             ->get(['locality_group_id', 'decimal_latitude', 'decimal_longitude', 'coordinate_uncertainty_m', 'status', 'total_points', 'georeference_remarks'])
             ->groupBy('locality_group_id');
 
@@ -1636,7 +1639,9 @@ public function searchGeoreferencedLocalities(Request $request): \Illuminate\Htt
         // never get an auto-suggestion — see GbifService::createAutoSuggestions). Group the
         // raw occurrence coordinates by *exact* match and take the largest cluster, same
         // logic the "already georeferenced" occurrence list itself uses for display.
-        $gbifOccByGroup = Occurrence::whereIn('locality_group_id', $groups->pluck('id'))
+        // Never populated for 'mine' — GBIF-provided coordinates were never submitted by
+        // any platform user, so they can't ever be "georeferenced by me".
+        $gbifOccByGroup = $mine ? collect() : Occurrence::whereIn('locality_group_id', $groups->pluck('id'))
             ->where('georef_status', 'gbif_georeferenced')
             ->whereNotNull('gbif_decimal_latitude')->whereNotNull('gbif_decimal_longitude')
             ->get(['locality_group_id', 'gbif_decimal_latitude', 'gbif_decimal_longitude', 'gbif_coordinate_uncertainty_m'])
