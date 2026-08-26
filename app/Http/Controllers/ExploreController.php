@@ -60,34 +60,12 @@ class ExploreController extends Controller
             };
         }
 
-        // "By me" — scoped to the current user's own georef actions (activity_log.type =
-        // 'georef'), bounded by activity_log_user_id_created_at_index regardless of table
-        // size, since it's always just one user's own history, never the full table.
-        $mine = $request->boolean('mine') && auth()->check();
-        if ($mine) {
-            $query->whereIn('id', \Illuminate\Support\Facades\DB::table('activity_log')
-                ->where('user_id', auth()->id())
-                ->where('type', 'georef')
-                ->select('locality_group_id')
-                ->distinct()
-            );
-        }
-
-        $perPage    = 50;
-        $page       = $request->integer('page', 1) ?: 1;
-        $sort       = $request->get('sort');
-        $cacheKeyParams = $request->only(['q', 'country', 'dataset_key', 'status']);
-        if ($mine) {
-            $cacheKeyParams['mine'] = auth()->id(); // per-user, not shared across the general cache
-        }
-        $cacheKey = 'explore_count_' . md5(json_encode($cacheKeyParams));
+        $perPage  = 50;
+        $page     = $request->integer('page', 1) ?: 1;
+        $cacheKey = 'explore_count_' . md5(json_encode($request->only(['q', 'country', 'dataset_key', 'status'])));
         $total    = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $query)->count());
 
-        // 'recent' wins over relevance when both a search term and the sort are given —
-        // an explicit sort choice is a stronger signal than the default post-search order.
-        if ($sort === 'recent') {
-            $rows = $query->orderByDesc('updated_at')->forPage($page, $perPage)->get();
-        } elseif ($request->filled('q')) {
+        if ($request->filled('q')) {
             $q    = $request->q;
             $rows = $query
                 ->orderByRaw(
