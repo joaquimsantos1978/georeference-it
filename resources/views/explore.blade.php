@@ -51,9 +51,25 @@
                 <input type="hidden" name="dataset_key" id="dataset-key-input" value="{{ request('dataset_key') }}">
                 <div id="dataset-suggestions" class="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
             </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Sort by') }}</label>
+                <select name="sort" class="text-sm border border-gray-200 dark:border-gray-700 rounded-lg pl-3 pr-8 py-2 bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-green-500">
+                    <option value="" {{ request('sort') !== 'recent' ? 'selected' : '' }}>{{ __('Most occurrences') }}</option>
+                    <option value="recent" {{ request('sort') === 'recent' ? 'selected' : '' }}>{{ __('Most recently updated') }}</option>
+                </select>
+            </div>
+            @auth
+            <div class="pb-2">
+                <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                    <input type="checkbox" name="mine" value="1" {{ request()->boolean('mine') ? 'checked' : '' }}
+                        class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    {{ __('Georeferenced by me') }}
+                </label>
+            </div>
+            @endauth
             <div class="flex gap-2">
                 <button type="submit" class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">{{ __('Search') }}</button>
-                @if(request()->hasAny(['q','country','status','dataset_key']))
+                @if(request()->hasAny(['q','country','status','dataset_key','sort','mine']))
                     <a href="{{ route('explore') }}" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">{{ __('Clear') }}</a>
                 @endif
             </div>
