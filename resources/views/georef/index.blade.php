@@ -422,7 +422,7 @@
                                 @auth
                                 <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:#6b7280;cursor:pointer;white-space:nowrap;">
                                     <input type="checkbox" id="sys-sugg-mine" onchange="onSysSuggMineChange()" style="width:11px;height:11px;">
-                                    {{ __('Only mine') }}
+                                    {{ __('Only by me') }}
                                 </label>
                                 @endauth
                             </div>
@@ -713,8 +713,8 @@
                 <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Discussion') }}</span>
                 <div id="comments-list" class="mt-1 space-y-1 max-h-20 overflow-y-auto"></div>
                 @auth
-                <div class="mt-2 flex gap-1">
-                    <input type="text" id="comment-input" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="{{ __('Add a comment...') }}">
+                <div class="mt-2 flex gap-1 items-end">
+                    <textarea id="comment-input" rows="1" class="flex-1 text-xs panel-input border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500 resize-y" placeholder="{{ __('Add a comment...') }}"></textarea>
                     <button id="comment-submit" class="text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200">{{ __('Send') }}</button>
                 </div>
                 @else
