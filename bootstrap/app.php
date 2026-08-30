@@ -108,7 +108,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // loop). Verified with a live manual run: ~3h end to end, zero lock timeouts
         // throughout, real traffic unaffected. withoutOverlapping(240) is now too short for a
         // ~3h run — raised so a slow run can't overlap the next day's trigger.
-        $schedule->command(GbifSyncDatasets::class, ['--stats-only' => true])
+        // '--stats-only' is a value-less flag: it must be passed as a bare array element,
+        // not ['--stats-only' => true] — the latter renders as `--stats-only='1'`, which
+        // Symfony rejects ("option does not accept a value"), silently failing every night.
+        $schedule->command(GbifSyncDatasets::class, ['--stats-only'])
             ->dailyAt('03:00')
             ->withoutOverlapping(600)
             ->skip(fn () => !empty(\Illuminate\Support\Facades\Cache::get(GbifMonthlyRefresh::STATUS_KEY)['running'] ?? false));
