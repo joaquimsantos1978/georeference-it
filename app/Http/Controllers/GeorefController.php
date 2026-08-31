@@ -1296,9 +1296,10 @@ public function next(Request $request)
         $group = LocalityGroup::findOrFail($validated['locality_group_id']);
 
         $newComment = LocalityGroupComment::create([
-            'locality_group_id' => $validated['locality_group_id'],
-            'user_id'           => auth()->id(),
-            'body'              => $validated['body'],
+            'locality_group_id'   => $validated['locality_group_id'],
+            'locality_group_hash' => $group->group_hash,
+            'user_id'             => auth()->id(),
+            'body'                => $validated['body'],
         ]);
         $newComment->setRelation('user', auth()->user());
 

@@ -9,6 +9,7 @@ class LocalityGroupComment extends Model
 {
     protected $fillable = [
         'locality_group_id',
+        'locality_group_hash',
         'user_id',
         'body',
     ];
