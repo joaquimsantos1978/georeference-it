@@ -73,6 +73,11 @@ class GbifImportDownload extends Command
 
         $key     = $this->argument('key');
         $zipPath = $this->option('file');
+        // Set below only when a previous run of this exact download already fully merged
+        // gbif_staging into occurrences/locality_groups (see the early-truncate block after
+        // processStaging()) — lets a retry that crashed during the multimedia phase resume
+        // there directly instead of redoing the whole staging pipeline.
+        $stagingFullyProcessed = false;
 
         // Multimedia-only mode
         if ($multimediaOnly = $this->option('multimedia-only')) {
@@ -88,59 +93,98 @@ class GbifImportDownload extends Command
 
         // Step 1: poll + download
         if (!$this->option('skip-staging')) {
-            // If gbif_staging already matches the exact occurrence.txt we'd extract (by
-            // path+size+mtime fingerprint — see loadIntoStaging()), skip needing the ZIP
-            // entirely, including just to open it and read meta.xml for column mapping.
-            // The ZIP is deleted after a successful run to free disk (100GB+), so a retry
-            // that reaches this point on an already-loaded staging table would otherwise
-            // crash trying to open a ZIP that no longer exists — column mapping isn't
-            // needed at all when the LOAD DATA itself is about to be skipped anyway.
-            $conventionalCsv = "{$this->storageDir}/occurrence.txt";
             $conventionalMultimedia = "{$this->storageDir}/multimedia.txt";
-            $fingerprint = file_exists($conventionalCsv) ? [
-                'path'  => realpath($conventionalCsv) ?: $conventionalCsv,
-                'size'  => filesize($conventionalCsv),
-                'mtime' => filemtime($conventionalCsv),
-            ] : null;
-            $previousFingerprint = Cache::get('gbif:staging-loaded-from');
-            $stagingAlreadyLoaded = $fingerprint && $previousFingerprint
-                && $previousFingerprint['path'] === $fingerprint['path']
-                && $previousFingerprint['size'] === $fingerprint['size']
-                && $previousFingerprint['mtime'] === $fingerprint['mtime'];
 
-            if ($stagingAlreadyLoaded) {
-                $this->info("gbif_staging already loaded from {$conventionalCsv} ({$previousFingerprint['rows']} rows) — skipping ZIP/column mapping entirely.");
-                $csvPath = $conventionalCsv;
-                $multimediaPath = file_exists($conventionalMultimedia) ? $conventionalMultimedia : null;
+            // Both fast paths below are keyed purely off cache markers, not off occurrence.txt
+            // still existing on disk: occurrence.txt is only ever read by loadIntoStaging() (the
+            // LOAD DATA step), so it's deleted immediately once that succeeds — see the "full
+            // pipeline" branch below — same as the ZIP is deleted immediately once occurrence.txt
+            // is loaded. Nothing downstream (processStaging(), the multimedia phase) ever reads
+            // the file again, only the gbif_staging DB table, so there's nothing to re-derive
+            // from disk on a retry.
+            $loadedMarker    = Cache::get('gbif:staging-loaded-from');
+            $processedMarker = Cache::get('gbif:staging-fully-processed');
+
+            // Highest-priority fast path: a previous run of this exact download already
+            // finished processStaging() and truncated gbif_staging (see the block right after
+            // processStaging() below). Only the multimedia phase (if this download had one)
+            // still needs to run. This is what lets a crash during the multimedia phase resume
+            // without redoing the download/extract/LOAD DATA/staging-merge — hours of work —
+            // from scratch.
+            $stagingFullyProcessed = $processedMarker && $loadedMarker
+                && $processedMarker['key'] === $key
+                && $processedMarker['fingerprint'] === $loadedMarker;
+
+            if ($stagingFullyProcessed) {
+                $rows = $processedMarker['fingerprint']['rows'] ?? '?';
+                $this->info("gbif_staging was already fully merged into occurrences/locality_groups ({$rows} rows) — skipping download/extract/LOAD DATA/staging-merge entirely.");
+                $csvPath = null;
+                $multimediaPath = $processedMarker['multimedia_path'] ?? null;
+                if ($multimediaPath && !file_exists($multimediaPath)) {
+                    $this->warn("Recorded multimedia file {$multimediaPath} no longer exists — skipping multimedia import.");
+                    $multimediaPath = null;
+                }
             } else {
-                if (!$zipPath) {
-                    $zipPath = $this->waitAndDownload($key);
+                // Second fast path: gbif_staging already holds this exact download's data (a
+                // previous run got through LOAD DATA but crashed before processStaging()
+                // finished) — identified by the download key alone, since the file itself is
+                // already gone by this point. Skips needing the ZIP entirely, including just to
+                // open it and read meta.xml for column mapping.
+                $stagingAlreadyLoaded = $loadedMarker && $loadedMarker['key'] === $key;
+
+                if ($stagingAlreadyLoaded) {
+                    $this->info("gbif_staging already loaded for this download ({$loadedMarker['rows']} rows) — skipping download/extract/LOAD DATA entirely.");
+                    $csvPath = null;
+                    $multimediaPath = file_exists($conventionalMultimedia) ? $conventionalMultimedia : null;
+
+                    // Defensive: occurrence.txt is normally gone by now (deleted right after
+                    // LOAD DATA succeeds — see below). If a crash landed in the narrow window
+                    // before that unlink ran, clean it up now instead of leaking it forever.
+                    $conventionalCsv = "{$this->storageDir}/occurrence.txt";
+                    if (file_exists($conventionalCsv)) {
+                        unlink($conventionalCsv);
+                        $this->info("Removed {$conventionalCsv} (already loaded into gbif_staging)");
+                    }
+                } else {
                     if (!$zipPath) {
+                        $zipPath = $this->waitAndDownload($key);
+                        if (!$zipPath) {
+                            return self::FAILURE;
+                        }
+                    }
+
+                    // Step 2: extract occurrence.txt and parse meta.xml
+                    [$csvPath, $colList, $ignoreHeader, $multimediaPath, $fieldsEnclosedBy] = $this->extractAndMapColumns($zipPath);
+                    if (!$csvPath) {
                         return self::FAILURE;
                     }
-                }
 
-                // Step 2: extract occurrence.txt and parse meta.xml
-                [$csvPath, $colList, $ignoreHeader, $multimediaPath, $fieldsEnclosedBy] = $this->extractAndMapColumns($zipPath);
-                if (!$csvPath) {
-                    return self::FAILURE;
-                }
+                    // Step 3: LOAD DATA LOCAL INFILE → gbif_staging
+                    if (!$this->loadIntoStaging($csvPath, $colList, $key, $fieldsEnclosedBy)) {
+                        return self::FAILURE;
+                    }
 
-                // Step 3: LOAD DATA LOCAL INFILE → gbif_staging
-                if (!$this->loadIntoStaging($csvPath, $colList, $fieldsEnclosedBy)) {
-                    return self::FAILURE;
-                }
+                    // The ZIP (100GB+) is provably unused from here on: loadIntoStaging() just
+                    // cached this download's key in 'gbif:staging-loaded-from', so any later
+                    // retry of this command hits the stagingAlreadyLoaded fast path above and
+                    // never calls extractAndMapColumns() again — the ZIP is never reopened.
+                    // Deleting it now instead of waiting for the final cleanup step frees the
+                    // space hours earlier, before the locality_groups/occurrences merge and the
+                    // multimedia phase both still have to run.
+                    if ($zipPath && file_exists($zipPath)) {
+                        unlink($zipPath);
+                        $this->info("Removed {$zipPath} (no longer needed once gbif_staging is loaded)");
+                    }
 
-                // The ZIP (100GB+) is provably unused from here on: loadIntoStaging() just
-                // cached occurrence.txt's fingerprint in 'gbif:staging-loaded-from', so any
-                // later retry of this command hits the stagingAlreadyLoaded fast path above
-                // and never calls extractAndMapColumns() again — the ZIP is never reopened.
-                // Deleting it now instead of waiting for the final cleanup step frees the
-                // space hours earlier, before the locality_groups/occurrences merge and the
-                // multimedia phase both still have to run.
-                if ($zipPath && file_exists($zipPath)) {
-                    unlink($zipPath);
-                    $this->info("Removed {$zipPath} (no longer needed once gbif_staging is loaded)");
+                    // occurrence.txt (100s of GB) is likewise provably unused from here on —
+                    // loadIntoStaging() above is the only place that reads the file itself;
+                    // everything after this reads gbif_staging (the DB table). Deleting it now,
+                    // right alongside the ZIP, instead of waiting hours for processStaging() (let
+                    // alone the final cleanup step) frees the space as early as possible.
+                    if ($csvPath && file_exists($csvPath)) {
+                        unlink($csvPath);
+                        $this->info("Removed {$csvPath} (fully loaded into gbif_staging)");
+                    }
                 }
             }
         } else {
@@ -148,7 +192,37 @@ class GbifImportDownload extends Command
         }
 
         // Step 4: staging → locality_groups + occurrences
-        $this->processStaging($this->option('prune-deleted'));
+        if (!$stagingFullyProcessed) {
+            $this->processStaging($this->option('prune-deleted'));
+
+            // gbif_staging (150GB+ some months) is now fully merged into occurrences/
+            // locality_groups and isn't read by anything downstream — the multimedia phase
+            // below only touches gbif_multimedia_staging (loaded from the separate
+            // multimedia.txt) and occurrences. Truncating now instead of waiting for the final
+            // cleanup step frees that space hours earlier, before the multimedia phase still
+            // has to run.
+            //
+            // Recorded as an explicit marker (key + the exact 'gbif:staging-loaded-from' value
+            // that was merged) rather than inferred from an empty gbif_staging table, so a
+            // crash during the multimedia phase resumes via the $stagingFullyProcessed fast
+            // path above instead of redoing the staging pipeline. Skipped for --skip-staging
+            // (nothing here was verified against a load this run) and --skip-cleanup (caller
+            // explicitly wants gbif_staging left populated).
+            if (!$this->option('skip-staging') && !$this->option('skip-cleanup')) {
+                $this->markProgress('Releasing gbif_staging (already merged into occurrences/locality_groups)');
+                Cache::forever('gbif:staging-fully-processed', [
+                    'key'             => $key,
+                    'fingerprint'     => Cache::get('gbif:staging-loaded-from'),
+                    'multimedia_path' => $multimediaPath ?? null,
+                ]);
+
+                $this->info('Truncating gbif_staging (fully merged)...');
+                DB::statement('TRUNCATE TABLE gbif_staging');
+                foreach (['cleanup', 'staging_process', 'counters_update', 'prune_deleted'] as $stage) {
+                    Cache::forget("gbif:progress:{$stage}");
+                }
+            }
+        }
 
         // Step 4b: import multimedia if extracted
         if (!empty($multimediaPath) && file_exists($multimediaPath)) {
@@ -158,12 +232,14 @@ class GbifImportDownload extends Command
         }
 
         // Step 5: cleanup — once the data is safely in occurrences/locality_groups, the
-        // remaining download artifacts (occurrence.txt, multimedia.txt — the zip is
-        // already gone, see above) are no longer needed and are large (100GB+ each).
-        // Left alone, they accumulate every month and silently eat disk space (this is
+        // remaining download artifact (multimedia.txt — the zip and occurrence.txt are
+        // already gone by this point, see above) is no longer needed and can be large.
+        // Left alone, these accumulate every month and silently eat disk space (this is
         // what filled the disk to 85% before anyone noticed). Only deleted on a fully
         // successful run, so a failed run can still retry without re-downloading/
-        // re-extracting.
+        // re-extracting. gbif_staging is re-truncated here too (a harmless no-op if the
+        // early-truncate above already ran) as a safety net for any path that reached this
+        // point without going through it (e.g. --skip-staging).
         if (!$this->option('skip-cleanup')) {
             $this->info('Truncating gbif_staging...');
             $this->markProgress('Cleaning up: truncating gbif_staging and removing downloaded files');
@@ -171,6 +247,7 @@ class GbifImportDownload extends Command
             DB::statement('TRUNCATE TABLE gbif_multimedia_staging');
             Cache::forget('gbif:staging-loaded-from');
             Cache::forget('gbif:multimedia-staging-loaded-from');
+            Cache::forget('gbif:staging-fully-processed');
             $this->clearCheckpoints();
 
             foreach (array_filter([$zipPath ?? null, $csvPath ?? null, $multimediaPath ?? null]) as $file) {
@@ -400,21 +477,23 @@ class GbifImportDownload extends Command
     // LOAD DATA LOCAL INFILE
     // -------------------------------------------------------------------------
 
-    private function loadIntoStaging(string $csvPath, array $colList, string $fieldsEnclosedBy = ''): bool
+    private function loadIntoStaging(string $csvPath, array $colList, string $key, string $fieldsEnclosedBy = ''): bool
     {
         // Skip re-running LOAD DATA if gbif_staging already holds this exact file (by
-        // path+size+mtime — cheap to check, unlike re-verifying via COUNT(*) on a
-        // 200M+ row table). This is the difference between a retry after a downstream
-        // failure taking minutes instead of redoing an hours-long reload for no reason —
-        // observed costing hours on production when a --key retry blindly re-truncated
-        // and reloaded staging that was already complete and correct.
+        // path+size+mtime, plus the download key — cheap to check, unlike re-verifying via
+        // COUNT(*) on a 200M+ row table). This is the difference between a retry after a
+        // downstream failure taking minutes instead of redoing an hours-long reload for no
+        // reason — observed costing hours on production when a --key retry blindly
+        // re-truncated and reloaded staging that was already complete and correct.
         $fingerprint = [
+            'key'   => $key,
             'path'  => realpath($csvPath) ?: $csvPath,
             'size'  => filesize($csvPath),
             'mtime' => filemtime($csvPath),
         ];
         $previous = Cache::get('gbif:staging-loaded-from');
-        if ($previous && $previous['path'] === $fingerprint['path']
+        if ($previous && $previous['key'] === $fingerprint['key']
+            && $previous['path'] === $fingerprint['path']
             && $previous['size'] === $fingerprint['size']
             && $previous['mtime'] === $fingerprint['mtime']) {
             $this->info("gbif_staging already loaded from this exact file ({$previous['rows']} rows), skipping LOAD DATA");
