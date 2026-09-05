@@ -130,6 +130,18 @@ class GbifImportDownload extends Command
                 if (!$this->loadIntoStaging($csvPath, $colList, $fieldsEnclosedBy)) {
                     return self::FAILURE;
                 }
+
+                // The ZIP (100GB+) is provably unused from here on: loadIntoStaging() just
+                // cached occurrence.txt's fingerprint in 'gbif:staging-loaded-from', so any
+                // later retry of this command hits the stagingAlreadyLoaded fast path above
+                // and never calls extractAndMapColumns() again — the ZIP is never reopened.
+                // Deleting it now instead of waiting for the final cleanup step frees the
+                // space hours earlier, before the locality_groups/occurrences merge and the
+                // multimedia phase both still have to run.
+                if ($zipPath && file_exists($zipPath)) {
+                    unlink($zipPath);
+                    $this->info("Removed {$zipPath} (no longer needed once gbif_staging is loaded)");
+                }
             }
         } else {
             $multimediaPath = null;
@@ -146,11 +158,12 @@ class GbifImportDownload extends Command
         }
 
         // Step 5: cleanup — once the data is safely in occurrences/locality_groups, the
-        // raw download artifacts (zip, extracted occurrence.txt, multimedia.txt) are no
-        // longer needed and are large (100GB+ each). Left alone, they accumulate every
-        // month and silently eat disk space (this is what filled the disk to 85% before
-        // anyone noticed). Only deleted on a fully successful run, so a failed run can
-        // still retry without re-downloading/re-extracting.
+        // remaining download artifacts (occurrence.txt, multimedia.txt — the zip is
+        // already gone, see above) are no longer needed and are large (100GB+ each).
+        // Left alone, they accumulate every month and silently eat disk space (this is
+        // what filled the disk to 85% before anyone noticed). Only deleted on a fully
+        // successful run, so a failed run can still retry without re-downloading/
+        // re-extracting.
         if (!$this->option('skip-cleanup')) {
             $this->info('Truncating gbif_staging...');
             $this->markProgress('Cleaning up: truncating gbif_staging and removing downloaded files');
@@ -160,7 +173,7 @@ class GbifImportDownload extends Command
             Cache::forget('gbif:multimedia-staging-loaded-from');
             $this->clearCheckpoints();
 
-            foreach (array_filter([$zipPath, $csvPath ?? null, $multimediaPath ?? null]) as $file) {
+            foreach (array_filter([$zipPath ?? null, $csvPath ?? null, $multimediaPath ?? null]) as $file) {
                 if (is_string($file) && file_exists($file)) {
                     unlink($file);
                     $this->info("Removed {$file}");
