@@ -42,9 +42,34 @@ class LocalityGroup extends Model
         return $this->hasMany(GeorefSuggestion::class);
     }
 
+    // Common Latin diacritics folded to their base letter before comparison, so
+    // "Lisboa" and "Lisbôa" (a real pair seen in the wild — same expedition, same
+    // locality, transcribed differently by two data providers) normalize identically
+    // and show up as "similar groups" to each other. Deliberately NOT used by
+    // hashFromOccurrence() below — that hash is the group's identity, and folding
+    // accents there would merge/reshuffle existing locality_groups; this one only
+    // feeds normalized_locality, a secondary field used for search/similarity, so
+    // widening it is low-risk. iconv('...//TRANSLIT') was tried first and rejected:
+    // its output is locale/libc-dependent (e.g. "ô" became "^o", not "o", here).
+    private const ACCENT_MAP = [
+        'á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'å' => 'a', 'ā' => 'a',
+        'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e', 'ē' => 'e', 'ė' => 'e', 'ę' => 'e',
+        'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i', 'ī' => 'i',
+        'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o', 'ø' => 'o', 'ō' => 'o',
+        'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ū' => 'u',
+        'ý' => 'y', 'ÿ' => 'y',
+        'ñ' => 'n', 'ń' => 'n',
+        'ç' => 'c', 'ć' => 'c', 'č' => 'c',
+        'š' => 's', 'ś' => 's',
+        'ž' => 'z', 'ź' => 'z', 'ż' => 'z',
+        'ł' => 'l',
+        'ß' => 'ss',
+    ];
+
     public static function normalizeLocality(string $text): string
     {
         $s = mb_strtolower($text);
+        $s = strtr($s, self::ACCENT_MAP);
         $s = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $s);
         $s = preg_replace('/\s+/', ' ', $s);
         return trim($s);

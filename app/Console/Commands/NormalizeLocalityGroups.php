@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\LocalityGroup;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -52,14 +53,12 @@ class NormalizeLocalityGroups extends Command
         $this->info('Done.');
     }
 
+    // Was its own copy of this logic (lowercase + strip punctuation, no accent folding)
+    // until 2026-09-05 — diverged from LocalityGroup::normalizeLocality() enough that a
+    // real pair of siblings ("Nova Lisboa" vs "Nova Lisbôa") never matched as similar.
+    // Delegates now so there is exactly one place this rule lives.
     public static function normalize(string $text): string
     {
-        // Lowercase
-        $s = mb_strtolower($text);
-        // Remove punctuation except word chars and spaces
-        $s = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $s);
-        // Collapse whitespace
-        $s = preg_replace('/\s+/', ' ', $s);
-        return trim($s);
+        return LocalityGroup::normalizeLocality($text);
     }
 }
