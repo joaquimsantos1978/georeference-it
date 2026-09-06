@@ -402,6 +402,7 @@ public function next(Request $request)
                 $focusKey              => $seenIds,
                 'georef_last_province' => $sibling->state_province,
                 'georef_last_county'   => $sibling->county,
+                'georef_last_country'  => $sibling->country_code,
             ]);
             return response()->json($this->groupData($sibling));
         }
@@ -412,11 +413,21 @@ public function next(Request $request)
     $lastProvince = session('georef_last_province');
     $lastCounty   = session('georef_last_county');
 
-    // If no session location but we have the excluded group, seed from it
+    // A stored province/county belongs to whatever country was last worked in. If the
+    // request now explicitly asks for a different country (session left on an Angola
+    // province, user opens ?country=PT), that region is meaningless here — drop it so the
+    // scope loop can't build an impossible WHERE state_province=X AND country_code=Y.
+    if ($country && ($lastCountry = session('georef_last_country')) && $lastCountry !== $country) {
+        $lastProvince = null;
+        $lastCounty   = null;
+    }
+
+    // If no session location but we have the excluded group, seed from it — unless it's in
+    // a different country than the one explicitly requested.
     if ($focus === '' && !$lastCounty && !$lastProvince && $excludeId) {
         $ref = LocalityGroup::select('state_province', 'county', 'country_code')
             ->find($excludeId);
-        if ($ref) {
+        if ($ref && (!$country || $ref->country_code === $country)) {
             $lastCounty   = $ref->county;
             $lastProvince = $ref->state_province;
             if (!$country) $country = $ref->country_code ?: null;
@@ -752,6 +763,7 @@ public function next(Request $request)
         $focusKey              => $seenIds,
         'georef_last_province' => $group->state_province,
         'georef_last_county'   => $group->county,
+        'georef_last_country'  => $group->country_code,
     ]);
 
     return response()->json($this->groupData($group));
@@ -764,6 +776,7 @@ public function next(Request $request)
         session([
             'georef_last_province' => $group->state_province,
             'georef_last_county'   => $group->county,
+            'georef_last_country'  => $group->country_code,
         ]);
         return response()->json($this->groupData($group));
     }
