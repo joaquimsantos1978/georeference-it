@@ -552,6 +552,11 @@ public function next(Request $request)
     // plausibly be the reason (non-empty) and only after a real exhaustion.
     $seenIdsAttempts = $seenIds ? [$seenIds, []] : [$seenIds];
 
+    // A scoped candidate query (the province/county passes especially) over the
+    // locality_groups table while it's under a monthly GBIF import's write churn can hit
+    // the web statement timeout and throw — catch it so the request falls through to the
+    // fast fallback below instead of 500ing outright.
+    try {
     foreach ($seenIdsAttempts as $attempt => $seenIdsForAttempt) {
       [$restrictDatasetGeoref, $restrictDatasetValidate] = $datasetRestrictions($seenIdsForAttempt);
       [$restrictProjectGeoref, $restrictProjectValidate] = $projectRestrictions($seenIdsForAttempt);
@@ -704,6 +709,29 @@ public function next(Request $request)
         if ($group) break;
       }
       if ($group) break;
+    }
+    } catch (\Illuminate\Database\QueryException $e) {
+        \Illuminate\Support\Facades\Log::warning('georef/next scope query failed (likely statement timeout during GBIF import): ' . $e->getMessage());
+        $group = null;
+    }
+
+    // Fast last resort when the scoped machinery timed out or came up empty: a plain
+    // country-filtered scan with no ORDER BY, so it stops at the first 50 rows the index
+    // yields instead of sorting the whole match set — cheap enough to survive the import.
+    if (!$group) {
+        try {
+            $fallback = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                ->where('occurrence_count', '>', 0)
+                ->where('occurrence_count', '<', 10000)
+                ->when($country, fn($q) => $q->where('country_code', $country))
+                ->tap($excludeCorrupted)
+                ->when($seenIds, fn($q) => $q->whereNotIn('id', $seenIds))
+                ->limit(50)
+                ->get();
+            $group = $fallback->isNotEmpty() ? $fallback->random() : null;
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Illuminate\Support\Facades\Log::warning('georef/next fallback query also failed: ' . $e->getMessage());
+        }
     }
 
     if (!$group) {
