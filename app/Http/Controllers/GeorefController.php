@@ -729,7 +729,13 @@ public function next(Request $request)
     // Fast last resort when the scoped machinery timed out or came up empty: a plain
     // country-filtered scan with no ORDER BY, so it stops at the first 50 rows the index
     // yields instead of sorting the whole match set — cheap enough to survive the import.
-    if (!$group) {
+    //
+    // ONLY for the plain "any locality (optionally in country X)" flow. A project /
+    // dataset / advanced-search filter must never be silently bypassed: if one is active
+    // and the scopes found nothing — including because its candidate set isn't built yet
+    // (ProjectsRefreshCandidates is paused during the monthly import) — the honest answer
+    // is group:null, not an unrelated specimen.
+    if (!$group && !$project && $datasetKey === '' && !$adhocCriteria) {
         try {
             $fallback = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                 ->where('occurrence_count', '>', 0)
