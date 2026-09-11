@@ -27,6 +27,15 @@ class GbifMonthlyRefresh extends Command
     // simple enough that the watchdog never has to guess whether a value it read is stale.
     const ACTIVE_KEY_CACHE = 'gbif:monthly-refresh:active-key';
 
+    // Highest step (2-7) that has actually finished for ACTIVE_KEY_CACHE's current
+    // key. A resume — watchdog auto-resume or a manual retry with the same --key —
+    // reads this and skips straight past whatever already succeeded, instead of
+    // redoing the hours-long download+import every time a downstream step (e.g.
+    // auto-suggest) is what actually crashed. Only meaningful together with the key
+    // it was recorded under, which is why it's reset whenever ACTIVE_KEY_CACHE
+    // changes rather than living forever on its own.
+    const PROGRESS_CACHE = 'gbif:monthly-refresh:completed-step';
+
     private function markStep(string $step): void
     {
         $status = Cache::get(self::STATUS_KEY, []);
@@ -63,12 +72,6 @@ class GbifMonthlyRefresh extends Command
 
         $start = now();
         Cache::forever(self::STATUS_KEY, ['running' => true, 'pid' => getmypid(), 'started_at' => $start, 'step' => 'Starting', 'updated_at' => $start]);
-        // A genuinely fresh run (not a watchdog auto-resume) resets the retry bookkeeping —
-        // otherwise a crash-loop from months ago could leave gbif:watchdog permanently
-        // silenced for this month's run too.
-        Cache::forget('gbif:monthly-refresh:watchdog:retries');
-        Cache::forget('gbif:monthly-refresh:watchdog:last_attempt');
-        Cache::forget('gbif:monthly-refresh:watchdog:exhausted-notified');
         Log::channel('single')->info('[gbif:monthly-refresh] Starting monthly refresh');
         $this->info("Starting monthly GBIF refresh at {$start}...");
 
@@ -76,8 +79,8 @@ class GbifMonthlyRefresh extends Command
         $key = $this->option('key');
 
         if (!$key && !$this->option('skip-request')) {
-            $this->markStep('Step 1/6: Requesting GBIF download');
-            $this->info('Step 1/6: Requesting GBIF download...');
+            $this->markStep('Step 1/7: Requesting GBIF download');
+            $this->info('Step 1/7: Requesting GBIF download...');
             $exit = Artisan::call('gbif:request-download');
             $output = Artisan::output();
             $this->line($output);
@@ -97,17 +100,35 @@ class GbifMonthlyRefresh extends Command
         }
 
         $this->info("Using download key: {$key}");
+
+        // A key different from whatever this pipeline was last working on (a freshly
+        // requested key, or a human deliberately pointing at a different one) means
+        // there's nothing to resume — any completed-step progress recorded under the
+        // old key is meaningless here, and a stale watchdog retry count from an old
+        // crash loop shouldn't silence auto-resume for this run too.
+        if ($key !== Cache::get(self::ACTIVE_KEY_CACHE)) {
+            Cache::forget(self::PROGRESS_CACHE);
+            Cache::forget('gbif:monthly-refresh:watchdog:retries');
+            Cache::forget('gbif:monthly-refresh:watchdog:last_attempt');
+            Cache::forget('gbif:monthly-refresh:watchdog:exhausted-notified');
+        }
         Cache::forever(self::ACTIVE_KEY_CACHE, $key);
+
+        $completedStep = Cache::get(self::PROGRESS_CACHE, 0);
+        if ($completedStep > 0) {
+            $this->info("Resuming with this key: steps up to {$completedStep} already completed, continuing from step " . ($completedStep + 1) . '/7.');
+        }
 
         // Step 2: poll, download, and import (gbif:import-download already polls internally
         // for up to 8 hours, downloads the DWCA, stages it, and upserts in batches)
-        $this->markStep('Step 2/7: Importing (download key: ' . $key . ')');
-        $this->info('Step 2/7: Importing (polling until GBIF finishes preparing the download — may take hours)...');
         // --prune-deleted is safe here since the monthly refresh always requests a full,
         // unfiltered world download (never --country-scoped).
-        $exit = Artisan::call('gbif:import-download', ['key' => $key, '--prune-deleted' => true]);
-        $this->line(Artisan::output());
-
+        $exit = $this->runStep(
+            $completedStep, 2,
+            'Step 2/7: Importing (download key: ' . $key . ')',
+            'gbif:import-download', ['key' => $key, '--prune-deleted' => true],
+            'Step 2/7: Importing (polling until GBIF finishes preparing the download — may take hours)...'
+        );
         if ($exit !== self::SUCCESS) {
             return $this->abortWith('gbif:import-download failed — aborting refresh before downstream steps.');
         }
@@ -117,34 +138,19 @@ class GbifMonthlyRefresh extends Command
         // on its old (now possibly empty) group, and attach it to its new group's existing
         // suggestion if there is one. Must run before auto-suggest below, which skips any
         // group that already has a suggestion and would otherwise never revisit these.
-        $this->markStep('Step 3/7: Reconciling suggestions after re-grouping');
-        $this->info('Step 3/7: Reconciling suggestions after re-grouping...');
-        Artisan::call('gbif:reconcile-suggestions');
-        $this->line(Artisan::output());
+        $this->runStep($completedStep, 3, 'Step 3/7: Reconciling suggestions after re-grouping', 'gbif:reconcile-suggestions');
 
         // Step 4: regenerate system auto-suggestions for newly-eligible groups
-        $this->markStep('Step 4/7: Creating system auto-suggestions');
-        $this->info('Step 4/7: Creating system auto-suggestions...');
-        Artisan::call('gbif:auto-suggest');
-        $this->line(Artisan::output());
+        $this->runStep($completedStep, 4, 'Step 4/7: Creating system auto-suggestions', 'gbif:auto-suggest');
 
         // Step 5: re-run consistency checks (new/changed coordinates may reveal conflicts)
-        $this->markStep('Step 5/7: Checking consistency');
-        $this->info('Step 5/7: Checking consistency...');
-        Artisan::call('gbif:check-consistency');
-        $this->line(Artisan::output());
+        $this->runStep($completedStep, 5, 'Step 5/7: Checking consistency', 'gbif:check-consistency');
 
         // Step 6: backfill locality_groups.ungeoreferenced_count from the fresh occurrences data
-        $this->markStep('Step 6/7: Backfilling ungeoreferenced counts');
-        $this->info('Step 6/7: Backfilling ungeoreferenced counts...');
-        Artisan::call('gbif:backfill-ungeoreferenced');
-        $this->line(Artisan::output());
+        $this->runStep($completedStep, 6, 'Step 6/7: Backfilling ungeoreferenced counts', 'gbif:backfill-ungeoreferenced');
 
         // Step 7: refresh dataset metadata/stats shown on the Datasets page
-        $this->markStep('Step 7/7: Syncing dataset stats');
-        $this->info('Step 7/7: Syncing dataset stats...');
-        Artisan::call('gbif:sync-datasets');
-        $this->line(Artisan::output());
+        $this->runStep($completedStep, 7, 'Step 7/7: Syncing dataset stats', 'gbif:sync-datasets');
 
         $duration = $start->diffForHumans(now(), true);
         $this->info("Monthly GBIF refresh complete. Took {$duration}.");
@@ -152,9 +158,37 @@ class GbifMonthlyRefresh extends Command
 
         Cache::forget(self::STATUS_KEY);
         Cache::forget(self::ACTIVE_KEY_CACHE);
+        Cache::forget(self::PROGRESS_CACHE);
         $this->sendReport(true, $duration);
 
         return self::SUCCESS;
+    }
+
+    // Runs one top-level pipeline step, unless $completedStep already covers it (a
+    // resume with the same download key) — in which case it's a no-op that reports
+    // success, so callers don't need their own branching for the skip case. Only
+    // records completion when the step actually succeeds; steps 3-7 don't check their
+    // own exit code (matching the pre-existing behavior of always proceeding to the
+    // next step regardless), so a failing step 4 simply never advances $completedStep
+    // past 3 and a resume will retry it.
+    private function runStep(int &$completedStep, int $stepNumber, string $label, string $command, array $params = [], ?string $consoleMessage = null): int
+    {
+        if ($completedStep >= $stepNumber) {
+            $this->info("Step {$stepNumber}/7 already completed for this download key — skipping.");
+            return self::SUCCESS;
+        }
+
+        $this->markStep($label);
+        $this->info($consoleMessage ?? "{$label}...");
+        $exit = Artisan::call($command, $params);
+        $this->line(Artisan::output());
+
+        if ($exit === self::SUCCESS) {
+            $completedStep = $stepNumber;
+            Cache::forever(self::PROGRESS_CACHE, $stepNumber);
+        }
+
+        return $exit;
     }
 
     private function abortWith(string $message): int
