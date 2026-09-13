@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\LocalityGroup;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class GbifBackfillUngeoreferencedCount extends Command
@@ -14,6 +15,19 @@ class GbifBackfillUngeoreferencedCount extends Command
 
     protected $description = 'Backfill ungeoreferenced_count on locality_groups from occurrences table';
 
+    // Same substep-reporting pattern as GbifImportDownload::markProgress() — this step has
+    // no per-batch feedback of its own, so gbif:refresh-heartbeat's 2-hourly email showed
+    // "Step 6/7" frozen for the entire run (observed 8+ hours with no visible movement),
+    // indistinguishable from an actual hang.
+    private function markProgress(string $step, array $counters = []): void
+    {
+        $status = Cache::get(GbifMonthlyRefresh::STATUS_KEY, []);
+        $status['substep']    = $step;
+        $status['counters']   = $counters;
+        $status['updated_at'] = now();
+        Cache::forever(GbifMonthlyRefresh::STATUS_KEY, $status);
+    }
+
     public function handle(): int
     {
         $country = $this->option('country') ? strtoupper($this->option('country')) : null;
@@ -21,6 +35,7 @@ class GbifBackfillUngeoreferencedCount extends Command
 
         if ($country) {
             $this->info("Backfilling ungeoreferenced_count for country: {$country}");
+            $this->markProgress("Backfilling ungeoreferenced counts: {$country}");
             $this->backfillCountry($country, $chunk);
         } else {
             // Process country by country to keep each UPDATE small. A plain
@@ -30,27 +45,39 @@ class GbifBackfillUngeoreferencedCount extends Command
             // which solves it (cached, index-only scan + cheap per-code existence check)
             // — reuse it instead of re-paying that cost here.
             $countries = LocalityGroup::activeCountryCodes();
+            $total     = $countries->count() + 1; // +1 for the null-country_code pass below
 
-            $this->info("Backfilling " . $countries->count() . " countries...");
+            $this->info("Backfilling {$total} countries...");
 
-            foreach ($countries as $cc) {
+            $groupsUpdated = 0;
+            foreach ($countries as $i => $cc) {
                 $this->line("  {$cc}...");
-                $this->backfillCountry($cc, $chunk);
+                $this->markProgress(
+                    "Backfilling ungeoreferenced counts: {$cc} (" . ($i + 1) . "/{$total})",
+                    ['locality_groups_updated' => $groupsUpdated]
+                );
+                $groupsUpdated += $this->backfillCountry($cc, $chunk);
             }
 
             // Also handle groups with null country_code
             $this->line("  (null country_code)...");
-            $this->backfillCountry(null, $chunk);
+            $this->markProgress(
+                "Backfilling ungeoreferenced counts: (null country_code) ({$total}/{$total})",
+                ['locality_groups_updated' => $groupsUpdated]
+            );
+            $groupsUpdated += $this->backfillCountry(null, $chunk);
         }
 
         $this->info('Done.');
         return self::SUCCESS;
     }
 
-    private function backfillCountry(?string $country, int $chunk): void
+    private function backfillCountry(?string $country, int $chunk): int
     {
         // Get all locality_group IDs for this country in batches
-        $lastId = 0;
+        $lastId        = 0;
+        $groupsUpdated = 0;
+        $batchNum      = 0;
 
         while (true) {
             $groupIds = DB::table('locality_groups')
@@ -66,6 +93,8 @@ class GbifBackfillUngeoreferencedCount extends Command
             if ($groupIds->isEmpty()) break;
 
             $lastId = $groupIds->last();
+            $groupsUpdated += $groupIds->count();
+            $batchNum++;
 
             // Aggregate counts for this batch. The default chunk (3000) is deliberately
             // small: this WHERE IN() list is matched against occurrences (225M+ rows), and
@@ -97,6 +126,19 @@ class GbifBackfillUngeoreferencedCount extends Command
 
                 DB::statement("UPDATE locality_groups SET ungeoreferenced_count = CASE id {$cases} END WHERE id IN ({$ids})");
             }
+
+            // A single country can itself hold tens of millions of groups (chunk=3000
+            // means tens of thousands of batches) — report periodically within it too,
+            // not just once per country, so a slow country doesn't look like a hang.
+            if ($batchNum % 20 === 0) {
+                $countryLabel = $country ?? 'null country_code';
+                $this->markProgress(
+                    "Backfilling ungeoreferenced counts: {$countryLabel} (batch {$batchNum}, id > {$lastId})",
+                    ['locality_groups_updated_this_country' => $groupsUpdated]
+                );
+            }
         }
+
+        return $groupsUpdated;
     }
 }
