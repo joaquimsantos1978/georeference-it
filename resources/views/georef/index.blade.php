@@ -570,7 +570,7 @@
                 <span id="img-zoom-label" class="text-xs text-gray-400 ml-1">100%</span>
                 <span class="text-xs text-gray-300 ml-auto">{{ __('scroll to zoom · drag to pan') }}</span>
             </div>
-            <div id="img-pan-area" class="flex-1 overflow-hidden relative cursor-grab" style="background:#f3f4f6;">
+            <div id="img-pan-area" class="flex-1 overflow-hidden relative cursor-grab" style="background:#f3f4f6;touch-action:none;">
                 <img id="img-viewer-img" src="" alt="" style="position:absolute; transform-origin:0 0; cursor:grab; user-select:none;" draggable="false">
             </div>
             <div id="img-resize-handle" style="position:absolute; bottom:0; right:0; width:16px; height:16px; cursor:se-resize; z-index:10;">
@@ -949,6 +949,20 @@
             top: calc(var(--mob-loc-h, 0px) + 8px) !important;
         }
 
+        /* Image viewer: on a phone it can't be dragged (mouse-only), and its desktop spot
+           (left:284px) is mostly off-screen — make it a near-full-screen sheet, below the
+           Help button row so its close button isn't covered, above the bottom bar. */
+        #img-viewer {
+            position: fixed !important;
+            left: 8px !important; right: 8px !important;
+            top: calc(48px + var(--mob-loc-h, 0px) + 44px) !important;
+            bottom: 60px !important;
+            width: auto !important; height: auto !important;
+            min-width: 0 !important; min-height: 0 !important;
+            z-index: 50 !important;
+        }
+        #img-resize-handle { display: none !important; }
+
         /* Help button — same row as the history button, top-right */
         #tut-btn {
             top: calc(var(--mob-loc-h, 0px) + 10px) !important;
@@ -1219,7 +1233,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     });
 
     // ── Image viewer ──────────────────────────────────────────────────────────
-    let imgScale = 1, imgX = 0, imgY = 0, isPanning = false, panStartX, panStartY;
+    let imgScale = 1, imgX = 0, imgY = 0, isPanning = false, panStartX, panStartY, imgMinScale = 0.2;
     const imgViewer = document.getElementById('img-viewer');
     const imgEl     = document.getElementById('img-viewer-img');
     const panArea   = document.getElementById('img-pan-area');
@@ -1227,7 +1241,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
 
     function applyImgTransform() { imgEl.style.transform = 'translate('+imgX+'px,'+imgY+'px) scale('+imgScale+')'; zoomLabel.textContent = Math.round(imgScale*100)+'%'; }
     function resetImgZoom() { imgScale=1; imgX=0; imgY=0; applyImgTransform(); }
-    function zoomImg(d) { imgScale=Math.max(0.2,Math.min(8,imgScale+d)); applyImgTransform(); }
+    function zoomImg(d) { imgScale=Math.max(imgMinScale,Math.min(8,imgScale+d)); applyImgTransform(); }
 
     panArea.addEventListener('mousedown', e => { if(e.button!==0)return; isPanning=true; panStartX=e.clientX-imgX; panStartY=e.clientY-imgY; panArea.style.cursor='grabbing'; e.preventDefault(); });
     window.addEventListener('mousemove', e => { if(!isPanning)return; imgX=e.clientX-panStartX; imgY=e.clientY-panStartY; applyImgTransform(); });
@@ -1241,12 +1255,59 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
         const my = e.clientY - rect.top;
         // Adjust pan so zoom pivots on the mouse point
         const prevScale = imgScale;
-        imgScale = Math.max(0.2, Math.min(8, imgScale + d));
+        imgScale = Math.max(imgMinScale, Math.min(8, imgScale + d));
         const factor = imgScale / prevScale;
         imgX = mx - factor * (mx - imgX);
         imgY = my - factor * (my - imgY);
         applyImgTransform();
     }, { passive: false });
+
+    // Touch: one finger pans, two fingers pinch-zoom around their midpoint (the mouse
+    // handlers above never fire for touch drags, so on a phone the image could not be moved).
+    (function () {
+        let panFrom = null, pinch = null;
+        const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        panArea.addEventListener('touchstart', e => {
+            if (e.touches.length === 1) { panFrom = { x: e.touches[0].clientX - imgX, y: e.touches[0].clientY - imgY }; pinch = null; }
+            else if (e.touches.length === 2) { pinch = { d: dist(e.touches[0], e.touches[1]), s: imgScale }; panFrom = null; }
+        }, { passive: true });
+        panArea.addEventListener('touchmove', e => {
+            if (pinch && e.touches.length === 2) {
+                e.preventDefault();
+                const rect = panArea.getBoundingClientRect();
+                const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                const prev = imgScale;
+                imgScale = Math.max(imgMinScale, Math.min(8, pinch.s * dist(e.touches[0], e.touches[1]) / pinch.d));
+                const f = imgScale / prev;
+                imgX = mx - f * (mx - imgX);
+                imgY = my - f * (my - imgY);
+                applyImgTransform();
+            } else if (panFrom && e.touches.length === 1) {
+                e.preventDefault();
+                imgX = e.touches[0].clientX - panFrom.x;
+                imgY = e.touches[0].clientY - panFrom.y;
+                applyImgTransform();
+            }
+        }, { passive: false });
+        panArea.addEventListener('touchend', e => {
+            if (e.touches.length === 1) { panFrom = { x: e.touches[0].clientX - imgX, y: e.touches[0].clientY - imgY }; pinch = null; }
+            else if (e.touches.length === 0) { panFrom = null; pinch = null; }
+        });
+    })();
+
+    // On a phone, centre the image in the (now near-full-screen) viewer and shrink it if it
+    // is taller than the pan area. Sizes are the laid-out ones (offsetWidth/Height — Tailwind's
+    // max-width:100% already fits the width), not the natural pixel size. Desktop keeps its start.
+    imgEl.addEventListener('load', () => {
+        if (window.innerWidth > 768 || !imgEl.offsetWidth) return;
+        const s = Math.min(panArea.clientWidth / imgEl.offsetWidth, panArea.clientHeight / imgEl.offsetHeight, 1);
+        imgMinScale = Math.min(0.2, s);
+        imgScale = s;
+        imgX = (panArea.clientWidth - imgEl.offsetWidth * s) / 2;
+        imgY = (panArea.clientHeight - imgEl.offsetHeight * s) / 2;
+        applyImgTransform();
+    });
 
     async function resolveImageUrl(url) {
         if (url && (url.includes('/manifest') || url.includes('manifest.json') || url.includes('iiif'))) {
@@ -1282,7 +1343,7 @@ if (isNaN(historyIndex) || historyIndex >= sessionHistory.length) historyIndex =
     async function openImgViewer(rawUrl, title, link) {
         document.getElementById('img-viewer-title').textContent = title||'';
         document.getElementById('img-viewer-link').href = link||rawUrl;
-        imgEl.src=''; resetImgZoom(); imgViewer.style.display='flex';
+        imgEl.src=''; imgMinScale=0.2; resetImgZoom(); imgViewer.style.display='flex';
         const resolved = await resolveImageUrl(rawUrl);
         if (resolved) { imgEl.src=resolved; } else { window.open(link||rawUrl,'_blank'); imgViewer.style.display='none'; }
     }
