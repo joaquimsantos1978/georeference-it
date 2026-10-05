@@ -787,7 +787,7 @@
 
     {{-- Mobile bottom bar — outside georef-wrap --}}
     {{-- Full-width locality bar shown over the map on mobile: up to 2 lines, tap to expand. The history/help/search controls are offset by its height via --mob-loc-h (set from JS). --}}
-    <div id="mob-locality-bar" onclick="mobToggleLocality()" style="display:none;position:fixed;top:48px;left:0;right:0;z-index:39;background:rgba(240,253,244,0.97);border-bottom:2px solid #16a34a;padding:5px 36px 6px 12px;min-height:58px;box-sizing:border-box;align-items:center;backdrop-filter:blur(4px);box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
+    <div id="mob-locality-bar" onclick="mobToggleLocality()" style="display:none;position:fixed;top:48px;left:0;right:0;z-index:29;background:rgba(240,253,244,0.97);border-bottom:2px solid #16a34a;padding:5px 36px 6px 12px;min-height:58px;box-sizing:border-box;align-items:center;backdrop-filter:blur(4px);box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
         <div style="min-width:0;flex:1;">
             <div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#16a34a;line-height:1.2;margin-bottom:2px;">{{ __('Location to georeference') }}</div>
             <span id="mob-locality-text" style="font-size:13px;line-height:1.3;font-weight:500;color:#1f2937;word-break:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;"></span>
@@ -812,7 +812,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    Location
+                    {{ __('Location') }}
                 </button>
                 <div style="width:1px;background:#d1d5db;flex-shrink:0;" class="dark:bg-gray-700"></div>
                 <button id="mob-btn-specimens" onclick="mobileToggle('specimens')"
@@ -821,7 +821,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
                     </svg>
                     <span id="mob-occ-badge" style="display:none;position:absolute;top:4px;right:calc(50% - 18px);background:#6b7280;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
-                    Specimens
+                    {{ __('Specimens') }}
                 </button>
                 <div style="width:1px;background:#d1d5db;flex-shrink:0;" class="dark:bg-gray-700"></div>
                 <button id="mob-btn-suggest" onclick="mobileToggle('suggest')"
@@ -833,7 +833,7 @@
                         </svg>
                         <span id="mob-sugg-badge" style="display:none;position:absolute;top:-5px;right:-6px;background:#ef4444;color:white;font-size:8px;font-weight:700;line-height:1;padding:2px 4px;border-radius:999px;min-width:14px;text-align:center;"></span>
                     </span>
-                    Georef
+                    {{ __('Georef') }}
                 </button>
             </div>
 
@@ -841,12 +841,12 @@
             <div id="mob-right-bar" style="display:none;align-items:stretch;flex:1;min-width:0;border-left:1px solid #d1d5db;" class="dark:border-gray-700">
                 <button id="mob-skip-btn" onclick="mobSkip()"
                     style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:500;color:#6b7280;cursor:pointer;flex:1;height:100%;">
-                    Skip
+                    {{ __('Skip') }}
                 </button>
                 <div style="width:1px;background:#d1d5db;flex-shrink:0;" class="dark:bg-gray-700"></div>
                 <button id="mob-submit-btn" onclick="document.getElementById('submit-btn').click()"
                     style="display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:11px;font-weight:700;color:#16a34a;cursor:pointer;flex:1;height:100%;opacity:0.35;" disabled>
-                    Submit
+                    {{ __('Submit') }}
                 </button>
             </div>
         </div>
