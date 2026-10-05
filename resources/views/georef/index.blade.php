@@ -787,8 +787,11 @@
 
     {{-- Mobile bottom bar — outside georef-wrap --}}
     {{-- Full-width locality bar shown over the map on mobile: up to 2 lines, tap to expand. The history/help/search controls are offset by its height via --mob-loc-h (set from JS). --}}
-    <div id="mob-locality-bar" onclick="mobToggleLocality()" style="display:none;position:fixed;top:48px;left:0;right:0;z-index:39;background:rgba(255,255,255,0.96);border-bottom:1px solid #d1d5db;padding:6px 36px 6px 12px;min-height:46px;box-sizing:border-box;align-items:center;backdrop-filter:blur(4px);box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
-        <span id="mob-locality-text" style="font-size:13px;line-height:1.3;font-weight:500;color:#1f2937;word-break:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;"></span>
+    <div id="mob-locality-bar" onclick="mobToggleLocality()" style="display:none;position:fixed;top:48px;left:0;right:0;z-index:39;background:rgba(240,253,244,0.97);border-bottom:2px solid #16a34a;padding:5px 36px 6px 12px;min-height:58px;box-sizing:border-box;align-items:center;backdrop-filter:blur(4px);box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
+        <div style="min-width:0;flex:1;">
+            <div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#16a34a;line-height:1.2;margin-bottom:2px;">{{ __('Location to georeference') }}</div>
+            <span id="mob-locality-text" style="font-size:13px;line-height:1.3;font-weight:500;color:#1f2937;word-break:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;"></span>
+        </div>
         <span id="mob-locality-chevron" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:12px;line-height:1;">▾</span>
         <span id="mob-locality-spinner" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);">
             <svg style="width:13px;height:13px;animation:spin 0.8s linear infinite;color:#9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
