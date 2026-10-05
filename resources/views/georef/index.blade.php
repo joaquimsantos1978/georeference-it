@@ -786,9 +786,10 @@
     </div>
 
     {{-- Mobile bottom bar — outside georef-wrap --}}
-    {{-- Thin locality bar shown over map on mobile (right half only, to avoid overlapping history buttons) --}}
-    <div id="mob-locality-bar" style="display:none;position:fixed;top:48px;left:50%;right:0;z-index:39;background:rgba(255,255,255,0.93);border-bottom:1px solid #d1d5db;border-left:1px solid #e5e7eb;border-radius:0 0 0 6px;padding:3px 10px;backdrop-filter:blur(4px);">
-        <span id="mob-locality-text" style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;"></span>
+    {{-- Full-width locality bar shown over the map on mobile: up to 2 lines, tap to expand. The history/help/search controls are offset by its height via --mob-loc-h (set from JS). --}}
+    <div id="mob-locality-bar" onclick="mobToggleLocality()" style="display:none;position:fixed;top:48px;left:0;right:0;z-index:39;background:rgba(255,255,255,0.96);border-bottom:1px solid #d1d5db;padding:6px 36px 6px 12px;min-height:46px;box-sizing:border-box;align-items:center;backdrop-filter:blur(4px);box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
+        <span id="mob-locality-text" style="font-size:13px;line-height:1.3;font-weight:500;color:#1f2937;word-break:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;"></span>
+        <span id="mob-locality-chevron" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:12px;line-height:1;">▾</span>
         <span id="mob-locality-spinner" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);">
             <svg style="width:13px;height:13px;animation:spin 0.8s linear infinite;color:#9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
@@ -865,7 +866,9 @@
 
     @media (max-width: 768px) {
         #mobile-tabs { display:block !important; }
-        #mob-locality-bar { display:block !important; }
+        #mob-locality-bar { display:flex !important; }
+        #mob-locality-bar.mob-loc-open #mob-locality-text { -webkit-line-clamp:unset !important; display:block !important; max-height:40vh; overflow-y:auto !important; }
+        #mob-locality-bar.mob-loc-open #mob-locality-chevron { transform:translateY(-50%) rotate(180deg); }
         #mob-action-bar.mob-loaded { display:flex !important; }
         #mob-action-bar { display:none; }
         #mob-right-bar.mob-loaded { display:flex !important; }
@@ -873,8 +876,10 @@
 
         #georef-wrap { flex-direction: column !important; padding-bottom: 52px; }
 
-        /* Sits below #mob-locality-bar (top:48px) to avoid overlapping it */
-        #map-search-bar-wrap { left: 8px !important; right: 8px !important; top: 84px !important; }
+        /* Everything at the top of the map sits below #mob-locality-bar (fixed at top:48px,
+           i.e. wrap-relative 0 — its height lands in --mob-loc-h, kept current from JS).
+           History (left) and Help (right) share one row; the search bar goes under both. */
+        #map-search-bar-wrap { left: 8px !important; right: 8px !important; top: calc(var(--mob-loc-h, 0px) + 50px) !important; }
         /* Desktop's min(760px, calc(100vw - 620px)) can go negative on narrow viewports —
            force a single, full-width column instead. */
         #nominatim-results { width: 100% !important; max-width: 100% !important; }
@@ -938,12 +943,12 @@
         /* History button — reposition for mobile */
         #georef-wrap > div[style*="left:272px"] {
             left: 8px !important;
-            top: 8px !important;
+            top: calc(var(--mob-loc-h, 0px) + 8px) !important;
         }
 
-        /* Help button — keep near top-right on mobile */
+        /* Help button — same row as the history button, top-right */
         #tut-btn {
-            top: 56px !important;
+            top: calc(var(--mob-loc-h, 0px) + 10px) !important;
         }
     }
     </style>
@@ -3340,6 +3345,31 @@ function mobileToggle(panel) {
     });
 })();
 
+// Keeps --mob-loc-h equal to the collapsed bar's height so the history/help/search controls
+// sit right below it. While expanded the bar overlays them instead of pushing them down.
+function mobSyncLocality() {
+    var bar  = document.getElementById('mob-locality-bar');
+    var el   = document.getElementById('mob-locality-text');
+    var chev = document.getElementById('mob-locality-chevron');
+    if (!bar || !el) return;
+    var open = bar.classList.contains('mob-loc-open');
+    if (chev) chev.style.display = (open || el.scrollHeight > el.clientHeight + 1) ? 'block' : 'none';
+    if (!open) document.documentElement.style.setProperty('--mob-loc-h', bar.offsetHeight + 'px');
+}
+
+function mobToggleLocality() {
+    var bar = document.getElementById('mob-locality-bar');
+    if (!bar) return;
+    bar.classList.toggle('mob-loc-open');
+    mobSyncLocality();
+}
+
+(function () {
+    var bar = document.getElementById('mob-locality-bar');
+    if (bar && window.ResizeObserver) new ResizeObserver(mobSyncLocality).observe(bar);
+    window.addEventListener('resize', mobSyncLocality);
+})();
+
 function updateMobileBar(group, suggestionCount) {
     // Build locality text for thin bar
     var parts = [];
@@ -3355,6 +3385,7 @@ function updateMobileBar(group, suggestionCount) {
 
     var spinner = document.getElementById('mob-locality-spinner');
     if (spinner) spinner.style.display = 'none';
+    mobSyncLocality();
 
     // Suggestion badge on Georef button
     var badge = document.getElementById('mob-sugg-badge');
@@ -3380,8 +3411,11 @@ function updateMobileBar(group, suggestionCount) {
 function mobSkip() {
     var el = document.getElementById('mob-locality-text');
     if (el) el.textContent = '';
+    var skipBar = document.getElementById('mob-locality-bar');
+    if (skipBar) skipBar.classList.remove('mob-loc-open');
     var spinner = document.getElementById('mob-locality-spinner');
     if (spinner) spinner.style.display = 'inline-flex';
+    mobSyncLocality();
     // Close any open panel
     ['left-panel','specimens-panel','right-panel'].forEach(function(id){
         var p = document.getElementById(id); if(p) p.classList.remove('mob-open');
