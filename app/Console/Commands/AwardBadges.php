@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\GeorefValidation;
 use App\Models\User;
 use App\Models\UserBadge;
 use App\Support\Badges;
@@ -73,9 +72,17 @@ class AwardBadges extends Command
         return self::SUCCESS;
     }
 
+    // Only votes on someone else's suggestion (or a system one) count — same filter as the
+    // "Reviews" figure on the profile. Submitting a georeference also records an automatic
+    // "agree" from its own author (GeorefController::applyVote()); counting those handed
+    // the badge to users who had reviewed nobody.
     private function qualifiesLinnaeus(int $userId): bool
     {
-        return GeorefValidation::where('user_id', $userId)->count() >= self::LINNAEUS_THRESHOLD;
+        return DB::table('georef_validations as gv')
+            ->join('georef_suggestions as gs', 'gs.id', '=', 'gv.suggestion_id')
+            ->where('gv.user_id', $userId)
+            ->where(fn($q) => $q->whereNull('gs.user_id')->orWhereColumn('gs.user_id', '!=', 'gv.user_id'))
+            ->count() >= self::LINNAEUS_THRESHOLD;
     }
 
     private function qualifiesDarwin(int $userId): bool
