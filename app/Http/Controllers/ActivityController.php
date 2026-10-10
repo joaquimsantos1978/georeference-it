@@ -45,8 +45,12 @@ class ActivityController extends Controller
                 ->whereIn('gs.georeference_sources', ['GBIF', 'GBIF_CONSISTENCY_CHECK'])
                 ->when($filterCountry, fn($q) => $q->where('lg.country_code', $filterCountry));
 
+            // Snapshot before ->select()/->forPage() below mutate $query: the stale-refresh
+            // closure runs after the response, and counting a query that already has this
+            // request's offset returns 0 on any page > 1 (which then got cached).
+            $countQuery = clone $query;
             $cacheKey = 'activity_count_system_' . ($filterCountry ?: 'all');
-            $total = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $query)->count());
+            $total = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $countQuery)->count());
 
             $rows = $query
                 ->select(
@@ -74,8 +78,9 @@ class ActivityController extends Controller
                 ->when($filterUserId, fn($q) => $q->where('al.user_id', $filterUserId))
                 ->when($filterCountry, fn($q) => $q->where('al.country_code', $filterCountry));
 
+            $countQuery = clone $query; // see the note in the system branch above
             $cacheKey = 'activity_count_' . ($filterUserId ?: 'all') . '_' . ($filterCountry ?: 'all');
-            $total = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $query)->count());
+            $total = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $countQuery)->count());
 
             $rows = $query
                 ->select(

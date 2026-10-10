@@ -63,7 +63,11 @@ class ExploreController extends Controller
         $perPage  = 50;
         $page     = $request->integer('page', 1) ?: 1;
         $cacheKey = 'explore_count_' . md5(json_encode($request->only(['q', 'country', 'dataset_key', 'status'])));
-        $total    = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $query)->count());
+        // Snapshot before the ->orderBy()/->forPage() below mutate $query — the stale-refresh
+        // closure runs after the response, and on any page > 1 a count over a query that already
+        // carries this request's offset returns 0, which then got cached for an hour.
+        $countQuery = clone $query;
+        $total    = $this->countWithStaleWhileRevalidate($cacheKey, fn() => (clone $countQuery)->count());
 
         if ($request->filled('q')) {
             $q    = $request->q;
