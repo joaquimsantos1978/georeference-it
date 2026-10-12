@@ -984,6 +984,7 @@
         searching:    "{{ __('Searching...') }}",
         noResults:    "{{ __('No results found.') }}",
         searchFailed: "{{ __('Search failed.') }}",
+        osmUnavailable: "{{ __('The OpenStreetMap search is not responding — it may be limiting requests from your connection. Try again in a few minutes.') }}",
         noOcc:        "{{ __('No occurrences found. Try a different country.') }}",
         occurrences:  "{{ __('occurrences') }}",
         validated:    "{{ __('validated') }}",
@@ -1676,7 +1677,9 @@ function buildLocalityString(g) {
             renderNominatimResultsList(null);
         } catch(e) {
             if (token !== _localitySearchToken) return;
-            document.getElementById('osm-results-list').innerHTML='<p style="font-size:11px;color:#ef4444;padding:4px">'+TXT.searchFailed+'</p>';
+            // A throttled request (HTTP 429) comes back without CORS headers, so the browser
+            // reports it exactly like a network failure — the status can't be told apart here.
+            document.getElementById('osm-results-list').innerHTML='<p style="font-size:11px;color:#ef4444;padding:4px">'+TXT.osmUnavailable+'</p>';
         }
     }
 
@@ -3379,6 +3382,17 @@ function mobileToggle(panel) {
         map.invalidateSize();
     }
 }
+
+// mobileToggle() moves #occ-section into the mobile specimens panel, which is display:none on
+// desktop — so after narrowing the window and widening it again the specimens list stayed
+// gone until a reload. Put it back in the left panel once the window is wide again.
+(function () {
+    var mq   = window.matchMedia('(min-width: 769px)');
+    var occ  = document.getElementById('occ-section');
+    var home = document.getElementById('left-panel');
+    function restore() { if (mq.matches && occ && home && occ.parentElement !== home) home.appendChild(occ); }
+    mq.addEventListener('change', restore);
+})();
 
 // Add swipe-down-to-close for all 3 mobile panels
 (function addSwipeClose() {
