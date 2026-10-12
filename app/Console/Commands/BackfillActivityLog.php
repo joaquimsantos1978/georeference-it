@@ -22,8 +22,12 @@ class BackfillActivityLog extends Command
             INSERT IGNORE INTO activity_log (type, source, user_id, locality_group_id, occ_count, lat, lng, uncertainty_m, remarks, country_code, location_label, created_at)
             SELECT
                 'georef',
+                -- A suggestion with no user is only a real anonymous visitor's when it came from
+                -- georeference.it itself; everything else (GBIF, GBIF_CONSISTENCY_CHECK) is
+                -- system-generated. The previous MIN(georeference_sources) test misfiled any
+                -- group mixing both system origins as 'anonymous' (~227k rows).
                 CASE
-                    WHEN MIN(gs.georeference_sources) = 'GBIF_CONSISTENCY_CHECK' THEN 'system'
+                    WHEN gs.user_id IS NULL AND MAX(gs.georeference_sources = 'georeference.it') = 0 THEN 'system'
                     WHEN gs.user_id IS NULL THEN 'anonymous'
                     ELSE 'user'
                 END,
