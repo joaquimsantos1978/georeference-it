@@ -586,5 +586,11 @@
     "Last contribution": "最近贡献",
     "Preparing project…": "正在准备项目…",
     "Location": "地点",
-    "Georef": "坐标"
+    "Georef": "坐标",
+    "The OpenStreetMap search is not responding — it may be limiting requests from your connection. Try again in a few minutes.": "OpenStreetMap 搜索没有响应——可能正在限制来自您网络的请求。请几分钟后再试。",
+    "Automatic suggestions, pending review": "待审核的自动建议",
+    "Volunteer suggestions, pending review": "待审核的志愿者建议",
+    "GBIF coordinates reviewed": "已核查的 GBIF 坐标",
+    "Automatic suggestions are derived from coordinates GBIF already holds for other specimens of the same locality. They only count as validated once volunteers vote on them.": "自动建议来自 GBIF 已掌握的、同一地点其他标本的坐标。只有在志愿者投票之后，才会计为已验证。",
+    "{1} :count specimen with a suggested or reviewed georeference on this platform|[2,*] :count specimens with a suggested or reviewed georeference on this platform": "{1} 本平台上有 :count 件标本已有建议或已核查的地理坐标|[2,*] 本平台上有 :count 件标本已有建议或已核查的地理坐标"
 }

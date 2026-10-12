@@ -586,5 +586,11 @@
     "Last contribution": "آخر مساهمة",
     "Preparing project…": "جارٍ تجهيز المشروع…",
     "Location": "الموقع",
-    "Georef": "الإحداثيات"
+    "Georef": "الإحداثيات",
+    "The OpenStreetMap search is not responding — it may be limiting requests from your connection. Try again in a few minutes.": "بحث OpenStreetMap لا يستجيب — ربما يحدّ من الطلبات الواردة من اتصالك. حاول مرة أخرى بعد بضع دقائق.",
+    "Automatic suggestions, pending review": "اقتراحات تلقائية بانتظار المراجعة",
+    "Volunteer suggestions, pending review": "اقتراحات المتطوعين بانتظار المراجعة",
+    "GBIF coordinates reviewed": "إحداثيات GBIF التي تمت مراجعتها",
+    "Automatic suggestions are derived from coordinates GBIF already holds for other specimens of the same locality. They only count as validated once volunteers vote on them.": "الاقتراحات التلقائية مستمدة من إحداثيات يملكها GBIF بالفعل لعينات أخرى من الموقع نفسه، ولا تُحتسب موثَّقة إلا بعد أن يصوّت عليها المتطوعون.",
+    "{1} :count specimen with a suggested or reviewed georeference on this platform|[2,*] :count specimens with a suggested or reviewed georeference on this platform": "{1} :count عينة لها إسناد جغرافي مقترح أو مراجَع على هذه المنصة|[2,*] :count عينات لها إسناد جغرافي مقترح أو مراجَع على هذه المنصة"
 }

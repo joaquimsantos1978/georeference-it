@@ -586,5 +586,11 @@
     "Last contribution": "Poslední příspěvek",
     "Preparing project…": "Připravuje se projekt…",
     "Location": "Místo",
-    "Georef": "Georef."
+    "Georef": "Georef.",
+    "The OpenStreetMap search is not responding — it may be limiting requests from your connection. Try again in a few minutes.": "Vyhledávání OpenStreetMap neodpovídá – možná omezuje požadavky z vašeho připojení. Zkuste to znovu za několik minut.",
+    "Automatic suggestions, pending review": "Automatické návrhy čekající na kontrolu",
+    "Volunteer suggestions, pending review": "Návrhy dobrovolníků čekající na kontrolu",
+    "GBIF coordinates reviewed": "Zkontrolované souřadnice GBIF",
+    "Automatic suggestions are derived from coordinates GBIF already holds for other specimens of the same locality. They only count as validated once volunteers vote on them.": "Automatické návrhy vycházejí ze souřadnic, které GBIF už eviduje u jiných exemplářů ze stejné lokality. Jako ověřené se započítají, až když o nich dobrovolníci hlasují.",
+    "{1} :count specimen with a suggested or reviewed georeference on this platform|[2,*] :count specimens with a suggested or reviewed georeference on this platform": "{1} :count exemplář s navrženou nebo zkontrolovanou georeferencí na této platformě|[2,4] :count exempláře s navrženou nebo zkontrolovanou georeferencí na této platformě|[5,*] :count exemplářů s navrženou nebo zkontrolovanou georeferencí na této platformě"
 }

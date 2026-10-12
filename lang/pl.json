@@ -586,5 +586,11 @@
     "Last contribution": "Ostatni wkład",
     "Preparing project…": "Przygotowywanie projektu…",
     "Location": "Miejsce",
-    "Georef": "Georef."
+    "Georef": "Georef.",
+    "The OpenStreetMap search is not responding — it may be limiting requests from your connection. Try again in a few minutes.": "Wyszukiwarka OpenStreetMap nie odpowiada – może ograniczać liczbę zapytań z Twojego połączenia. Spróbuj ponownie za kilka minut.",
+    "Automatic suggestions, pending review": "Automatyczne propozycje oczekujące na weryfikację",
+    "Volunteer suggestions, pending review": "Propozycje wolontariuszy oczekujące na weryfikację",
+    "GBIF coordinates reviewed": "Zweryfikowane współrzędne GBIF",
+    "Automatic suggestions are derived from coordinates GBIF already holds for other specimens of the same locality. They only count as validated once volunteers vote on them.": "Automatyczne propozycje wynikają ze współrzędnych, które GBIF już posiada dla innych okazów z tej samej lokalizacji. Jako zatwierdzone liczą się dopiero po głosowaniu wolontariuszy.",
+    "{1} :count specimen with a suggested or reviewed georeference on this platform|[2,*] :count specimens with a suggested or reviewed georeference on this platform": "{1} :count okaz z zaproponowanym lub zweryfikowanym georeferencjonowaniem na tej platformie|[2,4] :count okazy z zaproponowanym lub zweryfikowanym georeferencjonowaniem na tej platformie|[5,*] :count okazów z zaproponowanym lub zweryfikowanym georeferencjonowaniem na tej platformie"
 }

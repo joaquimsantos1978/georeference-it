@@ -1,11 +1,11 @@
-<x-layouts.app title="Impact" description="Specimens georeferenced or improved through georeference.it — making biodiversity data more useful.">
+<x-layouts.app title="Impact" description="Specimens with a suggested, reviewed or validated georeference on georeference.it.">
 
     <div class="space-y-6">
 
         <div class="flex items-center justify-between gap-4 flex-wrap">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Impact') }}</h1>
-                <p class="text-sm text-gray-500 mt-0.5">{{ trans_choice('{1} :count specimen georeferenced or improved on this platform|[2,*] :count specimens georeferenced or improved on this platform', $totalCount, ['count' => number_format($totalCount)]) }}</p>
+                <p class="text-sm text-gray-500 mt-0.5">{{ trans_choice('{1} :count specimen with a suggested or reviewed georeference on this platform|[2,*] :count specimens with a suggested or reviewed georeference on this platform', $totalCount, ['count' => number_format($totalCount)]) }}</p>
             </div>
 
             <form method="GET" action="{{ route('impact') }}" class="flex items-center gap-2 flex-wrap">
@@ -37,6 +37,28 @@
                 @endif
             </form>
         </div>
+
+        @if($breakdown)
+        <div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                @foreach([
+                    ['#fb923c', __('Automatic suggestions, pending review'), $breakdown['automatic']],
+                    ['#f59e0b', __('Volunteer suggestions, pending review'), $breakdown['volunteer']],
+                    ['#15803d', __('Validated by community'),                $breakdown['validated']],
+                    ['#3b82f6', __('GBIF coordinates reviewed'),             $breakdown['gbif_reviewed']],
+                ] as [$color, $label, $n])
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3">
+                    <div class="text-xl font-bold text-gray-900 dark:text-white">{{ number_format($n) }}</div>
+                    <div class="flex items-start gap-1.5 mt-1 text-xs text-gray-500">
+                        <span class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0 mt-0.5" style="background:{{ $color }}"></span>
+                        <span>{{ $label }}</span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            <p class="text-xs text-gray-400 mt-2">{{ __('Automatic suggestions are derived from coordinates GBIF already holds for other specimens of the same locality. They only count as validated once volunteers vote on them.') }}</p>
+        </div>
+        @endif
 
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
 

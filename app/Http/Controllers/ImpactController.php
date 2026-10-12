@@ -113,6 +113,26 @@ class ImpactController extends Controller
 
         $countries = \App\Models\LocalityGroup::activeCountryCodes();
 
-        return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold'));
+        // Breakdown of the headline total, scoped to the selected country only (not the status
+        // filter). Null until RefreshImpactCounts has written the volunteer_pending rows, so the
+        // page degrades to just the total instead of showing a made-up split.
+        $breakdown = null;
+        $splitReady = DB::table('impact_counts')->where('status', 'volunteer_pending')->where('country_code', 'all')->exists();
+        if ($splitReady) {
+            $c = DB::table('impact_counts')
+                ->where('country_code', $country ?: 'all')
+                ->whereIn('status', ['has_suggestion', 'volunteer_pending', 'validated', 'gbif_reviewed'])
+                ->pluck('count', 'status');
+            $pending   = (int) ($c['has_suggestion'] ?? 0);
+            $volunteer = min($pending, (int) ($c['volunteer_pending'] ?? 0));
+            $breakdown = [
+                'automatic'     => $pending - $volunteer,
+                'volunteer'     => $volunteer,
+                'validated'     => (int) ($c['validated'] ?? 0),
+                'gbif_reviewed' => (int) ($c['gbif_reviewed'] ?? 0),
+            ];
+        }
+
+        return view('impact', compact('occurrences', 'totalCount', 'status', 'country', 'countries', 'threshold', 'breakdown'));
     }
 }

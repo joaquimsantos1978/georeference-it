@@ -586,5 +586,11 @@
     "Last contribution": "Последний вклад",
     "Preparing project…": "Подготовка проекта…",
     "Location": "Место",
-    "Georef": "Привязка"
+    "Georef": "Привязка",
+    "The OpenStreetMap search is not responding — it may be limiting requests from your connection. Try again in a few minutes.": "Поиск OpenStreetMap не отвечает — возможно, он ограничивает запросы с вашего подключения. Повторите попытку через несколько минут.",
+    "Automatic suggestions, pending review": "Автоматические предложения, ожидающие проверки",
+    "Volunteer suggestions, pending review": "Предложения волонтёров, ожидающие проверки",
+    "GBIF coordinates reviewed": "Проверенные координаты GBIF",
+    "Automatic suggestions are derived from coordinates GBIF already holds for other specimens of the same locality. They only count as validated once volunteers vote on them.": "Автоматические предложения строятся на координатах, которые GBIF уже имеет для других образцов из того же местонахождения. Они считаются подтверждёнными только после голосования волонтёров.",
+    "{1} :count specimen with a suggested or reviewed georeference on this platform|[2,*] :count specimens with a suggested or reviewed georeference on this platform": "{1} :count образец с предложенной или проверенной геопривязкой на этой платформе|[2,4] :count образца с предложенной или проверенной геопривязкой на этой платформе|[5,*] :count образцов с предложенной или проверенной геопривязкой на этой платформе"
 }

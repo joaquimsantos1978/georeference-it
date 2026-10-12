@@ -206,6 +206,36 @@ class RefreshImpactCounts extends Command
         $rows['gbif_reviewed|all']  = ['status' => 'gbif_reviewed',  'country_code' => 'all', 'count' => (int) $global->gbif_reviewed_occ, 'computed_at' => $now];
         $rows['all|all']            = ['status' => 'all', 'country_code' => 'all', 'count' => (int) ($global->pending_occ + $global->validated_occ + $global->gbif_reviewed_occ), 'computed_at' => $now];
 
+        // Split of has_suggestion into volunteer-made vs system-generated, for the breakdown on
+        // the Impact page: the pending occurrences that sit in a group with at least one
+        // suggestion made by a person (an account, or an anonymous visitor — their suggestions
+        // carry georeference_sources='georeference.it'). Everything else in has_suggestion is a
+        // system suggestion. Only ~1.4k groups carry a human suggestion, so this stays cheap.
+        $volunteerByCountry = DB::table('locality_groups as lg')
+            ->joinSub(
+                DB::table('georef_suggestions')
+                    ->select('locality_group_id')
+                    ->where(fn ($q) => $q->whereNotNull('user_id')->orWhere('georeference_sources', 'georeference.it'))
+                    ->distinct(),
+                'h', 'h.locality_group_id', '=', 'lg.id'
+            )
+            ->whereNull('lg.deleted_at')
+            ->where('lg.occurrence_count', '>', 0)
+            ->whereNotIn('lg.id', $corruptedGroupIds)
+            ->groupByRaw('TRIM(lg.country_code)')
+            ->selectRaw('TRIM(lg.country_code) AS country_code, SUM(lg.has_suggestion_count) AS n')
+            ->get();
+
+        $volunteerAll = 0;
+        foreach ($volunteerByCountry as $v) {
+            $volunteerAll += (int) $v->n;
+            if ($v->country_code !== null && $v->country_code !== '') {
+                $rows["volunteer_pending|{$v->country_code}"] = ['status' => 'volunteer_pending', 'country_code' => $v->country_code, 'count' => (int) $v->n, 'computed_at' => $now];
+            }
+        }
+        // Always written (even at 0): ImpactController uses this row's existence to know the split is available.
+        $rows['volunteer_pending|all'] = ['status' => 'volunteer_pending', 'country_code' => 'all', 'count' => $volunteerAll, 'computed_at' => $now];
+
         $rows = array_values($rows);
 
         // Not wrapped in DB::transaction(): TRUNCATE is DDL and auto-commits in MySQL,

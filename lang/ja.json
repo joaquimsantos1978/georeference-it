@@ -586,5 +586,11 @@
     "Last contribution": "最終貢献",
     "Preparing project…": "プロジェクトを準備中…",
     "Location": "場所",
-    "Georef": "座標"
+    "Georef": "座標",
+    "The OpenStreetMap search is not responding — it may be limiting requests from your connection. Try again in a few minutes.": "OpenStreetMap の検索が応答しません。お使いの接続からのリクエストが制限されている可能性があります。数分後にもう一度お試しください。",
+    "Automatic suggestions, pending review": "レビュー待ちの自動提案",
+    "Volunteer suggestions, pending review": "レビュー待ちのボランティアによる提案",
+    "GBIF coordinates reviewed": "確認済みのGBIF座標",
+    "Automatic suggestions are derived from coordinates GBIF already holds for other specimens of the same locality. They only count as validated once volunteers vote on them.": "自動提案は、同じ地点の他の標本についてGBIFがすでに持っている座標から導かれます。ボランティアが投票して初めて検証済みとして数えられます。",
+    "{1} :count specimen with a suggested or reviewed georeference on this platform|[2,*] :count specimens with a suggested or reviewed georeference on this platform": "{1} このプラットフォームでジオリファレンスが提案または確認された標本 :count件|[2,*] このプラットフォームでジオリファレンスが提案または確認された標本 :count件"
 }
