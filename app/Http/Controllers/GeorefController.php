@@ -370,6 +370,21 @@ public function next(Request $request)
         }
     }
 
+    // What the user's preferred_task allows this request to serve — it always applies, with
+    // or without a focus (the focus only narrows *where*, never *what kind* of work):
+    //   georef   → only groups with no suggestion yet (nothing pending, nothing validated)
+    //   validate → only groups that already have a suggestion to vote on
+    //   both     → either, regardless of suggestions
+    // Guests keep the pre-existing behaviour (they can't vote, and the strict/relaxed passes
+    // below already steer them to plain georef tasks).
+    $prefWantsGeoref   = in_array($preferredTask, ['georef', 'both']);
+    $prefWantsValidate = auth()->check() && in_array($preferredTask, ['validate', 'both']);
+    $georefOnlyUser    = auth()->check() && $preferredTask === 'georef';
+    $noSuggestionYet   = fn($q) => $q->where('pending_count', 0)->where('validated_count', 0);
+    // Inside a focus the guest flow used to try both kinds of work; signed-in users follow their preference.
+    $focusTryGeoref   = auth()->check() ? $prefWantsGeoref : true;
+    $focusTryValidate = auth()->check() ? $prefWantsValidate : true;
+
     // Priority: sibling of just-completed group (same normalized_locality + county + country)
     // Skip when focus, a dataset, a project, or ad-hoc criteria are active — the user
     // explicitly changed context, and a plain locality sibling isn't guaranteed to match.
@@ -388,8 +403,13 @@ public function next(Request $request)
                 }
             })
             ->where('occurrence_count', '>', 0)
-            ->where(function ($q) {
-                $q->where('ungeoreferenced_count', '>', 0)->orWhere('pending_count', '>', 0);
+            ->where(function ($q) use ($prefWantsGeoref, $prefWantsValidate, $georefOnlyUser, $noSuggestionYet) {
+                if ($prefWantsGeoref) {
+                    $q->orWhere(fn($g) => $g->where('ungeoreferenced_count', '>', 0)
+                        ->when($georefOnlyUser, $noSuggestionYet));
+                }
+                if ($prefWantsValidate) $q->orWhere('pending_count', '>', 0);
+                if (!$prefWantsGeoref && !$prefWantsValidate) $q->whereRaw('0');
             })
             ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
                 $s->where('user_id', auth()->id())->where('status', 'pending')
@@ -604,9 +624,10 @@ public function next(Request $request)
                       return true;
                   };
 
-                  $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                  $candidates = !$focusTryGeoref ? collect() : LocalityGroup::where('ungeoreferenced_count', '>', 0)
                       ->where('occurrence_count', '>', 0)
                       ->where('occurrence_count', '<', 10000)
+                      ->when($georefOnlyUser, $noSuggestionYet)
                       ->when($country, fn($q) => $q->where('country_code', $country))
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetGeoref)
@@ -618,7 +639,7 @@ public function next(Request $request)
                       ->filter($matchesFocusWords)
                       ->values();
 
-                  if ($candidates->isEmpty()) {
+                  if ($candidates->isEmpty() && $focusTryValidate) {
                       $candidates = LocalityGroup::where('pending_count', '>', 0)
                           ->where('occurrence_count', '>', 0)
                           ->where('occurrence_count', '<', 10000)
@@ -641,9 +662,10 @@ public function next(Request $request)
                   )->when($country, fn($q2) => $q2->where('country_code', $country));
 
                   // No ORDER BY — fulltext index is used directly; we random() the results anyway
-                  $candidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+                  $candidates = !$focusTryGeoref ? collect() : LocalityGroup::where('ungeoreferenced_count', '>', 0)
                       ->where('occurrence_count', '>', 0)
                       ->where('occurrence_count', '<', 10000)
+                      ->when($georefOnlyUser, $noSuggestionYet)
                       ->tap($focusMatch)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetGeoref)
@@ -653,7 +675,7 @@ public function next(Request $request)
                       ->limit(50)
                       ->get();
 
-                  if ($candidates->isEmpty()) {
+                  if ($candidates->isEmpty() && $focusTryValidate) {
                       $candidates = LocalityGroup::where('pending_count', '>', 0)
                           ->where('occurrence_count', '>', 0)
                           ->where('occurrence_count', '<', 10000)
@@ -680,6 +702,7 @@ public function next(Request $request)
                   $georefCandidates = LocalityGroup::where('ungeoreferenced_count', '>', 0)
                       ->where('occurrence_count', '>', 0)
                       ->where('occurrence_count', '<', 10000)
+                      ->when($georefOnlyUser, $noSuggestionYet)
                       ->tap($scope)
                       ->tap($excludeCorrupted)
                       ->tap($restrictDatasetGeoref)
@@ -737,7 +760,13 @@ public function next(Request $request)
     // is group:null, not an unrelated specimen.
     if (!$group && !$project && $datasetKey === '' && !$adhocCriteria) {
         try {
-            $fallback = LocalityGroup::where('ungeoreferenced_count', '>', 0)
+            // Follow the preference here too: a validate-only user gets a group with a pending
+            // suggestion to vote on, not a georeferencing task.
+            $fallback = LocalityGroup::query()
+                ->when($prefWantsGeoref,
+                    fn($q) => $q->where('ungeoreferenced_count', '>', 0)->when($georefOnlyUser, $noSuggestionYet),
+                    fn($q) => $q->where('pending_count', '>', 0)
+                        ->whereDoesntHave('suggestions', fn($s) => $s->where('user_id', auth()->id())->where('status', 'pending')))
                 ->where('occurrence_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
                 ->when($country, fn($q) => $q->where('country_code', $country))
