@@ -236,6 +236,27 @@ class RefreshImpactCounts extends Command
         // Always written (even at 0): ImpactController uses this row's existence to know the split is available.
         $rows['volunteer_pending|all'] = ['status' => 'volunteer_pending', 'country_code' => 'all', 'count' => $volunteerAll, 'computed_at' => $now];
 
+        // Groups with a suggestion made by a person, most recently active first, for
+        // GeorefController::next() to serve ahead of groups that only have system suggestions.
+        // Stored with each group's country/province/county so next() can apply its locality scope
+        // in PHP: combining this id list with a scope column in SQL made the planner walk the
+        // country index testing the list row by row (12s measured), whereas plain primary-key
+        // lookups of the few ids that survive the PHP filter are instant. Capped at 5000.
+        $humanGroupIds = DB::table('georef_suggestions')
+            ->whereNotNull('locality_group_id')
+            ->where(fn ($q) => $q->whereNotNull('user_id')->orWhere('georeference_sources', 'georeference.it'))
+            ->groupBy('locality_group_id')
+            ->orderByRaw('MAX(created_at) DESC')
+            ->limit(5000)
+            ->pluck('locality_group_id');
+        $humanGroups = DB::table('locality_groups')
+            ->whereIn('id', $humanGroupIds)
+            ->get(['id', 'country_code', 'state_province', 'county'])
+            ->map(fn ($g) => [(int) $g->id, $g->country_code, $g->state_province, $g->county])
+            ->all();
+        Cache::forever('georef:human_suggestion_groups', $humanGroups);
+        $this->info('Refreshed human-suggestion group list: ' . count($humanGroups) . ' groups');
+
         $rows = array_values($rows);
 
         // Not wrapped in DB::transaction(): TRUNCATE is DDL and auto-commits in MySQL,

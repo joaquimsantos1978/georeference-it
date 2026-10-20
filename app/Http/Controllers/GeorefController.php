@@ -360,14 +360,22 @@ public function next(Request $request)
     // dataset, project, and ad-hoc criteria too, so switching any of them (even with no
     // focus active) doesn't inherit a "seen" list built up under a different/no filter.
     $focusKey  = 'georef_seen_' . md5($focus . '|' . $datasetKey . '|' . $projectId . '|' . $adhocCriteriaRaw);
-    $seenIds   = session($focusKey, []);
+    // The per-focus list above can't prevent loops on its own: when the page derives the focus
+    // from the previous group's locality, the focus text — and so $focusKey — changes on every
+    // step, so a few similar localities kept handing each other back (A -> B -> C -> A).
+    // A short focus-independent list of the groups served lately is merged in to stop that.
+    $recentIds = session('georef_recent_ids', []);
+    $seenIds   = array_values(array_unique(array_merge(session($focusKey, []), $recentIds)));
 
     // Exclude the group the user just acted on (may have been loaded directly, not via /next)
     if ($excludeId = (int) $request->get('exclude')) {
+        if (!in_array($excludeId, $recentIds)) {
+            $recentIds[] = $excludeId;
+        }
         if (!in_array($excludeId, $seenIds)) {
             $seenIds[] = $excludeId;
-            session([$focusKey => $seenIds]);
         }
+        session([$focusKey => $seenIds, 'georef_recent_ids' => array_slice($recentIds, -60)]);
     }
 
     // What the user's preferred_task allows this request to serve — it always applies, with
@@ -384,6 +392,44 @@ public function next(Request $request)
     // Inside a focus the guest flow used to try both kinds of work; signed-in users follow their preference.
     $focusTryGeoref   = auth()->check() ? $prefWantsGeoref : true;
     $focusTryValidate = auth()->check() ? $prefWantsValidate : true;
+
+    // Groups a signed-in user can still usefully vote on: no pending suggestion of their own
+    // (they can't vote on it) and no vote of theirs on any suggestion there yet. A group they
+    // already voted on stays pending_count > 0 until it validates, so without this it kept
+    // coming back around.
+    $validatableByMe = fn($q) => auth()->check()
+        ? $q->whereDoesntHave('suggestions', fn($s) => $s->where('user_id', auth()->id())->where('status', 'pending'))
+            ->whereDoesntHave('suggestions', fn($s) => $s->whereHas('validations', fn($v) => $v->where('user_id', auth()->id())))
+        : $q;
+
+    // Prefer what people did over what the system generated: groups that have at least one
+    // suggestion by a person (an account, or an anonymous visitor) come before groups that only
+    // have system suggestions. The list ([id, country, province, county] per group) is refreshed
+    // by RefreshImpactCounts every 10 minutes; empty until its first run, which just means
+    // "no priority" — the old behaviour.
+    //
+    // The locality scope is applied to it in PHP, never combined with the id list in SQL: with
+    // a scope column in the same WHERE the planner walks that column's index testing the list
+    // row by row (12s measured for country=PT), while primary-key lookups of the handful of ids
+    // that survive the PHP filter are instant.
+    $humanGroups   = Cache::get('georef:human_suggestion_groups', []);
+    $humanGroupIds = array_column($humanGroups, 0);
+    $humanIdsInScope = function (array $criteria) use ($humanGroups): array {
+        $norm = fn($v) => mb_strtolower(trim((string) $v));
+        $ids  = [];
+        foreach ($humanGroups as [$id, $cc, $province, $county]) {
+            if (isset($criteria['country'])  && $norm($cc)       !== $norm($criteria['country']))  continue;
+            if (isset($criteria['province']) && $norm($province) !== $norm($criteria['province'])) continue;
+            if (isset($criteria['county'])   && $norm($county)   !== $norm($criteria['county']))   continue;
+            $ids[] = $id;
+        }
+        return $ids;
+    };
+    // Even a plain whereIn('id', <1.4k ids>) took ~13s on locality_groups: above ~200 values
+    // MariaDB stops probing the index and estimates rows from statistics, then picks a wide
+    // index scan. FORCE INDEX (PRIMARY) makes it the primary-key lookups it should be (0.04s).
+    $humanGroupQuery = fn(array $ids) => LocalityGroup::from(DB::raw('`locality_groups` FORCE INDEX (PRIMARY)'))
+        ->whereIn('id', $ids);
 
     // Priority: sibling of just-completed group (same normalized_locality + county + country)
     // Skip when focus, a dataset, a project, or ad-hoc criteria are active — the user
@@ -411,15 +457,29 @@ public function next(Request $request)
                 if ($prefWantsValidate) $q->orWhere('pending_count', '>', 0);
                 if (!$prefWantsGeoref && !$prefWantsValidate) $q->whereRaw('0');
             })
+            ->tap($validatableByMe)
             ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
                 $s->where('user_id', auth()->id())->where('status', 'pending')
             ))
-            ->first();
+            ->limit(20)
+            ->get()
+            // Only a sibling with a person's suggestion jumps the queue for validation (checked in
+            // PHP — an id list in this WHERE risks a bad plan); one that only has system suggestions
+            // is left to the normal scope loop below, which serves humans first and then system.
+            ->first(function ($g) use ($prefWantsGeoref, $prefWantsValidate, $georefOnlyUser, $humanGroupIds) {
+                if ($prefWantsGeoref && $g->ungeoreferenced_count > 0
+                    && (!$georefOnlyUser || ($g->pending_count == 0 && $g->validated_count == 0))) {
+                    return true;
+                }
+                return $prefWantsValidate && $g->pending_count > 0 && in_array($g->id, $humanGroupIds);
+            });
 
         if ($sibling) {
-            $seenIds[] = $sibling->id;
+            $seenIds[]   = $sibling->id;
+            $recentIds[] = $sibling->id;
             session([
                 $focusKey              => $seenIds,
+                'georef_recent_ids'    => array_slice($recentIds, -60),
                 'georef_last_province' => $sibling->state_province,
                 'georef_last_county'   => $sibling->county,
                 'georef_last_country'  => $sibling->country_code,
@@ -456,25 +516,34 @@ public function next(Request $request)
 
     $scopes = [];
     $hasFocusScope = $focusTerms !== null;
+    // $scopeCriteria mirrors $scopes entry for entry, as plain values, so the humans-first pass
+    // can apply the same scope in PHP (see $humanIdsInScope). The focus scope is handled in its
+    // own branch, hence the empty placeholder.
+    $scopeCriteria = [];
     if ($hasFocusScope) {
         // Focus is an explicit user intent — don't restrict by country so "Braga" finds PT groups even if country=AT
         $scopes[] = fn($q) => $q->whereRaw(
             'MATCH(locality_string) AGAINST(? IN BOOLEAN MODE)',
             [$focusTerms]
         );
+        $scopeCriteria[] = [];
     }
     if ($lastCounty) {
         $scopes[] = fn($q) => $q->where('county', $lastCounty)
             ->when($country, fn($q2) => $q2->where('country_code', $country));
+        $scopeCriteria[] = ['county' => $lastCounty, 'country' => $country];
     }
     if ($lastProvince) {
         $scopes[] = fn($q) => $q->where('state_province', $lastProvince)
             ->when($country, fn($q2) => $q2->where('country_code', $country));
+        $scopeCriteria[] = ['province' => $lastProvince, 'country' => $country];
     }
     if ($country) {
         $scopes[] = fn($q) => $q->where('country_code', $country);
+        $scopeCriteria[] = ['country' => $country];
     } else {
         $scopes[] = fn($q) => $q; // fallback: any (skip when country filter is active)
+        $scopeCriteria[] = [];
     }
 
     // Hides groups whose verbatim_locality is obviously corrupted by the original import's
@@ -640,19 +709,38 @@ public function next(Request $request)
                       ->values();
 
                   if ($candidates->isEmpty() && $focusTryValidate) {
-                      $candidates = LocalityGroup::where('pending_count', '>', 0)
-                          ->where('occurrence_count', '>', 0)
-                          ->where('occurrence_count', '<', 10000)
-                          ->when($country, fn($q) => $q->where('country_code', $country))
-                          ->tap($excludeCorrupted)
-                          ->tap($restrictDatasetValidate)
-                          ->tap($restrictProjectValidate)
-                          ->tap($restrictAdhocValidate)
-                          ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
-                          ->limit(500)
-                          ->get()
-                          ->filter($matchesFocusWords)
-                          ->values();
+                      // Humans first (country applied in PHP via $humanIdsInScope), then system.
+                      if ($humanIds = $humanIdsInScope(['country' => $country])) {
+                          $candidates = $humanGroupQuery($humanIds)
+                              ->where('pending_count', '>', 0)
+                              ->where('occurrence_count', '>', 0)
+                              ->where('occurrence_count', '<', 10000)
+                              ->tap($excludeCorrupted)
+                              ->tap($restrictDatasetValidate)
+                              ->tap($restrictProjectValidate)
+                              ->tap($restrictAdhocValidate)
+                              ->tap($validatableByMe)
+                              ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                              ->get()
+                              ->filter($matchesFocusWords)
+                              ->values();
+                      }
+                      if ($candidates->isEmpty()) {
+                          $candidates = LocalityGroup::where('pending_count', '>', 0)
+                              ->where('occurrence_count', '>', 0)
+                              ->where('occurrence_count', '<', 10000)
+                              ->when($country, fn($q) => $q->where('country_code', $country))
+                              ->tap($excludeCorrupted)
+                              ->tap($restrictDatasetValidate)
+                              ->tap($restrictProjectValidate)
+                              ->tap($restrictAdhocValidate)
+                              ->tap($validatableByMe)
+                              ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                              ->limit(500)
+                              ->get()
+                              ->filter($matchesFocusWords)
+                              ->values();
+                      }
                   }
               } else {
                   // Try ungeoreferenced first, then pending — avoids OR which can't use composite indexes
@@ -676,17 +764,45 @@ public function next(Request $request)
                       ->get();
 
                   if ($candidates->isEmpty() && $focusTryValidate) {
-                      $candidates = LocalityGroup::where('pending_count', '>', 0)
-                          ->where('occurrence_count', '>', 0)
-                          ->where('occurrence_count', '<', 10000)
-                          ->tap($focusMatch)
-                          ->tap($excludeCorrupted)
-                          ->tap($restrictDatasetValidate)
-                          ->tap($restrictProjectValidate)
-                          ->tap($restrictAdhocValidate)
-                          ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
-                          ->limit(50)
-                          ->get();
+                      // Humans first, as primary-key lookups filtered by the focus words in PHP —
+                      // never a fulltext MATCH combined with an id list (the planner can pick the
+                      // fulltext index first and take minutes, see the note on the restricted branch).
+                      if ($humanIds = $humanIdsInScope(['country' => $country])) {
+                          $focusWordsHuman = $this->focusWords($focus);
+                          $candidates = $humanGroupQuery($humanIds)
+                              ->where('pending_count', '>', 0)
+                              ->where('occurrence_count', '>', 0)
+                              ->where('occurrence_count', '<', 10000)
+                              ->tap($excludeCorrupted)
+                              ->tap($restrictDatasetValidate)
+                              ->tap($restrictProjectValidate)
+                              ->tap($restrictAdhocValidate)
+                              ->tap($validatableByMe)
+                              ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                              ->get()
+                              ->filter(function (LocalityGroup $g) use ($focusWordsHuman) {
+                                  $haystack = mb_strtolower($g->locality_string ?? '');
+                                  foreach ($focusWordsHuman as $word) {
+                                      if (mb_stripos($haystack, $word) === false) return false;
+                                  }
+                                  return true;
+                              })
+                              ->values();
+                      }
+                      if ($candidates->isEmpty()) {
+                          $candidates = LocalityGroup::where('pending_count', '>', 0)
+                              ->where('occurrence_count', '>', 0)
+                              ->where('occurrence_count', '<', 10000)
+                              ->tap($focusMatch)
+                              ->tap($excludeCorrupted)
+                              ->tap($restrictDatasetValidate)
+                              ->tap($restrictProjectValidate)
+                              ->tap($restrictAdhocValidate)
+                              ->tap($validatableByMe)
+                              ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                              ->limit(50)
+                              ->get();
+                      }
                   }
               }
 
@@ -720,20 +836,35 @@ public function next(Request $request)
               }
 
               if (!$group && $wantsValidate) {
-                  $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
-                      ->where('occurrence_count', '>', 0)
-                      ->tap($scope)
-                      ->tap($excludeCorrupted)
-                      ->tap($restrictDatasetValidate)
-                      ->tap($restrictProjectValidate)
-                      ->tap($restrictAdhocValidate)
-                      ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
-                      ->when(auth()->check(), fn($q) => $q->whereDoesntHave('suggestions', fn($s) =>
-                          $s->where('user_id', auth()->id())->where('status', 'pending')
-                      ))
-                      ->orderByDesc('pending_count')
-                      ->limit(50)
-                      ->get();
+                  // Humans first: groups in this scope with a suggestion made by a person...
+                  $validateCandidates = collect();
+                  if ($humanIds = $humanIdsInScope($scopeCriteria[$scopeIdx] ?? [])) {
+                      $validateCandidates = $humanGroupQuery($humanIds)
+                          ->where('pending_count', '>', 0)
+                          ->where('occurrence_count', '>', 0)
+                          ->tap($excludeCorrupted)
+                          ->tap($restrictDatasetValidate)
+                          ->tap($restrictProjectValidate)
+                          ->tap($restrictAdhocValidate)
+                          ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                          ->tap($validatableByMe)
+                          ->get();
+                  }
+                  // ...then, only if there are none, groups that only have system suggestions.
+                  if ($validateCandidates->isEmpty()) {
+                      $validateCandidates = LocalityGroup::where('pending_count', '>', 0)
+                          ->where('occurrence_count', '>', 0)
+                          ->tap($scope)
+                          ->tap($excludeCorrupted)
+                          ->tap($restrictDatasetValidate)
+                          ->tap($restrictProjectValidate)
+                          ->tap($restrictAdhocValidate)
+                          ->when($seenIdsForAttempt, fn($q) => $q->whereNotIn('id', $seenIdsForAttempt))
+                          ->tap($validatableByMe)
+                          ->orderByDesc('pending_count')
+                          ->limit(50)
+                          ->get();
+                  }
                   $group = $validateCandidates->isNotEmpty() ? $validateCandidates->random() : null;
               }
           }
@@ -765,8 +896,7 @@ public function next(Request $request)
             $fallback = LocalityGroup::query()
                 ->when($prefWantsGeoref,
                     fn($q) => $q->where('ungeoreferenced_count', '>', 0)->when($georefOnlyUser, $noSuggestionYet),
-                    fn($q) => $q->where('pending_count', '>', 0)
-                        ->whereDoesntHave('suggestions', fn($s) => $s->where('user_id', auth()->id())->where('status', 'pending')))
+                    fn($q) => $q->where('pending_count', '>', 0)->tap($validatableByMe))
                 ->where('occurrence_count', '>', 0)
                 ->where('occurrence_count', '<', 10000)
                 ->when($country, fn($q) => $q->where('country_code', $country))
@@ -789,13 +919,17 @@ public function next(Request $request)
     // reset it instead of leaving it to immediately re-exhaust on the very next request.
     if (($attempt ?? 0) === 1) {
         session()->forget($focusKey);
-        $seenIds = [];
+        $seenIds   = [];
+        $recentIds = [];
     }
 
-    // Remember this group as seen (per focus term) and store geographic coherence
-    $seenIds[] = $group->id;
+    // Remember this group as seen (per focus term, and in the focus-independent recent list)
+    // and store geographic coherence
+    $seenIds[]   = $group->id;
+    $recentIds[] = $group->id;
     session([
         $focusKey              => $seenIds,
+        'georef_recent_ids'    => array_slice($recentIds, -60),
         'georef_last_province' => $group->state_province,
         'georef_last_county'   => $group->county,
         'georef_last_country'  => $group->country_code,
