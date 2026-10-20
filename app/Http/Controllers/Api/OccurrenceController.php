@@ -23,6 +23,10 @@ class OccurrenceController extends Controller
     // of who/what produced the suggestion.
     private const GEOREFERENCE_PROTOCOL = 'Georeferencing Quick Reference Guide (Zermoglio et al. 2020, https://doi.org/10.35035/e09p-h128)';
 
+    // Upper bound for the occurrenceIDs filter; stays under index()'s perPage cap of
+    // 500 so every requested record fits on page 1.
+    private const MAX_OCCURRENCE_IDS = 200;
+
     private const VERIFICATION_STATUS = [
         'validated'          => 'verified by contributor',
         'has_suggestion'     => 'requires verification',
@@ -73,6 +77,21 @@ class OccurrenceController extends Controller
     {
         $query = Occurrence::query()->with(['localityGroup']);
 
+        // Batch lookup by GBIF occurrence key ("123|456|..."), so a client that
+        // already knows which records it cares about (e.g. Expeditia checking one
+        // expedition's specimens) makes one request per MAX_OCCURRENCE_IDS records
+        // instead of one GET occurrences/{id} each. Non-numeric entries are ignored;
+        // unknown keys are simply absent from the response.
+        if ($request->filled('occurrenceIDs')) {
+            $ids = collect(explode('|', (string) $request->occurrenceIDs))
+                ->map(fn($id) => trim($id))
+                ->filter(fn($id) => ctype_digit($id))
+                ->unique()
+                ->take(self::MAX_OCCURRENCE_IDS)
+                ->values()
+                ->all();
+            $query->whereIn('gbif_occurrence_key', $ids ?: ['']);
+        }
         if ($request->filled('country')) {
             $query->where('country_code', strtoupper($request->country));
         }
