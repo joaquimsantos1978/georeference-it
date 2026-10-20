@@ -19,6 +19,12 @@
         </div>
         <script src="https://player.vimeo.com/api/player.js"></script>
 
+        {{-- Workflow at a glance --}}
+        <section class="space-y-4">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ __('The workflow at a glance') }}</h2>
+            <x-workflow-diagram />
+        </section>
+
         {{-- The problem --}}
         <section class="space-y-4">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ __('The problem') }}</h2>
