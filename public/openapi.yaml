@@ -79,10 +79,13 @@ paths:
                   meta:
                     type: object
                     properties:
-                      total: { type: integer }
+                      total: { type: integer, nullable: true, description: "Exact for filtered queries; an estimate when no filters are set (see totalIsEstimate); null when too expensive to count." }
+                      totalIsEstimate: { type: boolean }
                       perPage: { type: integer }
                       currentPage: { type: integer }
-                      lastPage: { type: integer }
+                      lastPage: { type: integer, nullable: true }
+                      nextPageUrl: { type: string, nullable: true }
+                      prevPageUrl: { type: string, nullable: true }
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/Occurrence' }

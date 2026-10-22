@@ -103,6 +103,7 @@
         <section id="response">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">Response format</h2>
             <p class="text-sm text-gray-500 mb-4">Coordinates reflect the best available georeference: community-validated → pending suggestion → original GBIF coordinates.</p>
+            <p class="text-sm text-gray-500 mb-4">With no filters, <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">meta.total</code> is an estimate (<code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">totalIsEstimate: true</code>). For very broad filters it can be <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">null</code> (as can <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">lastPage</code>) — keep following <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">nextPageUrl</code> until it is <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">null</code>. A query too broad to run in time returns HTTP 503 with an <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">error</code> message; add filters and retry.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -110,6 +111,7 @@
                     <pre style="background:#111827;color:#e5e7eb;border-radius:0.75rem;font-size:0.75rem;padding:1rem;overflow-x:auto;line-height:1.625"><code style="color:inherit;background:none">{
   "meta": {
     "total": 48213,
+    "totalIsEstimate": false,
     "perPage": 100,
     "currentPage": 1,
     "lastPage": 483

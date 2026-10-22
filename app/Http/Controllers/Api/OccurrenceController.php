@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\GeorefSuggestion;
 use App\Models\Occurrence;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -17,6 +19,12 @@ class OccurrenceController extends Controller
     // Populated per-page by preloadSuggestions(), keyed by locality_group_id — lets
     // resolveGeoref() do a plain array lookup instead of a query per occurrence.
     private array $suggestionCache = [];
+
+    // MariaDB error 1969: statement aborted by max_statement_time.
+    private const MYSQL_QUERY_INTERRUPTED = 1969;
+
+    // How long an exact COUNT(*) may run before index() gives up on it and answers without a total.
+    private const COUNT_TIMEOUT_SECONDS = 5;
 
     // Same string used for both manually- and system-submitted georeferences (see
     // GeorefController::submit()) — keeps georeferenceProtocol consistent regardless
@@ -119,37 +127,107 @@ class OccurrenceController extends Controller
             $query->where('updated_at', '<=', $request->georeferencedBefore . ' 23:59:59');
         }
 
+        $filtered = !empty($query->getQuery()->wheres);
+
         if ($request->get('format') === 'csv') {
             return $this->csvResponse($query, $request);
         }
 
-        $perPage = min((int) $request->get('perPage', 100), 500);
-        $results = $query->paginate($perPage);
-        $this->preloadSuggestions($results->getCollection());
-        $records = $results->getCollection()->map(fn($o) => $this->format($o))->all();
+        $perPage = min(max((int) $request->get('perPage', 100), 1), 500);
+        $page    = max((int) $request->get('page', 1), 1);
+
+        // Not paginate(): its COUNT(*) over ~250M occurrences blows past the web
+        // max_statement_time (20s) for unfiltered or broad queries, which surfaced as a
+        // bare HTTP 500. The total is resolved separately (estimate / cached / unknown)
+        // and the page itself is fetched with one extra row to learn whether a next page
+        // exists, so paging works even when no total is available.
+        try {
+            [$total, $totalIsEstimate] = $this->resolveTotal($query, $filtered);
+            $rows = (clone $query)->forPage($page, $perPage + 1)->get();
+        } catch (QueryException $e) {
+            if (($e->errorInfo[1] ?? null) == self::MYSQL_QUERY_INTERRUPTED) {
+                return response()->json([
+                    'error'   => 'query_timeout',
+                    'message' => 'This query is too broad to answer in time. Narrow it with filters such as country, datasetKey, institutionCode or status, or use occurrenceIDs.',
+                ], 503, ['Retry-After' => '60']);
+            }
+            throw $e;
+        }
+
+        $hasMore  = $rows->count() > $perPage;
+        $pageRows = $rows->take($perPage)->values();
+        $lastPage = $total === null ? null : max((int) ceil($total / $perPage), 1);
+        $this->preloadSuggestions($pageRows);
+        $records = $pageRows->map(fn($o) => $this->format($o))->all();
 
         if ($this->wantsJsonLd($request)) {
             return $this->jsonldResponse([
                 '@context'     => self::JSONLD_CONTEXT,
                 '@type'        => 'owl:Ontology',
-                'totalRecords' => $results->total(),
-                'currentPage'  => $results->currentPage(),
-                'lastPage'     => $results->lastPage(),
+                'totalRecords' => $total,
+                'currentPage'  => $page,
+                'lastPage'     => $lastPage,
                 '@graph'       => array_map(fn($r) => $this->toJsonLdNode($r), $records),
             ]);
         }
 
         return response()->json([
             'meta' => [
-                'total'       => $results->total(),
-                'perPage'     => $results->perPage(),
-                'currentPage' => $results->currentPage(),
-                'lastPage'    => $results->lastPage(),
-                'nextPageUrl' => $results->nextPageUrl(),
-                'prevPageUrl' => $results->previousPageUrl(),
+                'total'           => $total,
+                'totalIsEstimate' => $totalIsEstimate,
+                'perPage'         => $perPage,
+                'currentPage'     => $page,
+                'lastPage'        => $lastPage,
+                'nextPageUrl'     => $hasMore ? $request->fullUrlWithQuery(['page' => $page + 1]) : null,
+                'prevPageUrl'     => $page > 1 ? $request->fullUrlWithQuery(['page' => $page - 1]) : null,
             ],
             'data' => $records,
         ]);
+    }
+
+    /**
+     * Total matching records for the index query, without ever letting COUNT(*) fail the request.
+     *
+     * Returns [total|null, isEstimate]:
+     *  - no filters: InnoDB's row estimate for the table (instant; includes soft-deleted rows,
+     *    so flagged as an estimate), cached for an hour;
+     *  - filtered: exact COUNT(*) under a short statement timeout, cached for an hour;
+     *  - count too slow: null, remembered for 15 minutes so later requests don't each pay
+     *    the timeout again (clients then rely on nextPageUrl).
+     */
+    private function resolveTotal($query, bool $filtered): array
+    {
+        if (!$filtered) {
+            return [Cache::remember('api:occurrences:estimated-total', 3600, fn() => (int) DB::table('information_schema.tables')
+                ->where('table_schema', DB::getDatabaseName())
+                ->where('table_name', 'occurrences')
+                ->value('table_rows')), true];
+        }
+
+        $base     = $query->toBase();
+        $cacheKey = 'api:occurrences:total:' . md5($base->toSql() . json_encode($base->getBindings()));
+        $cached   = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return [$cached['n'], false];
+        }
+
+        $previous = DB::selectOne('SELECT @@session.max_statement_time AS t')->t ?? 0;
+        try {
+            DB::statement('SET SESSION max_statement_time = ' . self::COUNT_TIMEOUT_SECONDS);
+            $total = (clone $query)->count();
+            Cache::put($cacheKey, ['n' => $total], 3600);
+
+            return [$total, false];
+        } catch (QueryException $e) {
+            if (($e->errorInfo[1] ?? null) != self::MYSQL_QUERY_INTERRUPTED) {
+                throw $e;
+            }
+            Cache::put($cacheKey, ['n' => null], 900);
+
+            return [null, false];
+        } finally {
+            DB::statement('SET SESSION max_statement_time = ' . (float) $previous);
+        }
     }
 
     private function csvResponse($query, Request $request): StreamedResponse
