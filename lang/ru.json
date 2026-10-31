@@ -619,5 +619,6 @@
     "Researchers and tools": "Исследователи и инструменты",
     "Queries and scripts": "Запросы и скрипты",
     "Automatic (system)": "Автоматически (система)",
-    "Volunteer work": "Работа волонтёров"
+    "Volunteer work": "Работа волонтёров",
+    "This locality could not be loaded right now. Please try again in a moment.": "Сейчас не удалось загрузить это местоположение. Пожалуйста, повторите попытку через минуту."
 }

@@ -135,9 +135,14 @@ class GeorefController extends Controller
         });
         $suggestions = $mapped;
 
+        // The client only needs to know whether ANY occurrence is marked (it flips the 🚫 button
+        // to ↩️), so ask for existence, not a count. A real COUNT(*) had to read every matching
+        // row because deleted_at isn't in the (locality_group_id, georef_status) index: on the
+        // 520k-row "no locality text" group that took ~80s, blew the 20s statement limit and the
+        // page then misreported the group as "no longer exists".
         $notGeoreferenceableCount = Occurrence::where('locality_group_id', $group->id)
             ->where('georef_status', 'not_georeferenceable')
-            ->count();
+            ->exists() ? 1 : 0;
 
         $comments = LocalityGroupComment::where('locality_group_id', $group->id)
             ->with('user')->latest()->take(20)->get()

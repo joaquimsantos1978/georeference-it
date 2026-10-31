@@ -325,7 +325,8 @@
             <div class="p-3 border-b border-gray-300 dark:border-gray-700 shrink-0">
                 <div id="occurrence-loading" class="text-center py-4 text-gray-400 text-xs">{{ __('Loading occurrences...') }}</div>
                 <div id="group-gone" class="hidden text-center py-4 px-1 text-xs text-gray-400">
-                    <p style="margin-bottom:8px;">{{ __('This locality no longer exists — it was likely merged into another one during a data refresh.') }}</p>
+                    <p id="group-gone-text" style="margin-bottom:8px;">{{ __('This locality no longer exists — it was likely merged into another one during a data refresh.') }}</p>
+                    <p id="group-error-text" class="hidden" style="margin-bottom:8px;">{{ __('This locality could not be loaded right now. Please try again in a moment.') }}</p>
                     <button onclick="loadNextGroup()" style="font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid #16a34a;color:#16a34a;background:white;cursor:pointer;">{{ __('Go to next locality') }}</button>
                 </div>
                 <div id="occurrence-info" class="hidden">
@@ -2135,6 +2136,9 @@ function loadGroup(groupId) {
     fetch(APP_URL+'/georef/group/'+groupId, {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
     .then(r=>{
         if (r.status === 404) { showGroupGone(groupId); return null; }
+        // Only a real 404 means "merged away". A 5xx/timeout is a temporary failure and
+        // must not be reported as a vanished locality (nor drop the id from history).
+        if (!r.ok) { showGroupLoadError(); return null; }
         return r.json();
     })
     .then(data=>{
@@ -2151,7 +2155,16 @@ function loadGroup(groupId) {
             showGroupGone(groupId);
         }
     })
-    .catch(()=>{ hideOverlay(); document.getElementById('occurrence-loading').classList.add('hidden'); });
+    .catch(()=>{ showGroupLoadError(); });
+}
+
+function showGroupLoadError() {
+    hideOverlay();
+    document.getElementById('occurrence-loading').classList.add('hidden');
+    document.getElementById('occurrence-info').classList.add('hidden');
+    document.getElementById('group-gone-text').classList.add('hidden');
+    document.getElementById('group-error-text').classList.remove('hidden');
+    document.getElementById('group-gone').classList.remove('hidden');
 }
 
 // Locality groups can be merged/renumbered by a GBIF data refresh, so an id from
@@ -2162,6 +2175,8 @@ function showGroupGone(groupId) {
     hideOverlay();
     document.getElementById('occurrence-loading').classList.add('hidden');
     document.getElementById('occurrence-info').classList.add('hidden');
+    document.getElementById('group-error-text').classList.add('hidden');
+    document.getElementById('group-gone-text').classList.remove('hidden');
     document.getElementById('group-gone').classList.remove('hidden');
     sessionHistory = sessionHistory.filter(function(g){ return g.id !== groupId; });
     historyIndex = Math.min(historyIndex, sessionHistory.length - 1);
