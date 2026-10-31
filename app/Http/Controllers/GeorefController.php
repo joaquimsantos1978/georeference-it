@@ -978,6 +978,16 @@ public function next(Request $request)
 
         $group = LocalityGroup::findOrFail($groupId);
 
+        // "Not georeferenceable" also means the automatic proposals for this locality are
+        // meaningless: drop the pending system suggestions, otherwise the API keeps serving
+        // one of them as the coordinates of every gbif_georeferenced/has_suggestion
+        // occurrence in the group (the update below deliberately leaves those occurrences
+        // alone). Human suggestions are left untouched.
+        GeorefSuggestion::where('locality_group_id', $group->id)
+            ->where('status', 'pending')
+            ->whereNull('user_id')
+            ->update(['status' => 'rejected']);
+
         Occurrence::where('locality_group_id', $group->id)
             ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
             ->update([
