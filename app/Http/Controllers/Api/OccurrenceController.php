@@ -20,6 +20,14 @@ class OccurrenceController extends Controller
     // resolveGeoref() do a plain array lookup instead of a query per occurrence.
     private array $suggestionCache = [];
 
+    // Same keys, only for groups whose "winning" suggestion is one of several competing system
+    // clusters: every pending system suggestion of the group. See preloadSuggestions().
+    private array $clusterCache = [];
+
+    // Floor for a cluster's reach: a centroid may claim an occurrence up to its own
+    // coordinate_uncertainty_m away, but never less than this.
+    private const MIN_CLUSTER_RADIUS_M = 1000;
+
     // MariaDB error 1969: statement aborted by max_statement_time.
     private const MYSQL_QUERY_INTERRUPTED = 1969;
 
@@ -398,6 +406,7 @@ class OccurrenceController extends Controller
     private function preloadSuggestions(iterable $occurrences): void
     {
         $this->suggestionCache = [];
+        $this->clusterCache = [];
 
         $groupIds = collect($occurrences)
             ->filter(fn($o) => in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted', 'gbif_georeferenced']))
@@ -447,12 +456,75 @@ class OccurrenceController extends Controller
         foreach ($suggestions as $suggestion) {
             $this->suggestionCache[$suggestion->locality_group_id] = $suggestion;
         }
+
+        // When the winner is a pending system suggestion and the group has several of them,
+        // they are GBIF_CONSISTENCY_CHECK's competing clusters (one per cluster of the group's
+        // occurrences, see GbifService::checkConsistency()) — not alternatives for the whole
+        // group. The "winner" among them is arbitrary (ties at 0 votes), so keep all of them
+        // and let resolveGeoref() pick the cluster each occurrence actually belongs to.
+        $systemGroupIds = $suggestions
+            ->filter(fn($s) => $s->status === 'pending' && $s->user_id === null)
+            ->pluck('locality_group_id')
+            ->all();
+
+        if ($systemGroupIds) {
+            GeorefSuggestion::whereIn('locality_group_id', $systemGroupIds)
+                ->where('status', 'pending')
+                ->whereNull('user_id')
+                ->whereNotNull('decimal_latitude')
+                ->get()
+                ->groupBy('locality_group_id')
+                ->filter(fn($clusters) => $clusters->count() > 1)
+                ->each(fn($clusters, $groupId) => $this->clusterCache[$groupId] = $clusters->all());
+        }
+    }
+
+    // Competing system clusters: the cluster an occurrence belongs to is the one whose centroid
+    // lies within its own uncertainty radius of the occurrence's GBIF point (nearest wins).
+    // null = no cluster claims it, so the occurrence keeps its own coordinates; an occurrence
+    // with no coordinates of its own can't be told apart either, so it gets none (previously it
+    // got an arbitrary cluster's centroid).
+    private function nearestCluster(Occurrence $o, array $clusters): ?GeorefSuggestion
+    {
+        if ($o->gbif_decimal_latitude === null || $o->gbif_decimal_longitude === null) {
+            return null;
+        }
+
+        $lat = (float) $o->gbif_decimal_latitude;
+        $lng = (float) $o->gbif_decimal_longitude;
+        $best = null;
+        $bestDist = INF;
+
+        foreach ($clusters as $cluster) {
+            $dist = $this->distanceMeters($lat, $lng, (float) $cluster->decimal_latitude, (float) $cluster->decimal_longitude);
+            if ($dist < $bestDist) {
+                $bestDist = $dist;
+                $best = $cluster;
+            }
+        }
+
+        return $best !== null && $bestDist <= max((float) $best->coordinate_uncertainty_m, self::MIN_CLUSTER_RADIUS_M)
+            ? $best
+            : null;
+    }
+
+    private function distanceMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $p = M_PI / 180;
+        $a = sin(($lat2 - $lat1) * $p / 2) ** 2
+            + cos($lat1 * $p) * cos($lat2 * $p) * sin(($lng2 - $lng1) * $p / 2) ** 2;
+
+        return 2 * 6371000 * asin(min(1.0, sqrt($a)));
     }
 
     private function resolveGeoref(Occurrence $o): array
     {
         if (in_array($o->georef_status, ['validated', 'has_suggestion', 'conflicted', 'gbif_georeferenced'])) {
             $suggestion = $this->suggestionCache[$o->locality_group_id] ?? null;
+
+            if ($suggestion && isset($this->clusterCache[$o->locality_group_id])) {
+                $suggestion = $this->nearestCluster($o, $this->clusterCache[$o->locality_group_id]);
+            }
 
             if ($suggestion) {
                 return [
