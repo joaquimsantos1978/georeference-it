@@ -978,25 +978,22 @@ public function next(Request $request)
 
         $group = LocalityGroup::findOrFail($groupId);
 
-        // "Not georeferenceable" also means the automatic proposals for this locality are
-        // meaningless: drop the pending system suggestions, otherwise the API keeps serving
-        // one of them as the coordinates of every gbif_georeferenced/has_suggestion
-        // occurrence in the group (the update below deliberately leaves those occurrences
-        // alone). Human suggestions are left untouched.
-        GeorefSuggestion::where('locality_group_id', $group->id)
-            ->where('status', 'pending')
-            ->whereNull('user_id')
-            ->update(['status' => 'rejected']);
+        return $this->applyNotGeoreferenceable($group, true);
+    }
 
-        Occurrence::where('locality_group_id', $group->id)
-            ->whereIn('georef_status', ['ungeoreferenced', 'has_suggestion'])
-            ->update([
-                'georef_status' => 'not_georeferenceable',
-                'not_georeferenceable_by' => auth()->id(),
-                'not_georeferenceable_at' => now(),
-            ]);
+    // Normal groups run inline; the huge catch-all ones (see the job's header) go to the queue
+    // worker, which has no statement time limit, and the client is told it's still in progress.
+    private function applyNotGeoreferenceable(LocalityGroup $group, bool $mark): \Illuminate\Http\JsonResponse
+    {
+        $job = new \App\Jobs\ApplyNotGeoreferenceableToGroup($group->id, $mark, auth()->id());
 
-        $group->recalculateCounters();
+        if ($group->occurrence_count > \App\Jobs\ApplyNotGeoreferenceableToGroup::QUEUE_THRESHOLD) {
+            dispatch($job);
+
+            return response()->json(['success' => true, 'queued' => true]);
+        }
+
+        dispatch_sync($job);
 
         return response()->json(['success' => true]);
     }
@@ -1010,17 +1007,7 @@ public function next(Request $request)
 
         $group = LocalityGroup::findOrFail($groupId);
 
-        Occurrence::where('locality_group_id', $group->id)
-            ->where('georef_status', 'not_georeferenceable')
-            ->update([
-                'georef_status' => 'ungeoreferenced',
-                'not_georeferenceable_by' => null,
-                'not_georeferenceable_at' => null,
-            ]);
-
-        $group->recalculateCounters();
-
-        return response()->json(['success' => true]);
+        return $this->applyNotGeoreferenceable($group, false);
     }
 
     // Used by the "see list" link on already-georeferenced matches, which point to a
