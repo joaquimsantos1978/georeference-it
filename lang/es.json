@@ -620,5 +620,6 @@
     "Queries and scripts": "Consultas y scripts",
     "Automatic (system)": "Automático (sistema)",
     "Volunteer work": "Trabajo de voluntarios",
-    "This locality could not be loaded right now. Please try again in a moment.": "No se pudo cargar esta localidad en este momento. Inténtelo de nuevo en unos instantes."
+    "This locality could not be loaded right now. Please try again in a moment.": "No se pudo cargar esta localidad en este momento. Inténtelo de nuevo en unos instantes.",
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "Este ejemplar aún no está en georeference.it — puede que no se haya importado. Mientras tanto, puede georreferenciar otras localidades."
 }

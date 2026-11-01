@@ -620,5 +620,6 @@
     "Queries and scripts": "查询和脚本",
     "Automatic (system)": "自动（系统）",
     "Volunteer work": "志愿者工作",
-    "This locality could not be loaded right now. Please try again in a moment.": "目前无法加载此地点，请稍后重试。"
+    "This locality could not be loaded right now. Please try again in a moment.": "目前无法加载此地点，请稍后重试。",
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "此标本尚未收录于 georeference.it，可能尚未导入。在此期间，您可以为其他地点进行地理定位。"
 }

@@ -327,6 +327,7 @@
                 <div id="group-gone" class="hidden text-center py-4 px-1 text-xs text-gray-400">
                     <p id="group-gone-text" style="margin-bottom:8px;">{{ __('This locality no longer exists — it was likely merged into another one during a data refresh.') }}</p>
                     <p id="group-error-text" class="hidden" style="margin-bottom:8px;">{{ __('This locality could not be loaded right now. Please try again in a moment.') }}</p>
+                    <p id="gbif-notfound-text" class="hidden" style="margin-bottom:8px;">{{ __('This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.') }}</p>
                     <button onclick="loadNextGroup()" style="font-size:11px;padding:6px 14px;border-radius:6px;border:1px solid #16a34a;color:#16a34a;background:white;cursor:pointer;">{{ __('Go to next locality') }}</button>
                 </div>
                 <div id="occurrence-info" class="hidden">
@@ -2163,7 +2164,19 @@ function showGroupLoadError() {
     document.getElementById('occurrence-loading').classList.add('hidden');
     document.getElementById('occurrence-info').classList.add('hidden');
     document.getElementById('group-gone-text').classList.add('hidden');
+    document.getElementById('gbif-notfound-text').classList.add('hidden');
     document.getElementById('group-error-text').classList.remove('hidden');
+    document.getElementById('group-gone').classList.remove('hidden');
+}
+
+// ?gbif=<key> for a specimen georeference.it has no locality group for (not imported yet).
+function showOccurrenceNotFound() {
+    hideOverlay();
+    document.getElementById('occurrence-loading').classList.add('hidden');
+    document.getElementById('occurrence-info').classList.add('hidden');
+    document.getElementById('group-gone-text').classList.add('hidden');
+    document.getElementById('group-error-text').classList.add('hidden');
+    document.getElementById('gbif-notfound-text').classList.remove('hidden');
     document.getElementById('group-gone').classList.remove('hidden');
 }
 
@@ -2176,6 +2189,7 @@ function showGroupGone(groupId) {
     document.getElementById('occurrence-loading').classList.add('hidden');
     document.getElementById('occurrence-info').classList.add('hidden');
     document.getElementById('group-error-text').classList.add('hidden');
+    document.getElementById('gbif-notfound-text').classList.add('hidden');
     document.getElementById('group-gone-text').classList.remove('hidden');
     document.getElementById('group-gone').classList.remove('hidden');
     sessionHistory = sessionHistory.filter(function(g){ return g.id !== groupId; });
@@ -3217,20 +3231,22 @@ function loadByGbifKey(key) {
     var match = key.match(/(\d{6,})/);
     if (match) key = match[1];
     clearPanel();
+    // Only resolve the key to its locality group, then load that group exactly like
+    // ?group=<id> does (loadGroup). This used to duplicate the loading/rendering code
+    // with an outdated renderGroup() signature and a #gbif-error element that no
+    // longer exists in the page, so every ?gbif= link failed with a JS error.
     fetch(APP_URL+'/georef/occurrence/'+encodeURIComponent(key), {headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}})
-    .then(r=>r.json())
-    .then(data=>{
-        if(data.error) {
-            document.getElementById('gbif-error').textContent = data.error;
-            document.getElementById('gbif-error').style.display = 'block';
-            return;
-        }
-        document.getElementById('gbif-error').style.display = 'none';
-        addToHistory(data.group); currentGroup=data.group;
-        renderGroup(data.group, data.occurrences, data.suggestions, data.comments);
-        updateUrl(data.group.id);
+    .then(function(r) {
+        if (r.status === 404) { showOccurrenceNotFound(); return null; }
+        if (!r.ok) { showGroupLoadError(); return null; }
+        return r.json();
     })
-    .catch(()=>{ document.getElementById('gbif-error').textContent = 'Failed to load occurrence.'; document.getElementById('gbif-error').style.display='block'; });
+    .then(function(data) {
+        if (!data) return;                       // already handled above
+        if (data.group && data.group.id) { loadGroup(data.group.id); }
+        else { showOccurrenceNotFound(); }
+    })
+    .catch(function() { showGroupLoadError(); });
 }
 
 

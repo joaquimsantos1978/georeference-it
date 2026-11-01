@@ -620,5 +620,6 @@
     "Queries and scripts": "クエリとスクリプト",
     "Automatic (system)": "自動（システム）",
     "Volunteer work": "ボランティアの作業",
-    "This locality could not be loaded right now. Please try again in a moment.": "この地点を今は読み込めませんでした。しばらくしてからもう一度お試しください。"
+    "This locality could not be loaded right now. Please try again in a moment.": "この地点を今は読み込めませんでした。しばらくしてからもう一度お試しください。",
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "この標本はまだ georeference.it にありません。インポートされていない可能性があります。その間、他の地点の位置情報付与を行うことができます。"
 }

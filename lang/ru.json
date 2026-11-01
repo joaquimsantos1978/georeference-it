@@ -620,5 +620,6 @@
     "Queries and scripts": "Запросы и скрипты",
     "Automatic (system)": "Автоматически (система)",
     "Volunteer work": "Работа волонтёров",
-    "This locality could not be loaded right now. Please try again in a moment.": "Сейчас не удалось загрузить это местоположение. Пожалуйста, повторите попытку через минуту."
+    "This locality could not be loaded right now. Please try again in a moment.": "Сейчас не удалось загрузить это местоположение. Пожалуйста, повторите попытку через минуту.",
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "Этого образца пока нет в georeference.it — возможно, он ещё не импортирован. А пока вы можете привязать координаты к другим местонахождениям."
 }

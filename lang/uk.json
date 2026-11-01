@@ -620,5 +620,6 @@
     "Queries and scripts": "Запити та скрипти",
     "Automatic (system)": "Автоматично (система)",
     "Volunteer work": "Робота волонтерів",
-    "This locality could not be loaded right now. Please try again in a moment.": "Зараз не вдалося завантажити це місцезнаходження. Будь ласка, спробуйте ще раз за хвилину."
+    "This locality could not be loaded right now. Please try again in a moment.": "Зараз не вдалося завантажити це місцезнаходження. Будь ласка, спробуйте ще раз за хвилину.",
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "Цього зразка ще немає в georeference.it — можливо, його ще не імпортовано. Тим часом ви можете геопривʼязувати інші місцезнаходження."
 }
