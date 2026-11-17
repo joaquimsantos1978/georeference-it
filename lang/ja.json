@@ -629,5 +629,5 @@
     "By:": "投稿者：",
     "Your georeference at :locality was validated by the community": ":locality のあなたの位置情報がコミュニティによって承認されました",
     "The community disagreed with your georeference at :locality": ":locality のあなたの位置情報にコミュニティが同意しませんでした",
-    "Create a free account to be notified when the community validates, votes on or comments on your georeferences.": "無料アカウントを作成すると、コミュニティがあなたの位置情報を承認・投票・コメントしたときに通知を受け取れます。"
+    "Create an account to be notified when the community validates, votes on or comments on your georeferences.": "アカウントを作成すると、コミュニティがあなたの位置情報を承認・投票・コメントしたときに通知を受け取れます。"
 }

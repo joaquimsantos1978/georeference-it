@@ -2181,7 +2181,7 @@ function showSignupPrompt() {
     box.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:9999;max-width:min(92vw,440px);display:flex;gap:12px;align-items:center;padding:12px 14px;background:#fff;color:#111827;border:1px solid #bbf7d0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:13px;line-height:1.35';
     var text = document.createElement('span');
     text.setAttribute('dir', 'auto');
-    text.textContent = @json(__('Create a free account to be notified when the community validates, votes on or comments on your georeferences.'));
+    text.textContent = @json(__('Create an account to be notified when the community validates, votes on or comments on your georeferences.'));
     var link = document.createElement('a');
     link.href = @json(route('register'));
     link.textContent = @json(__('Create account'));

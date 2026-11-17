@@ -629,5 +629,5 @@
     "By:": "来自：",
     "Your georeference at :locality was validated by the community": "您在 :locality 的地理定位已获社区验证",
     "The community disagreed with your georeference at :locality": "社区不认同您在 :locality 的地理定位",
-    "Create a free account to be notified when the community validates, votes on or comments on your georeferences.": "创建免费账户，当社区验证、投票或评论您的地理定位时即可收到通知。"
+    "Create an account to be notified when the community validates, votes on or comments on your georeferences.": "创建账户，当社区验证、投票或评论您的地理定位时即可收到通知。"
 }
