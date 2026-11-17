@@ -1569,6 +1569,7 @@ public function next(Request $request)
 
         User::whereIn('id', $recipientIds)
             ->where('email_notifications', true)
+            ->withDeliverableEmail()
             ->get()
             ->each(fn($user) => Mail::to($user->email)->queue(new CommentNotification($comment, $group)));
     }

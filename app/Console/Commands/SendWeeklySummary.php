@@ -70,7 +70,9 @@ class SendWeeklySummary extends Command
                 'totalGeoreferenced' => (int) $totalGeoreferenced,
             ]);
 
-            if (!$user->email_notifications) {
+            // The bell digest above is for everyone; the e-mail only for opted-in users who have
+            // a real mailbox (an ORCID sign-up without email has a placeholder that would bounce).
+            if (!$user->email_notifications || !$user->hasDeliverableEmail()) {
                 return;
             }
 

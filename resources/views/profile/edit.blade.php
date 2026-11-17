@@ -81,7 +81,7 @@
         {{-- Placeholder email: assigned automatically when someone registers via ORCID and
              their ORCID doesn't expose a public email (SocialiteController) — not usable for
              notifications or password recovery, so keep nudging until they set a real one. --}}
-        @if(str_ends_with($user->email, '@no-email.georeference.it'))
+        @if(!$user->hasDeliverableEmail())
             <div class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
                 {{ __('Your ORCID account didn\'t provide an email, so a placeholder was used. Please set a real email below so you can receive notifications and recover your account if needed.') }}
             </div>

@@ -87,7 +87,7 @@ public function redirect(string $provider)
 
                 $user = User::create([
                     'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? 'User',
-                    'email' => $email ?: "{$provider}-{$socialUser->getId()}@no-email.georeference.it",
+                    'email' => $email ?: "{$provider}-{$socialUser->getId()}@" . User::PLACEHOLDER_EMAIL_DOMAIN,
                     'provider' => $provider,
                     'provider_id' => $socialUser->getId(),
                     'avatar' => $socialUser->getAvatar(),

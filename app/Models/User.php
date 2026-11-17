@@ -12,6 +12,21 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    // Stand-in address given to people who sign in through a provider (ORCID) that doesn't
+    // expose an email (see SocialiteController). It has no mailbox: anything sent to it
+    // bounces back to info@, so no mail may ever be sent there.
+    public const PLACEHOLDER_EMAIL_DOMAIN = 'no-email.georeference.it';
+
+    public function hasDeliverableEmail(): bool
+    {
+        return !str_ends_with(strtolower((string) $this->email), '@' . self::PLACEHOLDER_EMAIL_DOMAIN);
+    }
+
+    public function scopeWithDeliverableEmail(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->where('email', 'not like', '%@' . self::PLACEHOLDER_EMAIL_DOMAIN);
+    }
+
     protected $fillable = [
         'name',
         'email',
