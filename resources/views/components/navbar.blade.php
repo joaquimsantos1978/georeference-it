@@ -43,37 +43,56 @@
             </div>
             @auth
                 {{-- Notifications --}}
+                @php
+                    // The bell is on every page: a failure here must never take the page down.
+                    try {
+                        $bellItems  = \App\Support\NotificationPresenter::latest(auth()->user(), 15);
+                        $bellUnread = auth()->user()->unreadNotifications()->count();
+                    } catch (\Throwable $e) {
+                        report($e);
+                        $bellItems  = [];
+                        $bellUnread = 0;
+                    }
+                @endphp
                 <div class="relative flex-shrink-0" x-data="{ open: false }">
-                    <button @click="open = !open" class="relative p-1 text-gray-500 dark:text-gray-400 hover:text-green-600">
+                    <button @click="open = !open" class="relative p-1 text-gray-500 dark:text-gray-400 hover:text-green-600" aria-label="{{ __('Notifications') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                         </svg>
-                        @if(auth()->user()->unreadNotifications()->count() > 0)
-                            <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+                        @if($bellUnread > 0)
+                            <span class="absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center font-semibold">{{ $bellUnread > 9 ? '9+' : $bellUnread }}</span>
                         @endif
                     </button>
                     <div x-show="open" @click.away="open = false" x-cloak
                          class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                         <div class="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                             <span class="text-sm font-medium">{{ __('Notifications') }}</span>
-                            <a href="{{ route('notifications.read-all') }}" class="text-xs text-green-600 hover:underline">{{ __('Mark all as read') }}</a>
+                            @if($bellUnread > 0)
+                                <a href="{{ route('notifications.read-all') }}" class="text-xs text-green-600 hover:underline">{{ __('Mark all as read') }}</a>
+                            @endif
                         </div>
-                        <div class="max-h-64 overflow-y-auto">
-                            @forelse(auth()->user()->unreadNotifications()->latest()->take(10)->get() as $notification)
+                        <div class="max-h-96 overflow-y-auto">
+                            @forelse($bellItems as $item)
                                 @php
-                                    // badge_key present → render in the current locale; older rows
-                                    // (or other notification types) fall back to their stored message.
-                                    $badge = isset($notification->data['badge_key'])
-                                        ? \App\Support\Badges::get($notification->data['badge_key'])
-                                        : null;
-                                    $text = $badge
-                                        ? __('New badge: :name — :description', ['name' => $badge['name'], 'description' => $badge['description']])
-                                        : ($notification->data['message'] ?? '');
+                                    $rowClass = 'block p-3 border-b border-gray-100 dark:border-gray-700 '
+                                        . ($item['read'] ? '' : 'bg-green-50 dark:bg-green-900/20 ')
+                                        . ($item['link'] ? 'hover:bg-gray-50 dark:hover:bg-gray-700/50' : '');
                                 @endphp
-                                <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
-                                    <p class="text-sm">{{ $text }}</p>
-                                    <p class="text-xs text-gray-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
-                                </div>
+                                @if($item['link'])
+                                    <a href="{{ route('notifications.open', $item['id']) }}" class="{{ $rowClass }}">
+                                @else
+                                    <div class="{{ $rowClass }}">
+                                @endif
+                                    <p class="text-sm {{ $item['read'] ? 'text-gray-500 dark:text-gray-400' : 'font-medium' }}" dir="auto">{{ $item['title'] }}</p>
+                                    @foreach($item['lines'] as $line)
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words" dir="auto">{{ $line }}</p>
+                                    @endforeach
+                                    <p class="text-xs text-gray-400 mt-1">{{ $item['time'] }}</p>
+                                @if($item['link'])
+                                    </a>
+                                @else
+                                    </div>
+                                @endif
                             @empty
                                 <div class="p-4 text-sm text-gray-400 text-center">{{ __('No new notifications') }}</div>
                             @endforelse

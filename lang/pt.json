@@ -635,5 +635,12 @@
     "Automatic (system)": "Automático (sistema)",
     "Volunteer work": "Trabalho de voluntários",
     "This locality could not be loaded right now. Please try again in a moment.": "Não foi possível carregar esta localidade neste momento. Tente novamente dentro de instantes.",
-    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "Este exemplar ainda não está no georeference.it — pode não ter sido importado. Entretanto, pode georreferenciar outras localidades."
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "Este exemplar ainda não está no georeference.it — pode não ter sido importado. Entretanto, pode georreferenciar outras localidades.",
+    "New votes on your georeference at :locality": "Novos votos na sua georreferenciação em :locality",
+    "Agreed:": "Concordaram:",
+    "Disagreed:": "Discordaram:",
+    "New comments at :locality": "Novos comentários em :locality",
+    "By:": "De:",
+    "Your georeference at :locality was validated by the community": "A sua georreferenciação em :locality foi validada pela comunidade",
+    "The community disagreed with your georeference at :locality": "A comunidade discordou da sua georreferenciação em :locality"
 }

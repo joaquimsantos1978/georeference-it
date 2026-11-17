@@ -621,5 +621,12 @@
     "Automatic (system)": "自動（系統）",
     "Volunteer work": "志工工作",
     "This locality could not be loaded right now. Please try again in a moment.": "目前無法載入此地點，請稍後再試。",
-    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "此標本尚未收錄於 georeference.it，可能尚未匯入。在此期間，您可以為其他地點進行地理定位。"
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "此標本尚未收錄於 georeference.it，可能尚未匯入。在此期間，您可以為其他地點進行地理定位。",
+    "New votes on your georeference at :locality": "您在 :locality 的地理定位有新的投票",
+    "Agreed:": "贊同：",
+    "Disagreed:": "反對：",
+    "New comments at :locality": ":locality 有新留言",
+    "By:": "來自：",
+    "Your georeference at :locality was validated by the community": "您在 :locality 的地理定位已獲社群驗證",
+    "The community disagreed with your georeference at :locality": "社群不認同您在 :locality 的地理定位"
 }

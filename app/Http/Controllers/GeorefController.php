@@ -12,6 +12,7 @@ use App\Models\Occurrence;
 use App\Models\PlatformSetting;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\Notifier;
 use App\Support\ProjectCriteriaEvaluator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -1549,6 +1550,9 @@ public function next(Request $request)
             ->unique()
             ->filter(fn($id) => $id && $id !== $currentUserId);
 
+        // The bell notifies every participant; the e-mail below stays opt-in.
+        Notifier::comment($group, $comment, $recipientIds->values()->all());
+
         User::whereIn('id', $recipientIds)
             ->where('email_notifications', true)
             ->get()
@@ -1988,6 +1992,12 @@ private function countryNameToIso2(): array
             'points_awarded' => $vote === 'agree' ? $weight : -$weight,
         ]);
 
+        // $logActivity false = a vote cast on the user's behalf (e.g. the automatic agree on
+        // their own submission), not something the author should be told about.
+        if ($logActivity) {
+            Notifier::vote($suggestion, $user, $vote);
+        }
+
         // Log validation — skip auto-agree on own submission (suggestion owner == voter)
         if ($logActivity && $suggestion->user_id !== $user->id) {
             $group = $suggestion->localityGroup;
@@ -2056,6 +2066,10 @@ private function countryNameToIso2(): array
         $suggestion->increment('total_points', $newPoints - $oldPoints);
         $suggestion->refresh();
 
+        if ($logActivity) {
+            Notifier::vote($suggestion, $user, $vote);
+        }
+
         if ($vote === 'agree') {
             $threshold = (int) PlatformSetting::get('validation_threshold', 60);
             if ($suggestion->total_points >= $threshold) {
@@ -2080,6 +2094,8 @@ private function countryNameToIso2(): array
             ->update(['georef_status' => 'ungeoreferenced']);
 
         $suggestion->localityGroup->recalculateCounters();
+
+        Notifier::suggestionOutcome($suggestion, 'suggestion_conflicted');
     }
 
     private function validateSuggestion(GeorefSuggestion $suggestion): void
@@ -2122,6 +2138,8 @@ private function countryNameToIso2(): array
         $suggestion->localityGroup->recalculateCounters();
 
         if ($suggestion->user_id) {
+            Notifier::suggestionOutcome($suggestion, 'suggestion_validated');
+
             $submitter = $suggestion->user;
             $submitter->increment('total_validated');
             $submitter->updateLevel();

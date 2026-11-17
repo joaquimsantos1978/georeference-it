@@ -7,6 +7,7 @@ use App\Models\GeorefSuggestion;
 use App\Models\GeorefValidation;
 use App\Models\LocalityGroupComment;
 use App\Models\User;
+use App\Support\Notifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -34,9 +35,8 @@ class SendWeeklySummary extends Command
             ->orWhereHas('validations', fn($q) => $q->where('created_at', '>=', $since))
             ->count();
 
-        $users = User::where('email_notifications', true)->get();
-
-        foreach ($users as $user) {
+        // Everyone with activity gets the digest in the bell; the e-mail stays opt-in.
+        User::query()->each(function (User $user) use ($since, $totalContributors, $totalGeoreferenced) {
             $suggestions = GeorefSuggestion::where('user_id', $user->id)
                 ->where('created_at', '>=', $since)->count();
 
@@ -57,7 +57,21 @@ class SendWeeklySummary extends Command
                 ->where('updated_at', '>=', $since)->count();
 
             if ($suggestions + $validations + $comments === 0) {
-                continue;
+                return;
+            }
+
+            Notifier::weeklyDigest($user, [
+                'suggestions'        => $suggestions,
+                'validations'        => $validations,
+                'comments'           => $comments,
+                'specimens'          => (int) $specimens,
+                'validated'          => $validated,
+                'totalContributors'  => $totalContributors,
+                'totalGeoreferenced' => (int) $totalGeoreferenced,
+            ]);
+
+            if (!$user->email_notifications) {
+                return;
             }
 
             Mail::to($user->email)
@@ -72,8 +86,8 @@ class SendWeeklySummary extends Command
                     totalContributors: $totalContributors,
                     totalGeoreferenced: $totalGeoreferenced,
                 ));
-        }
+        });
 
-        $this->info('Weekly summary emails queued.');
+        $this->info('Weekly summary notifications created and emails queued.');
     }
 }

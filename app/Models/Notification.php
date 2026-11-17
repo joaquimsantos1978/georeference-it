@@ -29,8 +29,12 @@ class Notification extends Model
         return $this->read_at !== null;
     }
 
+    // Doesn't touch updated_at: the bell orders by it (grouped notifications are bumped when new
+    // activity merges into them), so reading one must not move it.
     public function markAsRead(): void
     {
+        $this->timestamps = false;
         $this->update(['read_at' => now()]);
+        $this->timestamps = true;
     }
 }

@@ -621,5 +621,12 @@
     "Automatic (system)": "تلقائي (النظام)",
     "Volunteer work": "عمل المتطوعين",
     "This locality could not be loaded right now. Please try again in a moment.": "تعذّر تحميل هذه المنطقة في الوقت الحالي. يُرجى المحاولة مرة أخرى بعد قليل.",
-    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "هذه العيّنة غير موجودة في georeference.it بعد — ربما لم يتم استيرادها. يمكنك في هذه الأثناء إسناد إحداثيات جغرافية لمواقع أخرى."
+    "This specimen is not in georeference.it yet — it may not have been imported. You can georeference other localities in the meantime.": "هذه العيّنة غير موجودة في georeference.it بعد — ربما لم يتم استيرادها. يمكنك في هذه الأثناء إسناد إحداثيات جغرافية لمواقع أخرى.",
+    "New votes on your georeference at :locality": "أصوات جديدة على تحديدك الجغرافي في :locality",
+    "Agreed:": "وافقوا:",
+    "Disagreed:": "لم يوافقوا:",
+    "New comments at :locality": "تعليقات جديدة في :locality",
+    "By:": "من:",
+    "Your georeference at :locality was validated by the community": "تم التحقق من تحديدك الجغرافي في :locality من قبل المجتمع",
+    "The community disagreed with your georeference at :locality": "لم يوافق المجتمع على تحديدك الجغرافي في :locality"
 }
