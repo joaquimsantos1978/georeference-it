@@ -1118,7 +1118,7 @@ public function next(Request $request)
                     ->each(fn($other) => $this->setVote($other, auth()->user(), 'disagree', true));
             }
             $group->recalculateCounters();
-            return response()->json(['success' => true, 'suggestion_id' => $existing->id]);
+            return response()->json(['success' => true, 'suggestion_id' => $existing->id, 'signup_prompt' => $this->signupPromptDue()]);
         }
 
         $suggestion = GeorefSuggestion::create([
@@ -1323,7 +1323,21 @@ public function next(Request $request)
             }
         }
 
-        return response()->json(['success' => true, 'suggestion_id' => $suggestion->id]);
+        return response()->json(['success' => true, 'suggestion_id' => $suggestion->id, 'signup_prompt' => $this->signupPromptDue()]);
+    }
+
+    // Anonymous contributors never hear back about their work (notifications belong to an
+    // account), so the first anonymous submission of a session carries an invitation to create
+    // one. Once per session on purpose: asked after every submission it would just be nagging.
+    private function signupPromptDue(): bool
+    {
+        if (auth()->check() || session()->has('signup_prompted')) {
+            return false;
+        }
+
+        session()->put('signup_prompted', true);
+
+        return true;
     }
 
     // Propagate an agreed suggestion's coordinates to similar groups only (no suggestion created for the main group)

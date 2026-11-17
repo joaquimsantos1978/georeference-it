@@ -628,5 +628,6 @@
     "New comments at :locality": "تعليقات جديدة في :locality",
     "By:": "من:",
     "Your georeference at :locality was validated by the community": "تم التحقق من تحديدك الجغرافي في :locality من قبل المجتمع",
-    "The community disagreed with your georeference at :locality": "لم يوافق المجتمع على تحديدك الجغرافي في :locality"
+    "The community disagreed with your georeference at :locality": "لم يوافق المجتمع على تحديدك الجغرافي في :locality",
+    "Create a free account to be notified when the community validates, votes on or comments on your georeferences.": "أنشئ حسابًا مجانيًا لتصلك إشعارات عندما يتحقق المجتمع من تحديداتك الجغرافية أو يصوّت عليها أو يعلّق عليها."
 }

@@ -628,5 +628,6 @@
     "New comments at :locality": "Nuevos comentarios en :locality",
     "By:": "De:",
     "Your georeference at :locality was validated by the community": "Su georreferenciación en :locality fue validada por la comunidad",
-    "The community disagreed with your georeference at :locality": "La comunidad no estuvo de acuerdo con su georreferenciación en :locality"
+    "The community disagreed with your georeference at :locality": "La comunidad no estuvo de acuerdo con su georreferenciación en :locality",
+    "Create a free account to be notified when the community validates, votes on or comments on your georeferences.": "Cree una cuenta gratuita para recibir avisos cuando la comunidad valide, vote o comente sus georreferenciaciones."
 }

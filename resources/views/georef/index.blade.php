@@ -2169,6 +2169,33 @@ function showGroupLoadError() {
     document.getElementById('group-gone').classList.remove('hidden');
 }
 
+// Shown by the server (submit's signup_prompt) once per session to an anonymous contributor
+// right after their first submission: only an account can be told when the community validates,
+// votes on or comments on their work. Inline styles on purpose — fixed colours stay readable in
+// both light and dark mode. It survives the jump to the next locality and closes with ×.
+function showSignupPrompt() {
+    if (document.getElementById('signup-prompt')) return;
+    var box = document.createElement('div');
+    box.id = 'signup-prompt';
+    box.setAttribute('role', 'status');
+    box.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:9999;max-width:min(92vw,440px);display:flex;gap:12px;align-items:center;padding:12px 14px;background:#fff;color:#111827;border:1px solid #bbf7d0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:13px;line-height:1.35';
+    var text = document.createElement('span');
+    text.setAttribute('dir', 'auto');
+    text.textContent = @json(__('Create a free account to be notified when the community validates, votes on or comments on your georeferences.'));
+    var link = document.createElement('a');
+    link.href = @json(route('register'));
+    link.textContent = @json(__('Create account'));
+    link.style.cssText = 'flex:none;padding:6px 12px;border-radius:6px;background:#16a34a;color:#fff;font-weight:600;text-decoration:none;white-space:nowrap';
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.setAttribute('aria-label', @json(__('Close')));
+    close.textContent = '×';
+    close.style.cssText = 'flex:none;border:0;background:none;color:#6b7280;font-size:20px;line-height:1;cursor:pointer;padding:0 2px';
+    close.addEventListener('click', function(){ box.remove(); });
+    box.append(text, link, close);
+    document.body.appendChild(box);
+}
+
 // ?gbif=<key> for a specimen georeference.it has no locality group for (not imported yet).
 function showOccurrenceNotFound() {
     hideOverlay();
@@ -3110,7 +3137,7 @@ window._groupMunicipalityBBox = null; // finest-grained bbox, softest check
             return {success:true};
         }).then(function(d){
             btn.innerHTML='{{ __("Submit") }}';
-            if(!d||d.success)loadNextGroup();
+            if(!d||d.success){ if(d&&d.signup_prompt) showSignupPrompt(); loadNextGroup(); }
             else btn.disabled=false;
         }).catch(function(){ btn.innerHTML='{{ __("Submit") }}'; btn.disabled=false; });
     });

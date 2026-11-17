@@ -628,5 +628,6 @@
     "New comments at :locality": ":locality 有新留言",
     "By:": "來自：",
     "Your georeference at :locality was validated by the community": "您在 :locality 的地理定位已獲社群驗證",
-    "The community disagreed with your georeference at :locality": "社群不認同您在 :locality 的地理定位"
+    "The community disagreed with your georeference at :locality": "社群不認同您在 :locality 的地理定位",
+    "Create a free account to be notified when the community validates, votes on or comments on your georeferences.": "建立免費帳戶，當社群驗證、投票或評論您的地理定位時即可收到通知。"
 }
