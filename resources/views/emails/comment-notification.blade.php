@@ -1,7 +1,7 @@
 <x-mail::message>
 # New comment on "{{ $group->verbatim_locality ?? $group->municipality ?? $group->county ?? 'a locality' }}"
 
-**{{ $comment->user->name }}** commented:
+**{{ $comment->user->public_name ? $comment->user->name : __('Hidden contributor') }}** commented:
 
 > {{ $comment->body }}
 

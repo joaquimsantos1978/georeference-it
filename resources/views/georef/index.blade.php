@@ -2686,7 +2686,7 @@ function updateHistoryNav() {
     }
 
     function escHtml(s) {
-        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     function renderGroup(group, occurrences, ungeorefTotal, georefOccurrences, suggestions, comments, similarGroups, notGeoreferenceableCount) {
@@ -3028,7 +3028,10 @@ window._groupMunicipalityBBox = null; // finest-grained bbox, softest check
 
     function renderComments(comments) {
         document.getElementById('comments-list').innerHTML=comments.map(function(c){
-            return '<div style="font-size:11px;border-bottom:1px solid #f3f4f6;padding-bottom:4px"><span style="font-weight:500">'+c.user_name+'</span><span style="color:#9ca3af;margin-left:4px">'+c.created_at+'</span><p style="color:#6b7280;margin-top:2px">'+c.body+'</p></div>';
+            // The author name had no colour of its own, so on the dark georef layout it inherited
+            // black and was unreadable on the dark panel (reported by a user as "I can't see who
+            // commented"). Explicit light/dark colours; text is escaped (body is user input).
+            return '<div class="border-b border-gray-100 dark:border-gray-700" style="font-size:11px;padding-bottom:4px"><span class="font-medium text-gray-800 dark:text-gray-100">'+escHtml(c.user_name)+'</span><span class="text-gray-400 dark:text-gray-400" style="margin-left:4px">'+escHtml(c.created_at)+'</span><p class="text-gray-600 dark:text-gray-300" style="margin-top:2px">'+escHtml(c.body)+'</p></div>';
         }).join('');
     }
     var _previewMarker = null;
