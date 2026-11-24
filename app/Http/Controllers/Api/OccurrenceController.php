@@ -98,6 +98,7 @@ class OccurrenceController extends Controller
         // expedition's specimens) makes one request per MAX_OCCURRENCE_IDS records
         // instead of one GET occurrences/{id} each. Non-numeric entries are ignored;
         // unknown keys are simply absent from the response.
+        $requestedIds = null;
         if ($request->filled('occurrenceIDs')) {
             $ids = collect(explode('|', (string) $request->occurrenceIDs))
                 ->map(fn($id) => trim($id))
@@ -106,6 +107,7 @@ class OccurrenceController extends Controller
                 ->take(self::MAX_OCCURRENCE_IDS)
                 ->values()
                 ->all();
+            $requestedIds = $ids;
             $query->whereIn('gbif_occurrence_key', $ids ?: ['']);
         }
         if ($request->filled('country')) {
@@ -168,6 +170,16 @@ class OccurrenceController extends Controller
         $this->preloadSuggestions($pageRows);
         $records = $pageRows->map(fn($o) => $this->format($o))->all();
 
+        // For an occurrenceIDs lookup: which of the requested keys we hold no record of. Such a
+        // record may simply be newer than our last GBIF import — opening
+        // https://georeference.it/georef?gbif=<key> imports it on the spot. Only reported when this
+        // page holds the whole answer.
+        $missingOccurrenceIDs = null;
+        if ($requestedIds !== null && $page === 1 && !$hasMore) {
+            $found = array_flip(array_map(fn($r) => (string) ($r['occurrenceID'] ?? ''), $records));
+            $missingOccurrenceIDs = array_values(array_filter($requestedIds, fn($id) => !isset($found[$id])));
+        }
+
         if ($this->wantsJsonLd($request)) {
             return $this->jsonldResponse([
                 '@context'     => self::JSONLD_CONTEXT,
@@ -188,7 +200,10 @@ class OccurrenceController extends Controller
                 'lastPage'        => $lastPage,
                 'nextPageUrl'     => $hasMore ? $request->fullUrlWithQuery(['page' => $page + 1]) : null,
                 'prevPageUrl'     => $page > 1 ? $request->fullUrlWithQuery(['page' => $page - 1]) : null,
-            ],
+            ] + ($missingOccurrenceIDs !== null ? [
+                'missingOccurrenceIDs' => $missingOccurrenceIDs,
+                'importUrlTemplate'    => url('/georef') . '?gbif={occurrenceID}',
+            ] : []),
             'data' => $records,
         ]);
     }

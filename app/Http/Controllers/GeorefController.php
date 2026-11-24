@@ -2294,11 +2294,63 @@ public function findByGbifKey(Request $request, string $key): \Illuminate\Http\J
         ->first(['locality_group_id']);
 
     if (!$occurrence) {
+        // Published on GBIF after the last monthly import? Then bring it in now, so the person
+        // (or Expeditia / the browser extension linking here) can georeference it straight away.
+        $occurrence = $this->importFromGbifOnDemand($key);
+        if ($occurrence instanceof \Illuminate\Http\JsonResponse) {
+            return $occurrence;
+        }
+    }
+
+    if (!$occurrence || !$occurrence->locality_group_id) {
         return response()->json(['error' => 'Occurrence not found. It may not have been imported yet.'], 404);
     }
 
     $group = LocalityGroup::findOrFail($occurrence->locality_group_id);
     return response()->json($this->groupData($group));
+}
+
+// A miss in findByGbifKey() is the only thing that reaches GBIF, and only for a record that is
+// really a preserved/fossil specimen there (the monthly import's own criterion). Limited per
+// visitor, with "no such record" remembered for a while, so the endpoint cannot be used to make
+// the server hammer GBIF.
+private function importFromGbifOnDemand(string $key): \App\Models\Occurrence|\Illuminate\Http\JsonResponse|null
+{
+    if (!ctype_digit($key)) {
+        return null;
+    }
+
+    $missKey = 'gbif_ensure_miss:' . $key;
+    if (Cache::has($missKey)) {
+        return null;
+    }
+
+    $limiterKey = 'gbif-ensure:' . (auth()->id() ?? request()->ip());
+    if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limiterKey, 12)) {
+        return response()->json(['error' => 'Too many lookups. Please try again in a minute.'], 429);
+    }
+    \Illuminate\Support\Facades\RateLimiter::hit($limiterKey, 60);
+
+    try {
+        $gbif   = app(\App\Services\GbifService::class);
+        $result = $gbif->ensureOccurrence($key);
+    } catch (\Throwable $e) {
+        report($e);
+        return response()->json(['error' => 'GBIF could not be reached. Please try again shortly.'], 503);
+    }
+
+    if (!$result) {
+        Cache::put($missKey, true, now()->addMinutes(10));
+        return null;
+    }
+
+    // First record of a dataset we don't hold at all: bring the rest of it in the background,
+    // so working through an expedition doesn't cost a round trip to GBIF per record.
+    if ($result['created'] && !$result['datasetWasKnown'] && $result['occurrence']->dataset_key) {
+        \App\Jobs\ImportGbifDataset::dispatch($result['occurrence']->dataset_key);
+    }
+
+    return $result['occurrence'];
 }
 
 public function sync(Request $request): \Illuminate\Http\JsonResponse

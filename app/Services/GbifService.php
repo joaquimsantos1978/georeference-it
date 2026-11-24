@@ -6,6 +6,8 @@ use App\Models\GeorefSuggestion;
 use App\Models\LocalityGroup;
 use App\Models\Occurrence;
 use App\Models\PlatformSetting;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -77,18 +79,46 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
         }
     }
 
+    // What the monthly DWCA download keeps (see GbifRequestDownload::buildPredicate()). Anything
+    // else must not be imported on demand either: the next monthly refresh would not contain it.
+    public const ELIGIBLE_BASIS_OF_RECORD = ['PRESERVED_SPECIMEN', 'FOSSIL_SPECIMEN'];
+
+    // Datasets bigger than this are left to the monthly import rather than pulled through the
+    // paged search API (GBIF caps offset+limit at 100,000, and 300 records/page is slow).
+    public const MAX_ON_DEMAND_DATASET_RECORDS = 20000;
+
     public function importResults(array $results): int
     {
+        return $this->importBatch($results)['imported'];
+    }
+
+    /**
+     * Stores a page of GBIF API records. Records we already hold (even soft-deleted ones) are
+     * left exactly as they are, so a re-run never resets the georeferencing status of a record
+     * that has suggestions, nor resurrects one the monthly refresh removed.
+     *
+     * @return array{imported: int, created: int, groups: array<int, LocalityGroup>}
+     *         `groups` are the groups created by this batch.
+     */
+    public function importBatch(array $results, bool $autoSuggest = true): array
+    {
         $imported = 0;
+        $created = 0;
         $newGroups = [];
 
         foreach ($results as $record) {
             try {
-                $group = $this->importRecord($record);
-                if ($group) {
-                    $newGroups[$group->id] = $group;
+                $stored = $this->storeRecord($record);
+                if ($stored === null) {
+                    continue;
                 }
                 $imported++;
+                if ($stored['created']) {
+                    $created++;
+                }
+                if ($stored['groupIsNew']) {
+                    $newGroups[$stored['group']->id] = $stored['group'];
+                }
             } catch (\Exception $e) {
                 Log::warning('Failed to import GBIF record', [
                     'key' => $record['key'] ?? null,
@@ -97,18 +127,155 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             }
         }
 
-        // For each new locality group, fetch GBIF references and create auto-suggestions
-        foreach ($newGroups as $group) {
-            $this->createAutoSuggestions($group);
+        // For each new locality group, create auto-suggestions from georeferenced siblings
+        // (a caller importing page after page passes false and does it once everything is in)
+        if ($autoSuggest) {
+            foreach ($newGroups as $group) {
+                $this->createAutoSuggestions($group);
+            }
         }
 
-        return $imported;
+        return ['imported' => $imported, 'created' => $created, 'groups' => $newGroups];
     }
 
-    private function importRecord(array $record): ?LocalityGroup
+    /**
+     * One record straight from GBIF's occurrence endpoint.
+     *
+     * @return array|null the record, or null when GBIF has no such occurrence (404)
+     * @throws \RuntimeException when GBIF could not be reached or answered with an error, so
+     *         the caller can tell "does not exist" from "try again later"
+     */
+    public function fetchOccurrence(string $key): ?array
+    {
+        try {
+            $response = Http::timeout(8)->acceptJson()->get(self::BASE_URL . '/occurrence/' . rawurlencode($key));
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('GBIF unreachable: ' . $e->getMessage(), 0, $e);
+        }
+
+        if ($response->status() === 404) {
+            return null;
+        }
+        if (!$response->successful()) {
+            throw new \RuntimeException('GBIF answered HTTP ' . $response->status());
+        }
+
+        $record = $response->json();
+        return is_array($record) && !empty($record['key']) ? $record : null;
+    }
+
+    /**
+     * Makes sure a GBIF occurrence exists locally, importing it from GBIF's API if it was
+     * published after the last monthly import.
+     *
+     * @return array{occurrence: Occurrence, created: bool, datasetWasKnown: bool}|null
+     *         null when there is nothing to georeference: GBIF has no such record, it is not a
+     *         preserved/fossil specimen, or we removed it on purpose (soft-deleted).
+     * @throws \RuntimeException when GBIF cannot be reached right now
+     */
+    public function ensureOccurrence(string $key): ?array
+    {
+        $existing = Occurrence::withTrashed()->where('gbif_occurrence_key', $key)->first();
+        if ($existing) {
+            return $existing->trashed() ? null : ['occurrence' => $existing, 'created' => false, 'datasetWasKnown' => true];
+        }
+
+        $record = $this->fetchOccurrence($key);
+        if (!$record || !in_array($record['basisOfRecord'] ?? null, self::ELIGIBLE_BASIS_OF_RECORD, true)
+            || ($record['occurrenceStatus'] ?? 'PRESENT') === 'ABSENT') {
+            return null;
+        }
+
+        $datasetKey = $record['datasetKey'] ?? null;
+        $datasetWasKnown = $datasetKey ? Occurrence::where('dataset_key', $datasetKey)->exists() : true;
+
+        try {
+            $stored = $this->storeRecord($record);
+        } catch (QueryException $e) {
+            // Two requests for the same new record at once: the unique key stopped the second.
+            $stored = null;
+            if (($e->errorInfo[0] ?? null) !== '23000') {
+                throw $e;
+            }
+        }
+
+        $occurrence = $stored['occurrence']
+            ?? Occurrence::where('gbif_occurrence_key', $key)->first();
+        if (!$occurrence) {
+            return null;
+        }
+
+        if ($stored && $stored['groupIsNew']) {
+            $this->createAutoSuggestions($stored['group']);
+        }
+        if ($datasetKey) {
+            $this->ensureDataset($datasetKey);
+        }
+
+        return [
+            'occurrence'      => $occurrence,
+            'created'         => (bool) ($stored['created'] ?? false),
+            'datasetWasKnown' => $datasetWasKnown,
+        ];
+    }
+
+    // Same row GbifSyncDatasets writes, for a dataset that appeared after its last run — so the
+    // dataset has a title/publisher in filters and the API straight away.
+    public function ensureDataset(string $datasetKey): void
+    {
+        try {
+            if (DB::table('datasets')->where('key', $datasetKey)->whereNotNull('title')->exists()) {
+                return;
+            }
+
+            $response = Http::timeout(8)->get(self::BASE_URL . '/dataset/' . rawurlencode($datasetKey));
+            if (!$response->successful()) {
+                return;
+            }
+            $d = $response->json();
+
+            DB::table('datasets')->upsert([
+                'key'            => $datasetKey,
+                'title'          => mb_substr($d['title'] ?? '', 0, 255),
+                'publisher_name' => mb_substr($d['publishingOrganizationTitle'] ?? '', 0, 255),
+                'publisher_key'  => $d['publishingOrganizationKey'] ?? null,
+                'license'        => $d['license'] ?? null,
+                'type'           => $d['type'] ?? null,
+                'synced_at'      => now(),
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ], ['key'], ['title', 'publisher_name', 'publisher_key', 'license', 'type', 'synced_at', 'updated_at']);
+        } catch (\Throwable $e) {
+            // Metadata is nice to have; the occurrence is already stored.
+            Log::warning('Could not store GBIF dataset metadata', ['dataset' => $datasetKey, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /** Eligible specimens of one dataset, any coordinates, paged. */
+    public function fetchDatasetPage(string $datasetKey, int $offset): array
+    {
+        return $this->fetch([
+            'datasetKey'    => $datasetKey,
+            'basisOfRecord' => self::ELIGIBLE_BASIS_OF_RECORD,
+            'limit'         => self::PAGE_LIMIT,
+            'offset'        => $offset,
+        ]);
+    }
+
+    /**
+     * @return array{occurrence: Occurrence, group: ?LocalityGroup, groupIsNew: bool, created: bool}|null
+     */
+    private function storeRecord(array $record): ?array
     {
         $gbifKey = (string) ($record['key'] ?? $record['gbifID'] ?? null);
         if (!$gbifKey) return null;
+
+        $existing = Occurrence::withTrashed()->where('gbif_occurrence_key', $gbifKey)->first();
+        if ($existing) {
+            return $existing->trashed()
+                ? null
+                : ['occurrence' => $existing, 'group' => null, 'groupIsNew' => false, 'created' => false];
+        }
 
         $hasCoords = isset($record['decimalLatitude']) && isset($record['decimalLongitude'])
             && !($record['decimalLatitude'] == 0 && $record['decimalLongitude'] == 0);
@@ -130,23 +297,34 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
 
         $groupHash = LocalityGroup::hashFromOccurrence($groupFields);
 
-        $isNewGroup = !LocalityGroup::where('group_hash', $groupHash)->exists();
+        // Same composition as the monthly import's locality_string (which leaves out
+        // higher_geography), so a group created here is indistinguishable from one it creates.
+        $localityString = implode(', ', array_filter([
+            $groupFields['continent'], $groupFields['country_code'], $groupFields['state_province'],
+            $groupFields['county'], $groupFields['municipality'], $groupFields['verbatim_locality'],
+            $groupFields['water_body'], $groupFields['island_group'], $groupFields['island'],
+            $groupFields['location_remarks'],
+        ], fn($v) => $v !== null && $v !== ''));
 
         $localityGroup = LocalityGroup::firstOrCreate(
             ['group_hash' => $groupHash],
             [
-                'locality_string'     => implode(', ', array_filter(array_values($groupFields))),
+                'locality_string'     => $localityString,
                 'continent'           => $groupFields['continent'],
                 'country_code'        => $groupFields['country_code'],
                 'state_province'      => $groupFields['state_province'],
                 'county'              => $groupFields['county'],
                 'municipality'        => $groupFields['municipality'],
+                'island'              => $groupFields['island'] ?: null,
+                'island_group'        => $groupFields['island_group'] ?: null,
+                'water_body'          => $groupFields['water_body'] ?: null,
                 'verbatim_locality'   => $groupFields['verbatim_locality'],
                 'location_remarks'    => $groupFields['location_remarks'],
                 'higher_geography'    => $groupFields['higher_geography'],
                 'normalized_locality' => LocalityGroup::normalizeLocality($groupFields['verbatim_locality'] ?? ''),
             ]
         );
+        $isNewGroup = $localityGroup->wasRecentlyCreated;
 
         $media = [];
         if (!empty($record['media'])) {
@@ -162,9 +340,18 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             }
         }
 
-        Occurrence::updateOrCreate(
-            ['gbif_occurrence_key' => $gbifKey],
+        // Every column the monthly DWCA import fills, so a record added here is as searchable
+        // (taxonomy, year, type status...) as one that arrived with the monthly download.
+        $typeStatus = $record['typeStatus'] ?? null;
+        if (is_array($typeStatus)) {
+            $typeStatus = implode('|', $typeStatus);
+        }
+        // year is smallint unsigned, month/day tinyint unsigned: out-of-range values become NULL rather than failing the whole record
+        $intOrNull = fn($v, int $max = 65535) => is_numeric($v) && $v >= 0 && $v <= $max ? (int) $v : null;
+
+        $occurrence = Occurrence::create(
             [
+                'gbif_occurrence_key' => $gbifKey,
                 'dataset_key' => $record['datasetKey'] ?? null,
                 'publisher_key' => $record['publishingOrgKey'] ?? null,
                 'catalog_number' => $record['catalogNumber'] ?? null,
@@ -187,9 +374,18 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
 'scientific_name' => $record['scientificName'] ?? $record['species'] ?? null,
 'taxon_rank' => $record['taxonRank'] ?? null,
 'kingdom' => $record['kingdom'] ?? null,
+'phylum' => $record['phylum'] ?? null,
+'class' => $record['class'] ?? null,
+'order' => $record['order'] ?? null,
 'family' => $record['family'] ?? null,
-                'gbif_decimal_latitude' => $record['decimalLatitude'] ?? null,
-                'gbif_decimal_longitude' => $record['decimalLongitude'] ?? null,
+'genus' => $record['genus'] ?? null,
+'specific_epithet' => $record['specificEpithet'] ?? null,
+'type_status' => $typeStatus ?: null,
+'year' => $intOrNull($record['year'] ?? null),
+'month' => $intOrNull($record['month'] ?? null, 12),
+'day' => $intOrNull($record['day'] ?? null, 31),
+                'gbif_decimal_latitude' => $hasCoords ? $record['decimalLatitude'] : null,
+                'gbif_decimal_longitude' => $hasCoords ? $record['decimalLongitude'] : null,
                 'gbif_geodetic_datum' => $record['geodeticDatum'] ?? null,
                 'gbif_coordinate_uncertainty_m' => $record['coordinateUncertaintyInMeters'] ?? null,
                 'locality_group_id' => $localityGroup->id,
@@ -199,9 +395,16 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
             ]
         );
 
-        $this->updateGroupCounters($localityGroup);
+        // +1 instead of recalculateCounters(): that one re-reads every row of the group, which on
+        // a group with hundreds of thousands of occurrences blows the web request's 20 s limit.
+        $statusColumn = $georefStatus === 'gbif_georeferenced' ? 'gbif_georeferenced_count' : 'ungeoreferenced_count';
+        DB::table('locality_groups')->where('id', $localityGroup->id)->update([
+            'occurrence_count' => DB::raw('occurrence_count + 1'),
+            $statusColumn      => DB::raw("{$statusColumn} + 1"),
+            'updated_at'       => now(),
+        ]);
 
-        return $isNewGroup ? $localityGroup : null;
+        return ['occurrence' => $occurrence, 'group' => $localityGroup, 'groupIsNew' => $isNewGroup, 'created' => true];
     }
 
     public function checkConsistency(LocalityGroup $group, int $threshold = 5000, array &$pendingConsistentIds = []): string
