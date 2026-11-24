@@ -299,6 +299,7 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
 
         // Same composition as the monthly import's locality_string (which leaves out
         // higher_geography), so a group created here is indistinguishable from one it creates.
+        // (locality_groups has no water_body column: it only enters the hash and this string.)
         $localityString = implode(', ', array_filter([
             $groupFields['continent'], $groupFields['country_code'], $groupFields['state_province'],
             $groupFields['county'], $groupFields['municipality'], $groupFields['verbatim_locality'],
@@ -317,7 +318,6 @@ public function fetchByDataset(string $datasetKey, int $offset = 0): array
                 'municipality'        => $groupFields['municipality'],
                 'island'              => $groupFields['island'] ?: null,
                 'island_group'        => $groupFields['island_group'] ?: null,
-                'water_body'          => $groupFields['water_body'] ?: null,
                 'verbatim_locality'   => $groupFields['verbatim_locality'],
                 'location_remarks'    => $groupFields['location_remarks'],
                 'higher_geography'    => $groupFields['higher_geography'],
